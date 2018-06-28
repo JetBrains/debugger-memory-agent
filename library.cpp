@@ -87,9 +87,9 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
     if (*referrer_tag_ptr != 0) {
         //referrer has tag
         Tag *referrer_tag = pointerToTag(*referrer_tag_ptr);
-        if (referrer_tag->start_object) {
+        if (referrer_tag->in_subtree) {
             cout << get_tag_description(referrer_tag) << "" << get_reference_type_description(reference_kind)
-                 << " link from initial object" << endl;
+                 << " link from initial object subtree" << endl;
             cout << *tag_ptr << endl;
         }
         if (*tag_ptr != 0) {
