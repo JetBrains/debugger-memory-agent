@@ -84,11 +84,6 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
         return JVMTI_VISIT_OBJECTS;
     }
 
-    if (reference_kind == JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
-        //We are visiting a static field directly.
-        return JVMTI_VISIT_OBJECTS;
-    }
-
     if (referrer_tag_ptr == nullptr) {
         if (tag_ptr == nullptr) {
             cerr << "Unexpected null pointer to referrer and referee tags. Reference kind: "
