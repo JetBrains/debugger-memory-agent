@@ -73,7 +73,8 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
         return JVMTI_VISIT_OBJECTS;
     if (reference_kind != JVMTI_HEAP_REFERENCE_FIELD
         && reference_kind != JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT
-        && reference_kind != JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
+        && reference_kind != JVMTI_HEAP_REFERENCE_STATIC_FIELD
+        && reference_kind != JVMTI_HEAP_REFERENCE_STACK_LOCAL) {
         //We won't bother propagating pointers along other kinds of references
         //(e.g. from a class to its classloader - see http://docs.oracle.com/javase/7/docs/platform/jvmti/jvmti.html#jvmtiHeapReferenceKind )
         return JVMTI_VISIT_OBJECTS;
@@ -81,6 +82,18 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
 
     if (reference_kind == JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
         //We are visiting a static field directly.
+        return JVMTI_VISIT_OBJECTS;
+    }
+
+    if (reference_kind == JVMTI_HEAP_REFERENCE_STACK_LOCAL) {
+        if (*tag_ptr != 0) {
+            Tag *tag = pointerToTag(*tag_ptr);
+            if (!tag->start_object) {
+                tag->reachable_outside = true;
+            }
+        } else {
+            *tag_ptr = tagToPointer(createTag(false, false, true));
+        }
         return JVMTI_VISIT_OBJECTS;
     }
 
