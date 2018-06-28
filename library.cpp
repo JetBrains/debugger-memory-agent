@@ -64,6 +64,15 @@ jvmtiIterationControl cbHeapCleanup(jlong class_tag, jlong size, jlong *tag_ptr,
     return JVMTI_ITERATION_CONTINUE;
 }
 
+static bool is_ignored_reference(jvmtiHeapReferenceKind kind) {
+    return kind == JVMTI_HEAP_REFERENCE_CLASS ||
+           kind == JVMTI_HEAP_REFERENCE_CLASS_LOADER ||
+           kind == JVMTI_HEAP_REFERENCE_SIGNERS ||
+           kind == JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN ||
+           kind == JVMTI_HEAP_REFERENCE_INTERFACE ||
+           kind == JVMTI_HEAP_REFERENCE_SUPERCLASS;
+}
+
 extern "C"
 JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
                                const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
@@ -71,12 +80,7 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
                                jlong *referrer_tag_ptr, jint length, void *user_data) {
     if (reference_kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL)
         return JVMTI_VISIT_OBJECTS;
-    if (reference_kind != JVMTI_HEAP_REFERENCE_FIELD
-        && reference_kind != JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT
-        && reference_kind != JVMTI_HEAP_REFERENCE_STATIC_FIELD
-        && reference_kind != JVMTI_HEAP_REFERENCE_STACK_LOCAL) {
-        //We won't bother propagating pointers along other kinds of references
-        //(e.g. from a class to its classloader - see http://docs.oracle.com/javase/7/docs/platform/jvmti/jvmti.html#jvmtiHeapReferenceKind )
+    if (is_ignored_reference(reference_kind)) {
         return JVMTI_VISIT_OBJECTS;
     }
 
@@ -85,7 +89,13 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
         return JVMTI_VISIT_OBJECTS;
     }
 
-    if (reference_kind == JVMTI_HEAP_REFERENCE_STACK_LOCAL) {
+    if (referrer_tag_ptr == nullptr) {
+        if (tag_ptr == nullptr) {
+            cerr << "Unexpected null pointer to referrer and referee tags. Reference kind: "
+                 << get_reference_type_description(reference_kind) << endl;
+            return JVMTI_VISIT_ABORT;
+        }
+
         if (*tag_ptr != 0) {
             Tag *tag = pointerToTag(*tag_ptr);
             if (!tag->start_object) {
