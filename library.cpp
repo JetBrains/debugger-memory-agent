@@ -98,7 +98,7 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
                 referee_tag->in_subtree = true;
                 ((std::vector<jlong> *) (ptrdiff_t) user_data)->push_back(*tag_ptr);
             }
-            if (referrer_tag->reachable_outside) {
+            if (referrer_tag->reachable_outside && !referee_tag->start_object) {
                 referee_tag->reachable_outside = true;
             }
         } else {
@@ -107,11 +107,13 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
             if (referee_tag->in_subtree) ((std::vector<jlong> *) (ptrdiff_t) user_data)->push_back(*tag_ptr);
         }
     } else {
-        // referrer has no tag
+        // referrer has no tag yet
         Tag *referrer_tag = createTag(false, false, true);
         if (*tag_ptr != 0) {
             Tag *referee_tag = pointerToTag(*tag_ptr);
-            referee_tag->reachable_outside = true;
+            if (!referee_tag->start_object) {
+                referee_tag->reachable_outside = true;
+            }
         } else {
             Tag *referee_tag = createTag(false, false, true);
             *tag_ptr = tagToPointer(referee_tag);
