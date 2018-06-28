@@ -1,11 +1,19 @@
 #include <jvmti.h>
 #include <vector>
+#include <queue>
 #include <stdio.h>
 #include <iostream>
 #include "utils.h"
 #include "types.h"
 
 using namespace std;
+
+PathNodeTag *createTag(bool target, int index);
+PathNodeTag *createTag(int index);
+jlong tagToPointer(PathNodeTag *tag);
+PathNodeTag *pointerToPathNodeTag(jlong tag_ptr);
+jobject getObjectByTag(GlobalAgentData *gdata, jlong *tag_ptr);
+jobjectArray toJArray(JNIEnv *env, vector<jobject> *objs, std::vector<std::vector<int>*> *prev);
 
 static GlobalAgentData *gdata;
 
@@ -144,13 +152,6 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
 }
 
 
-extern "C"
-JNIEXPORT jobject
-JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gcRoots(JNIEnv *env, jclass thisClass, jobject object) {
-    cout << "HELLLO WORLD" << endl;
-    return object;
-}
-
 // TODO: Return jlong
 extern "C"
 JNIEXPORT jint
@@ -194,3 +195,89 @@ JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(JNIEnv *env, jclass 
     cout << "tag balance = " << tag_balance << endl;
     return static_cast<jint>(retainedSize);
 }
+
+extern "C"
+JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind reference_kind,
+                               const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
+                               jlong referrer_class_tag, jlong size, jlong *tag_ptr,
+                               jlong *referrer_tag_ptr, jint length, void *user_data) {
+    if (reference_kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL)
+        return JVMTI_VISIT_OBJECTS;
+    if (reference_kind != JVMTI_HEAP_REFERENCE_FIELD
+        && reference_kind != JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT
+        && reference_kind != JVMTI_HEAP_REFERENCE_STACK_LOCAL
+        && reference_kind != JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
+        //We won't bother propagating pointers along other kinds of references
+        //(e.g. from a class to its classloader - see http://docs.oracle.com/javase/7/docs/platform/jvmti/jvmti.html#jvmtiHeapReferenceKind )
+        return JVMTI_VISIT_OBJECTS;
+    }
+
+    if (reference_kind == JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
+        //We are visiting a static field directly.
+        return JVMTI_VISIT_OBJECTS;
+    }
+
+
+    vector<jlong> *tags = ((std::vector<jlong> *) (ptrdiff_t) user_data);
+    if (reference_kind == JVMTI_HEAP_REFERENCE_STACK_LOCAL || !referrer_tag_ptr || !(*referrer_tag_ptr)) {
+        if (!(*tag_ptr)) {
+            (*tag_ptr) = tagToPointer(createTag(tags->size()));
+            tags->push_back(*tag_ptr);
+        }
+    } else {
+        if (!(*tag_ptr)) {
+            (*tag_ptr) = tagToPointer(createTag(tags->size()));
+            tags->push_back(*tag_ptr);
+        }
+        PathNodeTag *tag = pointerToPathNodeTag(*tag_ptr);
+        tag->prev->push_back(pointerToPathNodeTag(*referrer_tag_ptr));
+    }
+    return JVMTI_VISIT_OBJECTS;
+}
+
+extern "C"
+JNIEXPORT jobjectArray
+JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gcRoots(JNIEnv *env, jclass thisClass, jobject object) {
+    vector<jlong> tags;
+    auto *cb = new jvmtiHeapCallbacks();
+    memset(cb, 0, sizeof(jvmtiHeapCallbacks));
+    cb->heap_reference_callback = &cbGcPaths;
+
+    PathNodeTag *tag = createTag(true, 0);
+    tags.push_back(tagToPointer(tag));
+    gdata->jvmti->SetTag(object, tagToPointer(tag));
+    gdata->jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, cb, &tags);
+
+    auto objects_in_paths = new vector<jobject>();
+    jlong tp = tagToPointer(tag);
+    objects_in_paths->push_back(getObjectByTag(gdata, &tp));
+
+    auto prev = new vector<vector<int>*>();
+
+    queue<PathNodeTag*> qtags;
+    qtags.push(tag);
+
+    queue<int> qindices;
+    qindices.push(0);
+
+    while (!qtags.empty()) {
+        PathNodeTag *tg = qtags.front();
+        qtags.pop();
+        int i = qindices.front();
+        qindices.pop();
+
+        prev->push_back(new vector<int>());
+        for (auto it = tg->prev->begin(); it != tg->prev->end(); ++it) {
+            jlong tp = tagToPointer(*it);
+            objects_in_paths->push_back(getObjectByTag(gdata, &tp));
+
+            prev->back()->push_back(objects_in_paths->size() - 1);
+
+            qtags.push(*it);
+            qindices.push(objects_in_paths->size() - 1);
+        }
+    }
+
+    return toJArray(env, objects_in_paths, prev);
+}
+

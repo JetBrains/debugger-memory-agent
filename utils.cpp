@@ -1,5 +1,6 @@
 #include <jvmti.h>
 #include "utils.h"
+#include <vector>
 
 const char *get_reference_type_description(jvmtiHeapReferenceKind kind) {
     if (kind == JVMTI_HEAP_REFERENCE_CLASS) return "Reference from an object to its class.";
@@ -43,4 +44,64 @@ std::string get_tag_description(Tag *tag) {
 
 }
 
+PathNodeTag *createTag(bool target, int index) {
+    auto *tag = new PathNodeTag();
+    tag->target = target;
+    tag->index = index;
+    tag->prev = new std::vector<PathNodeTag*>();
+    return tag;
+}
+
+PathNodeTag *createTag(int index) {
+    return createTag(false, index);
+}
+
+jobject getObjectByTag(GlobalAgentData *gdata, jlong *tag_ptr) {
+    jint count = 0;
+    jobject *object;
+    jlong *objects_tags;
+    gdata->jvmti->GetObjectsWithTags(
+            static_cast<jint>(1), tag_ptr, &count, &object, &objects_tags);
+    return *object;
+}
+
+jobjectArray toJArray(JNIEnv *env, std::vector<jobject> *objs) {
+    jobjectArray res = env->NewObjectArray(objs->size(), env->FindClass("java/lang/Object"), 0);
+    for (auto i = 0; i < objs->size(); ++i) {
+        env->SetObjectArrayElement(res, i, (*objs)[i]);
+    }
+    return res;
+}
+
+jintArray toJArray(JNIEnv *env, std::vector<int> *objs) {
+    jintArray res = env->NewIntArray(objs->size());
+    env->SetIntArrayRegion(res, 0, objs->size(), objs->data());
+    return res;
+}
+
+jobjectArray toJArray(JNIEnv *env, std::vector<std::vector<int>*> *objs) {
+    jobjectArray res = env->NewObjectArray(objs->size(), env->FindClass("[I"), 0);
+    for (auto i = 0; i < objs->size(); ++i) {
+        env->SetObjectArrayElement(res, i, toJArray(env, objs->at(i)));
+    }
+    return res;
+}
+
+jobjectArray toJArray(JNIEnv *env, std::vector<jobject> *objs, std::vector<std::vector<int>*> *prev) {
+    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), 0);
+    env->SetObjectArrayElement(res, 0, toJArray(env, objs));
+    env->SetObjectArrayElement(res, 1, toJArray(env, prev));
+    return res;
+}
+
+jlong tagToPointer(PathNodeTag *tag) {
+    return (jlong) (ptrdiff_t) (void *) tag;
+}
+
+PathNodeTag *pointerToPathNodeTag(jlong tag_ptr) {
+    if (tag_ptr == 0) {
+        return new PathNodeTag();
+    }
+    return (PathNodeTag *) (ptrdiff_t) (void *) tag_ptr;
+}
 
