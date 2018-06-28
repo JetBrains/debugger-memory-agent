@@ -2,23 +2,18 @@
 #include <vector>
 #include <stdio.h>
 #include <iostream>
+#include "utils.h"
+#include "types.h"
 
 using namespace std;
 
-typedef struct {
-    jvmtiEnv *jvmti;
-} GlobalAgentData;
-
 static GlobalAgentData *gdata;
 
-typedef struct Tag {
-    bool in_subtree;
-    bool reachable_outside;
-    bool start_object;
-} Tag;
+int tag_balance = 0;
 
 static Tag *pointerToTag(jlong tag_ptr) {
     if (tag_ptr == 0) {
+        ++tag_balance;
         return new Tag();
     }
     return (Tag *) (ptrdiff_t) (void *) tag_ptr;
@@ -28,8 +23,17 @@ static jlong tagToPointer(Tag *tag) {
     return (jlong) (ptrdiff_t) (void *) tag;
 }
 
+static Tag *createTag(bool start, bool in_subtree, bool reachable_outside) {
+    auto *tag = new Tag();
+    ++tag_balance;
+    tag->in_subtree = in_subtree;
+    tag->start_object = start;
+    tag->reachable_outside = reachable_outside;
+    return tag;
+}
+
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
-    jvmtiEnv *jvmti = NULL;
+    jvmtiEnv *jvmti = nullptr;
     jvmtiCapabilities capa;
     jvmtiError error;
 
@@ -48,64 +52,72 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
 }
 
 extern "C"
+JNIEXPORT
+jvmtiIterationControl cbHeapCleanup(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
+    if (*tag_ptr != 0) {
+        Tag *t = pointerToTag(*tag_ptr);
+        *tag_ptr = 0;
+        delete t;
+        --tag_balance;
+    }
+
+    return JVMTI_ITERATION_CONTINUE;
+}
+
+extern "C"
 JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
                                const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
                                jlong referrer_class_tag, jlong size, jlong *tag_ptr,
                                jlong *referrer_tag_ptr, jint length, void *user_data) {
-    jvmtiError err;
     if (reference_kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL)
         return JVMTI_VISIT_OBJECTS;
     if (reference_kind != JVMTI_HEAP_REFERENCE_FIELD
         && reference_kind != JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT
         && reference_kind != JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
-        //We won't bother propogating pointers along other kinds of references
+        //We won't bother propagating pointers along other kinds of references
         //(e.g. from a class to its classloader - see http://docs.oracle.com/javase/7/docs/platform/jvmti/jvmti.html#jvmtiHeapReferenceKind )
         return JVMTI_VISIT_OBJECTS;
     }
 
     if (reference_kind == JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
         //We are visiting a static field directly.
+        return JVMTI_VISIT_OBJECTS;
     }
 
-    //Not directly pointed to by an SF.
     if (*referrer_tag_ptr != 0) {
-//        printf("from visited earlier\n");
+        //referrer has tag
         Tag *referrer_tag = pointerToTag(*referrer_tag_ptr);
+        if (referrer_tag->start_object) {
+            cout << get_tag_description(referrer_tag) << "" << get_reference_type_description(reference_kind)
+                 << " link from initial object" << endl;
+            cout << *tag_ptr << endl;
+        }
         if (*tag_ptr != 0) {
-//            printf("to visited earlier\n");
             Tag *referee_tag = pointerToTag(*tag_ptr);
             if (referrer_tag->in_subtree) {
-                if (!referee_tag->in_subtree) {
-                    referee_tag->in_subtree = true;
-                    ((std::vector<jlong> *) (ptrdiff_t) user_data)->push_back(*tag_ptr);
-                }
-            } else {
+                referee_tag->in_subtree = true;
+                ((std::vector<jlong> *) (ptrdiff_t) user_data)->push_back(*tag_ptr);
+            }
+            if (referrer_tag->reachable_outside) {
                 referee_tag->reachable_outside = true;
             }
         } else {
-//            printf("to not visited earlier\n");
-            Tag *referee_tag = new Tag();
-            referee_tag->start_object = false;
-            referee_tag->reachable_outside = referrer_tag->reachable_outside;
-            referee_tag->in_subtree = referrer_tag->in_subtree;
+            Tag *referee_tag = createTag(false, referrer_tag->in_subtree, referrer_tag->reachable_outside);
             *tag_ptr = tagToPointer(referee_tag);
+            if (referee_tag->in_subtree) ((std::vector<jlong> *) (ptrdiff_t) user_data)->push_back(*tag_ptr);
         }
     } else {
-        // object from root set
-//        printf("from root set\n");
-        Tag *referrer_tag = new Tag();
-        referrer_tag->in_subtree = false;
-        referrer_tag->reachable_outside = true;
-        referrer_tag->start_object = false;
-        *referrer_tag_ptr = tagToPointer(referrer_tag);
-
-        if (*tag_ptr == 0) {
-            Tag *referee_tag = new Tag();
-            referee_tag->start_object = false;
-            referee_tag->reachable_outside = referrer_tag->reachable_outside;
-            referee_tag->in_subtree = referrer_tag->in_subtree;
+        // referrer has no tag
+        Tag *referrer_tag = createTag(false, false, true);
+        if (*tag_ptr != 0) {
+            Tag *referee_tag = pointerToTag(*tag_ptr);
+            referee_tag->reachable_outside = true;
+        } else {
+            Tag *referee_tag = createTag(false, false, true);
             *tag_ptr = tagToPointer(referee_tag);
         }
+
+        *referrer_tag_ptr = tagToPointer(referrer_tag);
     }
 
     return JVMTI_VISIT_OBJECTS;
@@ -119,18 +131,16 @@ JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gcRoots(JNIEnv *env, jcla
     return object;
 }
 
+// TODO: Return jlong
 extern "C"
 JNIEXPORT jint
 JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(JNIEnv *env, jclass thisClass, jobject object) {
     vector<jlong> tags;
-    jvmtiHeapCallbacks *cb = new jvmtiHeapCallbacks();
+    auto *cb = new jvmtiHeapCallbacks();
     memset(cb, 0, sizeof(jvmtiHeapCallbacks));
     cb->heap_reference_callback = &cbHeapReference;
 
-    Tag *tag = new Tag();
-    tag->in_subtree = true;
-    tag->reachable_outside = false;
-    tag->start_object = true;
+    Tag *tag = createTag(true, true, false);
     tags.push_back(tagToPointer(tag));
     gdata->jvmti->SetTag(object, tagToPointer(tag));
     jint count = 0;
@@ -139,7 +149,7 @@ JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(JNIEnv *env, jclass 
     jlong *objects_tags;
     gdata->jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()), tags.data(), &count, &objects, &objects_tags);
 
-    jint retainedSize = 0;
+    jlong retainedSize = 0;
     jint objectsInSubtree = 0;
     jint retainedObjectsCount = 0;
     for (int i = 0; i < count; i++) {
@@ -154,8 +164,13 @@ JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(JNIEnv *env, jclass 
     }
 
     cout << "Total objects in the subtree: " << objectsInSubtree << endl;
-    cout << "Total object retained: " << retainedObjectsCount << endl;
+    cout << "Total objects retained: " << retainedObjectsCount << endl;
     cout << "Retained size: " << retainedSize << endl;
 
-    return retainedSize;
+    // For some reason this call does not iterate through all objects :(
+//    gdata->jvmti->IterateOverReachableObjects(NULL, NULL, &cbHeapCleanup, NULL);
+    gdata->jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanup, nullptr);
+
+    cout << "tag balance = " << tag_balance << endl;
+    return static_cast<jint>(retainedSize);
 }
