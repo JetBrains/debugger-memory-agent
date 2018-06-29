@@ -247,19 +247,27 @@ static void walk(jlong current, set<jlong> &visited) {
     }
 }
 
-static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env, vector<jlong> &tags) {
+static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env,
+                                                     vector<jlong> &tags,
+                                                     unordered_map<jlong, jint> &tag_to_index) {
     jint count;
     jobject *objects;
     jlong *result_tags;
     // TODO: add error handling
+    // Note: order of objects in the result of GetObjectsWithTags may differ from tags
     gdata->jvmti->GetObjectsWithTags(static_cast<jint >(tags.size()), tags.data(), &count, &objects, &result_tags);
-    // TODO: make sure that tag orders in tags and result_tags are identical
     if (count != tags.size()) {
         cerr << "could not find all objects by their tags. Found: " << count << ". Expected: " << tags.size() << endl;
         return nullptr;
     }
+    // TODO: Reallocate memory
+    vector<jobject> object_in_correct_order(static_cast<const unsigned __int64>(count));
+    for (int i = 0; i < count; i++) {
+        jint object_order = tag_to_index[result_tags[i]];
+        object_in_correct_order[object_order] = objects[i];
+    }
 
-    return toJavaArray(env, objects, count);
+    return toJavaArray(env, object_in_correct_order.data(), count);
 }
 
 extern "C"
@@ -294,7 +302,6 @@ JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gcRoots(JNIEnv *env, jcla
     vector<vector<jint>> previous_links(unique_tags.size());
     for (jlong reachable_tag: unique_tags) {
         jint index = tag_to_index[reachable_tag];
-        cout << pointerToGcTag(reachable_tag)->prev.size() << endl;
         for (jlong prev_tag: pointerToGcTag(reachable_tag)->prev) {
             jint previous_index = tag_to_index[prev_tag];
             previous_links[index].push_back(previous_index);
@@ -303,7 +310,7 @@ JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gcRoots(JNIEnv *env, jcla
 
     cout << "prepare result arrays" << endl;
 
-    jobjectArray objects = createJavaArrayWithObjectsByTags(env, tags);
+    jobjectArray objects = createJavaArrayWithObjectsByTags(env, tags, tag_to_index);
     jobjectArray prev = toJavaArray(env, previous_links);
     jobjectArray result = wrapWithArray(env, objects, prev);
 
