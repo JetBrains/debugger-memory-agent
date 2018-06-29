@@ -4,6 +4,7 @@
 
 #ifndef NATIVE_MEMORY_AGENT_TYPES_H
 #define NATIVE_MEMORY_AGENT_TYPES_H
+
 #include <vector>
 
 typedef struct {
@@ -16,10 +17,8 @@ typedef struct Tag {
     bool start_object;
 } Tag;
 
-struct PathNodeTag {
-    bool target;
-    int index;
-    std::vector<PathNodeTag*> *prev;
-};
+typedef struct PathNodeTag {
+    std::vector<jlong> prev;
+} GcTag;
 
 #endif //NATIVE_MEMORY_AGENT_TYPES_H

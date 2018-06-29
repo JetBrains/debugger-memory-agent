@@ -1,27 +1,23 @@
 #include <jvmti.h>
 #include <vector>
 #include <queue>
-#include <stdio.h>
+#include <cstdio>
 #include <iostream>
+#include <memory.h>
 #include "utils.h"
 #include "types.h"
+#include <set>
+#include <unordered_map>
 
 using namespace std;
 
-PathNodeTag *createTag(bool target, int index);
-PathNodeTag *createTag(int index);
-jlong tagToPointer(PathNodeTag *tag);
-PathNodeTag *pointerToPathNodeTag(jlong tag_ptr);
-jobject getObjectByTag(GlobalAgentData *gdata, jlong *tag_ptr);
-jobjectArray toJArray(JNIEnv *env, vector<jobject> *objs, std::vector<std::vector<int>*> *prev);
-
 static GlobalAgentData *gdata;
 
-int tag_balance = 0;
+int tag_balance_for_sizes = 0;
 
 static Tag *pointerToTag(jlong tag_ptr) {
     if (tag_ptr == 0) {
-        ++tag_balance;
+        ++tag_balance_for_sizes;
         return new Tag();
     }
     return (Tag *) (ptrdiff_t) (void *) tag_ptr;
@@ -33,7 +29,7 @@ static jlong tagToPointer(Tag *tag) {
 
 static Tag *createTag(bool start, bool in_subtree, bool reachable_outside) {
     auto *tag = new Tag();
-    ++tag_balance;
+    ++tag_balance_for_sizes;
     tag->in_subtree = in_subtree;
     tag->start_object = start;
     tag->reachable_outside = reachable_outside;
@@ -61,12 +57,24 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
 
 extern "C"
 JNIEXPORT
-jvmtiIterationControl cbHeapCleanup(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
+jvmtiIterationControl cbHeapCleanupSizeTags(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
     if (*tag_ptr != 0) {
         Tag *t = pointerToTag(*tag_ptr);
         *tag_ptr = 0;
         delete t;
-        --tag_balance;
+        --tag_balance_for_sizes;
+    }
+
+    return JVMTI_ITERATION_CONTINUE;
+}
+
+extern "C"
+JNIEXPORT
+jvmtiIterationControl cbHeapCleanupGcPaths(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
+    if (*tag_ptr != 0) {
+        GcTag *t = pointerToGcTag(*tag_ptr);
+        *tag_ptr = 0;
+        delete t;
     }
 
     return JVMTI_ITERATION_CONTINUE;
@@ -78,7 +86,8 @@ static bool is_ignored_reference(jvmtiHeapReferenceKind kind) {
            kind == JVMTI_HEAP_REFERENCE_SIGNERS ||
            kind == JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN ||
            kind == JVMTI_HEAP_REFERENCE_INTERFACE ||
-           kind == JVMTI_HEAP_REFERENCE_SUPERCLASS;
+           kind == JVMTI_HEAP_REFERENCE_SUPERCLASS ||
+           kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL;
 }
 
 extern "C"
@@ -86,8 +95,6 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
                                const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
                                jlong referrer_class_tag, jlong size, jlong *tag_ptr,
                                jlong *referrer_tag_ptr, jint length, void *user_data) {
-    if (reference_kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL)
-        return JVMTI_VISIT_OBJECTS;
     if (is_ignored_reference(reference_kind)) {
         return JVMTI_VISIT_OBJECTS;
     }
@@ -152,6 +159,16 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
 }
 
 
+static void cleanHeapForSizes() {
+    // For some reason this call does not iterate through all objects :( Please, do not use it
+//    gdata->jvmti->IterateOverReachableObjects(NULL, NULL, &cbHeapCleanupSizeTags, NULL);
+    gdata->jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupSizeTags, nullptr);
+}
+
+static void cleanHeapForGcRoots() {
+    gdata->jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupGcPaths, nullptr);
+}
+
 // TODO: Return jlong
 extern "C"
 JNIEXPORT jint
@@ -188,96 +205,109 @@ JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(JNIEnv *env, jclass 
     cout << "Total objects retained: " << retainedObjectsCount << endl;
     cout << "Retained size: " << retainedSize << endl;
 
-    // For some reason this call does not iterate through all objects :(
-//    gdata->jvmti->IterateOverReachableObjects(NULL, NULL, &cbHeapCleanup, NULL);
-    gdata->jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanup, nullptr);
+    cleanHeapForSizes();
 
-    cout << "tag balance = " << tag_balance << endl;
+    if (tag_balance_for_sizes != 0) {
+        cerr << "tag balance is not zero: " << tag_balance_for_sizes << endl;
+    }
     return static_cast<jint>(retainedSize);
 }
 
 extern "C"
 JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind reference_kind,
-                               const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
-                               jlong referrer_class_tag, jlong size, jlong *tag_ptr,
-                               jlong *referrer_tag_ptr, jint length, void *user_data) {
-    if (reference_kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL)
-        return JVMTI_VISIT_OBJECTS;
-    if (reference_kind != JVMTI_HEAP_REFERENCE_FIELD
-        && reference_kind != JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT
-        && reference_kind != JVMTI_HEAP_REFERENCE_STACK_LOCAL
-        && reference_kind != JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
-        //We won't bother propagating pointers along other kinds of references
-        //(e.g. from a class to its classloader - see http://docs.oracle.com/javase/7/docs/platform/jvmti/jvmti.html#jvmtiHeapReferenceKind )
+                         const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
+                         jlong referrer_class_tag, jlong size, jlong *tag_ptr,
+                         jlong *referrer_tag_ptr, jint length, void *user_data) {
+
+    if (is_ignored_reference(reference_kind)) {
         return JVMTI_VISIT_OBJECTS;
     }
 
-    if (reference_kind == JVMTI_HEAP_REFERENCE_STATIC_FIELD) {
-        //We are visiting a static field directly.
-        return JVMTI_VISIT_OBJECTS;
-    }
-
-
-    vector<jlong> *tags = ((std::vector<jlong> *) (ptrdiff_t) user_data);
-    if (reference_kind == JVMTI_HEAP_REFERENCE_STACK_LOCAL || !referrer_tag_ptr || !(*referrer_tag_ptr)) {
-        if (!(*tag_ptr)) {
-            (*tag_ptr) = tagToPointer(createTag(tags->size()));
-            tags->push_back(*tag_ptr);
+    if (referrer_tag_ptr == nullptr) {
+        if (*tag_ptr == 0) {
+            *tag_ptr = gcTagToPointer(createGcTag());
         }
     } else {
-        if (!(*tag_ptr)) {
-            (*tag_ptr) = tagToPointer(createTag(tags->size()));
-            tags->push_back(*tag_ptr);
+        if (*referrer_tag_ptr == 0) {
+            *referrer_tag_ptr = gcTagToPointer(createGcTag());
         }
-        PathNodeTag *tag = pointerToPathNodeTag(*tag_ptr);
-        tag->prev->push_back(pointerToPathNodeTag(*referrer_tag_ptr));
+
+        GcTag *tag = pointerToGcTag(*tag_ptr);
+        tag->prev.push_back(*referrer_tag_ptr);
     }
     return JVMTI_VISIT_OBJECTS;
+}
+
+static void walk(jlong current, set<jlong> &visited) {
+    visited.insert(current);
+    if (visited.find(current) != visited.end()) {
+        for (jlong tag : pointerToGcTag(current)->prev) {
+            walk(tag, visited);
+        }
+    }
+}
+
+static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env, vector<jlong> &tags) {
+    jint count;
+    jobject *objects;
+    jlong *result_tags;
+    // TODO: add error handling
+    gdata->jvmti->GetObjectsWithTags(static_cast<jint >(tags.size()), tags.data(), &count, &objects, &result_tags);
+    // TODO: make sure that tag orders in tags and result_tags are identical
+    if (count != tags.size()) {
+        cerr << "could not find all objects by their tags. Found: " << count << ". Expected: " << tags.size() << endl;
+        return nullptr;
+    }
+
+    return toJavaArray(env, objects, count);
 }
 
 extern "C"
 JNIEXPORT jobjectArray
 JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gcRoots(JNIEnv *env, jclass thisClass, jobject object) {
-    vector<jlong> tags;
     auto *cb = new jvmtiHeapCallbacks();
     memset(cb, 0, sizeof(jvmtiHeapCallbacks));
     cb->heap_reference_callback = &cbGcPaths;
 
-    PathNodeTag *tag = createTag(true, 0);
-    tags.push_back(tagToPointer(tag));
-    gdata->jvmti->SetTag(object, tagToPointer(tag));
-    gdata->jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, cb, &tags);
+    GcTag *tag = createGcTag();
+    jvmtiError err = gdata->jvmti->SetTag(object, gcTagToPointer(tag));
+    cout << gcTagToPointer(tag) << endl;
+    if (err != JVMTI_ERROR_NONE) {
+        cerr << "could not set tag to object" << endl;
+    }
+    gdata->jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, cb, nullptr);
 
-    auto objects_in_paths = new vector<jobject>();
-    jlong tp = tagToPointer(tag);
-    objects_in_paths->push_back(getObjectByTag(gdata, &tp));
+    set<jlong> unique_tags;
+    walk(gcTagToPointer(tag), unique_tags);
+    cout << "Total reachable unique tags: " << unique_tags.size() << endl;
 
-    auto prev = new vector<vector<int>*>();
+    unordered_map<jlong, jint> tag_to_index;
+    vector<jlong> tags;
+    jint i = 0;
+    for (jlong reachable_tag: unique_tags) {
+        tags.push_back(reachable_tag);
+        tag_to_index[reachable_tag] = i;
+        ++i;
+    }
 
-    queue<PathNodeTag*> qtags;
-    qtags.push(tag);
-
-    queue<int> qindices;
-    qindices.push(0);
-
-    while (!qtags.empty()) {
-        PathNodeTag *tg = qtags.front();
-        qtags.pop();
-        int i = qindices.front();
-        qindices.pop();
-
-        prev->push_back(new vector<int>());
-        for (auto it = tg->prev->begin(); it != tg->prev->end(); ++it) {
-            jlong tp = tagToPointer(*it);
-            objects_in_paths->push_back(getObjectByTag(gdata, &tp));
-
-            prev->back()->push_back(objects_in_paths->size() - 1);
-
-            qtags.push(*it);
-            qindices.push(objects_in_paths->size() - 1);
+    cout << "start building reversed links" << endl;
+    vector<vector<jint>> previous_links(unique_tags.size());
+    for (jlong reachable_tag: unique_tags) {
+        jint index = tag_to_index[reachable_tag];
+        cout << pointerToGcTag(reachable_tag)->prev.size() << endl;
+        for (jlong prev_tag: pointerToGcTag(reachable_tag)->prev) {
+            jint previous_index = tag_to_index[prev_tag];
+            previous_links[index].push_back(previous_index);
         }
     }
 
-    return toJArray(env, objects_in_paths, prev);
+    cout << "prepare result arrays" << endl;
+
+    jobjectArray objects = createJavaArrayWithObjectsByTags(env, tags);
+    jobjectArray prev = toJavaArray(env, previous_links);
+    jobjectArray result = wrapWithArray(env, objects, prev);
+
+    cleanHeapForGcRoots();
+    return result;
 }
 

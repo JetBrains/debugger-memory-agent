@@ -44,64 +44,48 @@ std::string get_tag_description(Tag *tag) {
 
 }
 
-PathNodeTag *createTag(bool target, int index) {
-    auto *tag = new PathNodeTag();
-    tag->target = target;
-    tag->index = index;
-    tag->prev = new std::vector<PathNodeTag*>();
+GcTag *createGcTag() {
+    auto *tag = new GcTag();
     return tag;
 }
 
-PathNodeTag *createTag(int index) {
-    return createTag(false, index);
-}
-
-jobject getObjectByTag(GlobalAgentData *gdata, jlong *tag_ptr) {
-    jint count = 0;
-    jobject *object;
-    jlong *objects_tags;
-    gdata->jvmti->GetObjectsWithTags(
-            static_cast<jint>(1), tag_ptr, &count, &object, &objects_tags);
-    return *object;
-}
-
-jobjectArray toJArray(JNIEnv *env, std::vector<jobject> *objs) {
-    jobjectArray res = env->NewObjectArray(objs->size(), env->FindClass("java/lang/Object"), 0);
-    for (auto i = 0; i < objs->size(); ++i) {
-        env->SetObjectArrayElement(res, i, (*objs)[i]);
-    }
-    return res;
-}
-
-jintArray toJArray(JNIEnv *env, std::vector<int> *objs) {
-    jintArray res = env->NewIntArray(objs->size());
-    env->SetIntArrayRegion(res, 0, objs->size(), objs->data());
-    return res;
-}
-
-jobjectArray toJArray(JNIEnv *env, std::vector<std::vector<int>*> *objs) {
-    jobjectArray res = env->NewObjectArray(objs->size(), env->FindClass("[I"), 0);
-    for (auto i = 0; i < objs->size(); ++i) {
-        env->SetObjectArrayElement(res, i, toJArray(env, objs->at(i)));
-    }
-    return res;
-}
-
-jobjectArray toJArray(JNIEnv *env, std::vector<jobject> *objs, std::vector<std::vector<int>*> *prev) {
-    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), 0);
-    env->SetObjectArrayElement(res, 0, toJArray(env, objs));
-    env->SetObjectArrayElement(res, 1, toJArray(env, prev));
-    return res;
-}
-
-jlong tagToPointer(PathNodeTag *tag) {
+jlong gcTagToPointer(GcTag *tag) {
     return (jlong) (ptrdiff_t) (void *) tag;
 }
 
-PathNodeTag *pointerToPathNodeTag(jlong tag_ptr) {
+GcTag *pointerToGcTag(jlong tag_ptr) {
     if (tag_ptr == 0) {
         return new PathNodeTag();
     }
-    return (PathNodeTag *) (ptrdiff_t) (void *) tag_ptr;
+    return (GcTag *) (ptrdiff_t) (void *) tag_ptr;
+}
+
+jobjectArray toJavaArray(JNIEnv *env, jobject *objects, jint count) {
+    jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Object"), nullptr);
+    for (auto i = 0; i < count; ++i) {
+        env->SetObjectArrayElement(res, i, objects[i]);
+    }
+    return res;
+}
+
+jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev) {
+    jobjectArray res = env->NewObjectArray(static_cast<jsize>(prev.size()),
+                                           env->FindClass("java/lang/Object"),
+                                           nullptr);
+    for (int i = 0; i < prev.size(); i++) {
+        auto parent_count = static_cast<jsize>(prev[i].size());
+        jintArray intArray = env->NewIntArray(parent_count);
+        env->SetIntArrayRegion(intArray, 0, parent_count, prev[i].data());
+        env->SetObjectArrayElement(res, i, intArray);
+    }
+
+    return res;
+}
+
+jobjectArray wrapWithArray(JNIEnv *env, jobjectArray first, jobjectArray second) {
+    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(res, 0, first);
+    env->SetObjectArrayElement(res, 1, second);
+    return res;
 }
 
