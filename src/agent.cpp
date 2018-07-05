@@ -11,9 +11,6 @@
 #include "object_size.h"
 #include "gc_roots.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 using namespace std;
 
 static GlobalAgentData *gdata;
@@ -56,5 +53,3 @@ JNIEXPORT jobjectArray JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gc
     return findGcRoots(env, gdata->jvmti, thisClass, object);
 }
 
-
-#pragma clang diagnostic pop
