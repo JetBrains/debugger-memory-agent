@@ -8,6 +8,8 @@
 
 const char *get_reference_type_description(jvmtiHeapReferenceKind kind);
 
+bool is_ignored_reference(jvmtiHeapReferenceKind kind);
+
 std::string get_tag_description(Tag *tag);
 
 jobjectArray toJavaArray(JNIEnv *env, jobject *objects, jint count);

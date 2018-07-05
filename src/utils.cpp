@@ -33,6 +33,16 @@ const char *get_reference_type_description(jvmtiHeapReferenceKind kind) {
     return "Unknown reference kind";
 }
 
+bool is_ignored_reference(jvmtiHeapReferenceKind kind) {
+    return kind == JVMTI_HEAP_REFERENCE_CLASS ||
+           kind == JVMTI_HEAP_REFERENCE_CLASS_LOADER ||
+           kind == JVMTI_HEAP_REFERENCE_SIGNERS ||
+           kind == JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN ||
+           kind == JVMTI_HEAP_REFERENCE_INTERFACE ||
+           kind == JVMTI_HEAP_REFERENCE_SUPERCLASS ||
+           kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL;
+}
+
 static std::string from_bool(bool value) {
     return std::string(value ? "true" : "false");
 }
