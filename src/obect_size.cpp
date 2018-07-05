@@ -1,9 +1,9 @@
 #include <jvmti.h>
 #include <vector>
 #include <iostream>
-#include "utils.h"
 #include "object_size.h"
-
+#include "utils.h"
+#include "types.h"
 
 using namespace std;
 
@@ -11,8 +11,8 @@ static int tag_balance_for_sizes = 0;
 
 static Tag *pointerToTag(jlong tag_ptr) {
     if (tag_ptr == 0) {
-        ++tag_balance_for_sizes;
-        return new Tag();
+        std::cerr << "unexpected zero-tag value" << std::endl;
+        return nullptr;
     }
     return (Tag *) (ptrdiff_t) (void *) tag_ptr;
 }
@@ -35,8 +35,8 @@ JNIEXPORT
 jvmtiIterationControl cbHeapCleanupSizeTags(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
     if (*tag_ptr != 0) {
         Tag *t = pointerToTag(*tag_ptr);
-        *tag_ptr = 0;
         delete t;
+        *tag_ptr = 0;
         --tag_balance_for_sizes;
     }
 
@@ -119,15 +119,15 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
 
 jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
     vector<jlong> tags;
-    auto *cb = new jvmtiHeapCallbacks();
-    memset(cb, 0, sizeof(jvmtiHeapCallbacks));
-    cb->heap_reference_callback = &cbHeapReference;
+    jvmtiHeapCallbacks cb;
+    memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    cb.heap_reference_callback = &cbHeapReference;
 
     Tag *tag = createTag(true, true, false);
     tags.push_back(tagToPointer(tag));
     jvmti->SetTag(object, tagToPointer(tag));
     jint count = 0;
-    jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, cb, &tags);
+    jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, &tags);
     jobject *objects;
     jlong *objects_tags;
     jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()), tags.data(), &count, &objects, &objects_tags);

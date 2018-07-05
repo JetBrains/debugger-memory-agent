@@ -6,6 +6,8 @@
 #define NATIVE_MEMORY_AGENT_TYPES_H
 
 #include <vector>
+#include <jvmti.h>
+#include <iostream>
 
 typedef struct {
     jvmtiEnv *jvmti;
@@ -16,9 +18,5 @@ typedef struct Tag {
     bool reachable_outside;
     bool start_object;
 } Tag;
-
-typedef struct PathNodeTag {
-    std::vector<jlong> prev;
-} GcTag;
 
 #endif //NATIVE_MEMORY_AGENT_TYPES_H

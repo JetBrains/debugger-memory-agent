@@ -18,10 +18,6 @@ jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev);
 
 jobjectArray wrapWithArray(JNIEnv *env, jobjectArray first, jobjectArray second);
 
-GcTag *createGcTag();
-
-jlong gcTagToPointer(GcTag *tag);
-
-GcTag *pointerToGcTag(jlong tag_ptr);
+void handleError(jvmtiEnv *jvmti, jvmtiError error, const char *message);
 
 #endif //NATIVE_MEMORY_AGENT_UTILS_H

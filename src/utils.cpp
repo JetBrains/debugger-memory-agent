@@ -54,22 +54,6 @@ std::string get_tag_description(Tag *tag) {
 
 }
 
-GcTag *createGcTag() {
-    auto *tag = new GcTag();
-    return tag;
-}
-
-jlong gcTagToPointer(GcTag *tag) {
-    return (jlong) (ptrdiff_t) (void *) tag;
-}
-
-GcTag *pointerToGcTag(jlong tag_ptr) {
-    if (tag_ptr == 0) {
-        return new PathNodeTag();
-    }
-    return (GcTag *) (ptrdiff_t) (void *) tag_ptr;
-}
-
 jobjectArray toJavaArray(JNIEnv *env, jobject *objects, jint count) {
     jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Object"), nullptr);
     for (auto i = 0; i < count; ++i) {
@@ -97,5 +81,19 @@ jobjectArray wrapWithArray(JNIEnv *env, jobjectArray first, jobjectArray second)
     env->SetObjectArrayElement(res, 0, first);
     env->SetObjectArrayElement(res, 1, second);
     return res;
+}
+
+void handleError(jvmtiEnv *jvmti, jvmtiError error, const char *message) {
+    if (error != JVMTI_ERROR_NONE) {
+        char *errorName = nullptr;
+        const char *name;
+        if (jvmti->GetErrorName(error, &errorName) != JVMTI_ERROR_NONE) {
+            name = "UNKNOWN";
+        } else {
+            name = errorName;
+        }
+
+        std::cerr << "ERROR: JVMTI: " << error << "(" << name << "): " << message << std::endl;
+    }
 }
 

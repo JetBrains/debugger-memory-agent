@@ -9,12 +9,31 @@
 
 using namespace std;
 
+typedef struct PathNodeTag {
+    std::vector<jlong> prev;
+} GcTag;
+
+GcTag *createGcTag() {
+    auto *tag = new GcTag();
+    return tag;
+}
+
+jlong gcTagToPointer(GcTag *tag) {
+    return (jlong) (ptrdiff_t) (void *) tag;
+}
+
+GcTag *pointerToGcTag(jlong tag_ptr) {
+    if (tag_ptr == 0) {
+        return new GcTag();
+    }
+    return (GcTag *) (ptrdiff_t) (void *) tag_ptr;
+}
 
 extern "C"
 JNIEXPORT
 jvmtiIterationControl cbHeapCleanupGcPaths(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
     if (*tag_ptr != 0) {
-        PathNodeTag *t = pointerToGcTag(*tag_ptr);
+        GcTag *t = pointerToGcTag(*tag_ptr);
         *tag_ptr = 0;
         delete t;
     }
@@ -86,9 +105,9 @@ static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env,
 }
 
 jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
-    auto *cb = new jvmtiHeapCallbacks();
-    memset(cb, 0, sizeof(jvmtiHeapCallbacks));
-    cb->heap_reference_callback = &cbGcPaths;
+    jvmtiHeapCallbacks cb;
+    memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    cb.heap_reference_callback = &cbGcPaths;
 
     GcTag *tag = createGcTag();
     jvmtiError err = jvmti->SetTag(object, gcTagToPointer(tag));
@@ -96,7 +115,7 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     if (err != JVMTI_ERROR_NONE) {
         cerr << "could not set tag to object" << endl;
     }
-    jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, cb, nullptr);
+    jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, nullptr);
 
     set<jlong> unique_tags;
     walk(gcTagToPointer(tag), unique_tags);

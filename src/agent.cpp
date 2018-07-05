@@ -17,19 +17,21 @@ static GlobalAgentData *gdata;
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
     jvmtiEnv *jvmti = nullptr;
-    jvmtiCapabilities capa;
+    jvmtiCapabilities capabilities;
     jvmtiError error;
 
     jint result = jvm->GetEnv((void **) &jvmti, JVMTI_VERSION_1_0);
-    if (result != JNI_OK) {
-        printf("ERROR: Unable to access JVMTI!\n");
+    if (result != JNI_OK || jvmti == nullptr) {
+        cerr << "ERROR: Unable to access JVMTI!" << std::endl;
+        return result;
     }
 
-    (void) memset(&capa, 0, sizeof(jvmtiCapabilities));
-    capa.can_tag_objects = 1;
-    error = (jvmti)->AddCapabilities(&capa);
+    (void) memset(&capabilities, 0, sizeof(jvmtiCapabilities));
+    capabilities.can_tag_objects = 1;
+    error = jvmti->AddCapabilities(&capabilities);
+    handleError(jvmti, error, "Could net set capabilities");
 
-    gdata = (GlobalAgentData *) malloc(sizeof(GlobalAgentData));
+    gdata = new GlobalAgentData();
     gdata->jvmti = jvmti;
     return JNI_OK;
 }
