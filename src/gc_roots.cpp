@@ -42,7 +42,8 @@ jvmtiIterationControl cbHeapCleanupGcPaths(jlong class_tag, jlong size, jlong *t
 }
 
 static void cleanHeapForGcRoots(jvmtiEnv *jvmti) {
-    jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupGcPaths, nullptr);
+    jvmtiError error = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupGcPaths, nullptr);
+    handleError(jvmti, error, "Could not cleanup the heap after gc roots finding");
 }
 
 extern "C"
@@ -86,9 +87,11 @@ static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env,
     jint count;
     jobject *objects;
     jlong *result_tags;
+    jvmtiError err;
     // TODO: add error handling
     // Note: order of objects in the result of GetObjectsWithTags may differ from tags
-    jvmti->GetObjectsWithTags(static_cast<jint >(tags.size()), tags.data(), &count, &objects, &result_tags);
+    err = jvmti->GetObjectsWithTags(static_cast<jint >(tags.size()), tags.data(), &count, &objects, &result_tags);
+    handleError(jvmti, err, "Could not receive objects by their tags");
     if (count != tags.size()) {
         std::cerr << "could not find all objects by their tags. Found: " << count << ". Expected: " << tags.size()
                   << std::endl;
@@ -105,17 +108,16 @@ static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env,
 }
 
 jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
+    jvmtiError err;
     jvmtiHeapCallbacks cb;
     memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = &cbGcPaths;
 
     GcTag *tag = createGcTag();
-    jvmtiError err = jvmti->SetTag(object, gcTagToPointer(tag));
-    cout << gcTagToPointer(tag) << endl;
-    if (err != JVMTI_ERROR_NONE) {
-        cerr << "could not set tag to object" << endl;
-    }
-    jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, nullptr);
+    err = jvmti->SetTag(object, gcTagToPointer(tag));
+    handleError(jvmti, err, "Could not set tag for target object");
+    err = jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, nullptr);
+    handleError(jvmti, err, "FollowReference call failed");
 
     set<jlong> unique_tags;
     walk(gcTagToPointer(tag), unique_tags);

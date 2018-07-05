@@ -46,7 +46,8 @@ jvmtiIterationControl cbHeapCleanupSizeTags(jlong class_tag, jlong size, jlong *
 static void cleanHeapForSizes(jvmtiEnv *jvmti) {
     // For some reason this call does not iterate through all objects :( Please, do not use it
 //    gdata->jvmti->IterateOverReachableObjects(NULL, NULL, &cbHeapCleanupSizeTags, NULL);
-    jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupSizeTags, nullptr);
+    jvmtiError err = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupSizeTags, nullptr);
+    handleError(jvmti, err, "Could cleanup heap after size estimating");
 }
 
 extern "C"
@@ -118,6 +119,7 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
 }
 
 jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
+    jvmtiError err;
     vector<jlong> tags;
     jvmtiHeapCallbacks cb;
     memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
@@ -125,12 +127,15 @@ jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject 
 
     Tag *tag = createTag(true, true, false);
     tags.push_back(tagToPointer(tag));
-    jvmti->SetTag(object, tagToPointer(tag));
+    err = jvmti->SetTag(object, tagToPointer(tag));
+    handleError(jvmti, err, "Could not set a tag for target object");
     jint count = 0;
-    jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, &tags);
+    err = jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, &tags);
+    handleError(jvmti, err, "Could not follow references for object size estimation");
     jobject *objects;
     jlong *objects_tags;
-    jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()), tags.data(), &count, &objects, &objects_tags);
+    err = jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()), tags.data(), &count, &objects, &objects_tags);
+    handleError(jvmti, err, "Could not get objects by their tags");
 
     jlong retainedSize = 0;
     jint objectsInSubtree = 0;
