@@ -36,6 +36,10 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     return JNI_OK;
 }
 
+JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
+    delete gdata;
+}
+
 // TODO: Return jlong
 extern "C"
 JNIEXPORT jint JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(
