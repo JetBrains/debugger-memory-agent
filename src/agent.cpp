@@ -11,7 +11,12 @@
 #include "object_size.h"
 #include "gc_roots.h"
 
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+
 using namespace std;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 
 static GlobalAgentData *gdata;
 
@@ -29,7 +34,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     (void) memset(&capabilities, 0, sizeof(jvmtiCapabilities));
     capabilities.can_tag_objects = 1;
     error = jvmti->AddCapabilities(&capabilities);
-    handleError(jvmti, error, "Could net set capabilities");
+    handleError(jvmti, error, "Could not set capabilities");
 
     gdata = new GlobalAgentData();
     gdata->jvmti = jvmti;
@@ -39,6 +44,8 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
     delete gdata;
 }
+
+#pragma clang diagnostic pop
 
 // TODO: Return jlong
 extern "C"
