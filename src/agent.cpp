@@ -64,3 +64,9 @@ JNIEXPORT jobjectArray JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gc
     return findGcRoots(env, gdata->jvmti, thisClass, object);
 }
 
+extern "C"
+JNIEXPORT jboolean JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_isLoadedImpl(
+        JNIEnv *env,
+        jclass thisClass) {
+    return (uint8_t) 1;
+}
