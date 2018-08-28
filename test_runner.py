@@ -1,10 +1,10 @@
 import os
-import sys
 import time
 import unittest
 from datetime import datetime
 from subprocess import check_output
 from typing import Iterable, Optional, List
+from unittest import TestCase
 
 
 class JavaCompiler:
@@ -128,58 +128,45 @@ class TestRepository:
         return dir_name in self.__ignored_dirs
 
 
-class TestResultAggregator:
-    def __init__(self) -> None:
-        self.__success = list()
-        self.__failed = list()
-
-    def test_finished(self, test: Test, test_result: TestResult):
-        actual = test_result.get_output()
-        expected = test.expected_output()
-        if expected is None:
-            self.__failed.append((test, "Expected output not found"))
-        elif actual.strip() != expected.strip():
-            self.__failed.append((test, "Actual and excepted outputs not matched"))
-        else:
-            self.__success.append(test)
-
-    def report_stats(self) -> int:
-        failed_count = len(self.__failed)
-        if failed_count == 0:
-            print("ALL TESTS PASSED")
-        else:
-            print("{} tests failed".format(len(self.__failed)))
-            for test, failure_description in self.__failed:
-                print("{}: {}".format(test.name(), failure_description))
-            print()
-            print("TESTS FAILED")
-        return failed_count
+test_repo = TestRepository('test_data')
+timestamp = int(time.time())
+timestamp = datetime.fromtimestamp(timestamp).strftime('%Y.%m.%d_%H.%M.%S')
+build_directory = 'test_outs/{}/build'.format(timestamp)
+output_directory = 'test_outs/{}/outs'.format(timestamp)
 
 
-# class NativeAgentTests(unittest.TestCase):
-#     pass
+class NativeAgentTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        os.makedirs(build_directory)
+        os.makedirs(output_directory)
+        JavaCompiler("C:\\Program Files\\Java\\jdk1.8.0_151\\bin\\javac.exe", build_directory) \
+            .compile_java(test_repo.get_all_files_for_compilation())
 
 
-def main():
-    test_repo = TestRepository('test_data')
-    timestamp = int(time.time())
-    timestamp = datetime.fromtimestamp(timestamp).strftime('%Y.%m.%d_%H.%M.%S')
-    build_directory = 'test_outs/{}/build'.format(timestamp)
-    output_directory = 'test_outs/{}/outs'.format(timestamp)
-    os.makedirs(build_directory)
-    os.makedirs(output_directory)
-    JavaCompiler("C:\\Program Files\\Java\\jdk1.8.0_151\\bin\\javac.exe", build_directory) \
-        .compile_java(test_repo.get_all_files_for_compilation())
-    aggregator = TestResultAggregator()
-    runner = TestRunner("C:\\Program Files\\Java\\jdk1.8.0_151\\bin\\java.exe", build_directory, output_directory)
-    print('{} tests found.'.format(test_repo.test_count()))
-    for test in test_repo.iterate_tests():
-        print("running test: {}".format(test.name()))
+def to_test_name(value: str) -> str:
+    return 'test_{}'.format(value.replace('.', '_').replace(' ', '_').lower())
+
+
+def create_test(test: Test, runner: TestRunner):
+    def do_test(self: TestCase):
         result = runner.run(test)
-        aggregator.test_finished(test, result)
-    failed_count = aggregator.report_stats()
-    sys.exit(failed_count)
+        actual = result.get_output()
+        expected = test.expected_output()
+        self.assertEqual(expected.strip(), actual.strip(), "outputs are mismatched")
+
+    return do_test
 
 
-if __name__ == "__main__":
-    main()
+def create_tests():
+    runner = TestRunner("C:\\Program Files\\Java\\jdk1.8.0_151\\bin\\java.exe", build_directory, output_directory)
+
+    for test in test_repo.iterate_tests():
+        setattr(NativeAgentTests, to_test_name(test.name()), create_test(test, runner))
+
+
+create_tests()
+
+if __name__ == '__main__':
+    unittest.main()
