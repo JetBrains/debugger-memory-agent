@@ -21,6 +21,18 @@ def get_java_compiler() -> str:
     return os.path.join(JAVA_HOME, 'bin', 'javac')
 
 
+def find_agent_file() -> str:
+    base_path = os.path.join('.', 'agent')
+    agent_files = list(os.listdir(base_path))
+    if len(agent_files) == 0:
+        print("agent for tests for found")
+        exit(2)
+    if len(agent_files) != 1:
+        print("Too many agent files found")
+        exit(3)
+    return os.path.join(base_path, agent_files[0])
+
+
 class JavaCompiler:
     def __init__(self, javac: str, output_path: str) -> None:
         self.__output = output_path
@@ -74,7 +86,7 @@ class TestRunner:
 
         args = list()
         args.append(self.__java)
-        args.append('-agentpath:./cmake-build-debug/native_memory_agent.dll')
+        args.append('-agentpath:{}'.format(find_agent_file()))
         args.extend(['-classpath', self.__build_dir])
         args.append(test.name())
 
