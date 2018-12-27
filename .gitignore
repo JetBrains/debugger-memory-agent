@@ -1,40 +1,11 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
 # Compiled Dynamic libraries
 *.so
 *.dylib
 *.dll
 
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
 # Test java project
 test_data/.idea/**
 test_data/test_data.iml
-test_data/out/**
 test_outs/**
 venv/**
 .idea/**
