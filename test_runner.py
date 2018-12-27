@@ -6,6 +6,20 @@ from subprocess import check_output
 from typing import Iterable, Optional, List
 from unittest import TestCase
 
+JAVA_HOME = os.getenv("JAVA_HOME")
+
+if JAVA_HOME is None:
+    print("Java not found. Please specify JAVA_HOME and try again.")
+    exit(1)
+
+
+def get_java_executable() -> str:
+    return os.path.join(JAVA_HOME, 'bin', 'java')
+
+
+def get_java_compiler() -> str:
+    return os.path.join(JAVA_HOME, 'bin', 'javac')
+
 
 class JavaCompiler:
     def __init__(self, javac: str, output_path: str) -> None:
@@ -141,7 +155,7 @@ class NativeAgentTests(unittest.TestCase):
         super().setUpClass()
         os.makedirs(build_directory)
         os.makedirs(output_directory)
-        JavaCompiler("C:\\Program Files\\Java\\jdk1.8.0_151\\bin\\javac.exe", build_directory) \
+        JavaCompiler(get_java_compiler(), build_directory) \
             .compile_java(test_repo.get_all_files_for_compilation())
 
 
@@ -160,7 +174,7 @@ def create_test(test: Test, runner: TestRunner):
 
 
 def create_tests():
-    runner = TestRunner("C:\\Program Files\\Java\\jdk1.8.0_151\\bin\\java.exe", build_directory, output_directory)
+    runner = TestRunner(get_java_executable(), build_directory, output_directory)
 
     for test in test_repo.iterate_tests():
         setattr(NativeAgentTests, to_test_name(test.name()), create_test(test, runner))
