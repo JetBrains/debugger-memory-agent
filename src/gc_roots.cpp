@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <jvmti.h>
+#include <cstring>
 #include "gc_roots.h"
 #include "types.h"
 #include "utils.h"
@@ -110,7 +111,7 @@ static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env,
 jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
     jvmtiError err;
     jvmtiHeapCallbacks cb;
-    memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = &cbGcPaths;
 
     GcTag *tag = createGcTag();

@@ -6,6 +6,7 @@
 #include <memory.h>
 #include <set>
 #include <unordered_map>
+#include <cstring>
 #include "types.h"
 #include "utils.h"
 #include "object_size.h"
@@ -31,7 +32,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
         return result;
     }
 
-    (void) memset(&capabilities, 0, sizeof(jvmtiCapabilities));
+    std::memset(&capabilities, 0, sizeof(jvmtiCapabilities));
     capabilities.can_tag_objects = 1;
     error = jvmti->AddCapabilities(&capabilities);
     handleError(jvmti, error, "Could not set capabilities");

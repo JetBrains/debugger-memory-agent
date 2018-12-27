@@ -1,6 +1,7 @@
 #include <jvmti.h>
 #include <vector>
 #include <iostream>
+#include <cstring>
 #include "object_size.h"
 #include "utils.h"
 #include "types.h"
@@ -122,7 +123,7 @@ jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject 
     jvmtiError err;
     vector<jlong> tags;
     jvmtiHeapCallbacks cb;
-    memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = &cbHeapReference;
 
     Tag *tag = createTag(true, true, false);
