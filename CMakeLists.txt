@@ -18,4 +18,4 @@ add_library(native_memory_agent SHARED
 
 add_custom_command(TARGET native_memory_agent
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:native_memory_agent> ../agent/${native_memory_agent})
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:native_memory_agent> ${PROJECT_SOURCE_DIR}/agent/${native_memory_agent})
