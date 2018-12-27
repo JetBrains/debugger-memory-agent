@@ -131,7 +131,7 @@ class TestRepository:
                 if not self.__is_ignored_dir(file_name):
                     yield from self.__iterate_tests_files(path, self.__join_with_package(package, file_name))
             else:
-                yield self.__join_with_package(package, file_name.split('.java')[0])
+                yield self.__join_with_package(package, str(file_name).split('.java')[0])
 
     def test_src_dir(self) -> str:
         return os.path.join(self.__path, 'src')
