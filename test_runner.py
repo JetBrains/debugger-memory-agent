@@ -1,4 +1,5 @@
 import os
+import platform
 import time
 import unittest
 from datetime import datetime
@@ -7,6 +8,7 @@ from typing import Iterable, Optional, List
 from unittest import TestCase
 
 JAVA_HOME = os.getenv("JAVA_HOME")
+AGENT_NAME = "native_memory_agent"
 
 if JAVA_HOME is None:
     print("Java not found. Please specify JAVA_HOME and try again.")
@@ -21,16 +23,34 @@ def get_java_compiler() -> str:
     return os.path.join(JAVA_HOME, 'bin', 'javac')
 
 
+def dynamic_library_name(lib_name) -> str:
+    def dynamic_lib_format() -> str:
+        os_type = platform.system()
+        if os_type == "Windows":
+            return '{}.dll'
+        if os_type == "Darwin":
+            return 'lib{}.dylib'
+        if os_type == "Linux":
+            return 'lib{}.so'
+        raise Exception("Unknown OS type")
+
+    return dynamic_lib_format().format(lib_name)
+
+
+def agent_lib_name() -> str:
+    return dynamic_library_name(AGENT_NAME)
+
+
 def find_agent_file() -> str:
-    base_path = os.path.join('.', 'agent')
-    agent_files = list(os.listdir(base_path))
-    if len(agent_files) == 0:
-        print("agent for tests for found")
-        exit(2)
-    if len(agent_files) != 1:
-        print("Too many agent files found")
-        exit(3)
-    return os.path.join(base_path, agent_files[0])
+    library_file_name = agent_lib_name()
+    result = list()
+    for root, dirs, files in os.walk('.'):
+        result.extend((os.path.join(root, file) for file in files if library_file_name == file))
+    if len(result) == 0:
+        raise AssertionError("Agent not found")
+    if len(result) > 1:
+        raise AssertionError("Too many agents found: " + str(result))
+    return result[0]
 
 
 class JavaCompiler:
@@ -195,7 +215,6 @@ def create_tests():
 
     for test in test_repo.iterate_tests():
         setattr(NativeAgentTests, to_test_name(test.name()), create_test(test, runner, test_repo))
-
 
 
 if __name__ == '__main__':

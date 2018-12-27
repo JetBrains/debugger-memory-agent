@@ -15,7 +15,3 @@ add_library(native_memory_agent SHARED
         src/gc_roots.cpp
         src/object_size.h
         src/obect_size.cpp)
-
-add_custom_command(TARGET native_memory_agent
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:native_memory_agent> ${PROJECT_SOURCE_DIR}/agent/${native_memory_agent})
