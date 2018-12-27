@@ -98,7 +98,7 @@ static jobjectArray createJavaArrayWithObjectsByTags(JNIEnv *env,
         return nullptr;
     }
     // TODO: Reallocate memory
-    std::vector<jobject> object_in_correct_order(static_cast<const unsigned __int64>(count));
+    std::vector<jobject> object_in_correct_order(static_cast<const uint64_t>(count));
     for (int i = 0; i < count; i++) {
         jint object_order = tag_to_index[result_tags[i]];
         object_in_correct_order[object_order] = objects[i];
