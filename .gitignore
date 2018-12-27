@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# Test java project
+test_data/.idea/**
+test_data/test_data.iml
+test_data/out/**
+test_outs/**
+venv/**
+.idea/**
