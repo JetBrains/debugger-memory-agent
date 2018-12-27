@@ -175,12 +175,17 @@ def to_test_name(value: str) -> str:
     return 'test_{}'.format(value.replace('.', '_').replace(' ', '_').lower())
 
 
-def create_test(test: Test, runner: TestRunner):
+def create_test(test: Test, runner: TestRunner, repo: TestRepository):
     def do_test(self: TestCase):
         result = runner.run(test)
         actual = result.get_output()
         expected = test.expected_output()
-        self.assertEqual(expected.strip(), actual.strip(), "outputs are mismatched")
+        if expected is not None:
+            self.assertEqual(expected.strip(), actual.strip(), "outputs are mismatched")
+        else:
+            repo.write_output(test.name(), actual)
+            error_text = "********* EXPECTED OUTPUT NOT FOUND. DO NOT FORGET PUT IT INTO VCS *********"
+            self.fail(error_text)
 
     return do_test
 
@@ -189,10 +194,10 @@ def create_tests():
     runner = TestRunner(get_java_executable(), build_directory, output_directory)
 
     for test in test_repo.iterate_tests():
-        setattr(NativeAgentTests, to_test_name(test.name()), create_test(test, runner))
+        setattr(NativeAgentTests, to_test_name(test.name()), create_test(test, runner, test_repo))
 
 
-create_tests()
 
 if __name__ == '__main__':
+    create_tests()
     unittest.main()
