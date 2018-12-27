@@ -95,10 +95,11 @@ class TestResult:
 
 
 class TestRunner:
-    def __init__(self, java, build_dir: str, output_dir: str) -> None:
+    def __init__(self, java, build_dir: str, output_dir: str, agent_path: str) -> None:
         self.__java = java
         self.__build_dir = build_dir
         self.__output_directory = output_dir
+        self.__agent_path = agent_path
 
     def run(self, test: Test) -> TestResult:
         if not os.path.exists(self.__output_directory):
@@ -106,7 +107,7 @@ class TestRunner:
 
         args = list()
         args.append(self.__java)
-        args.append('-agentpath:{}'.format(find_agent_file()))
+        args.append('-agentpath:{}'.format(self.__agent_path))
         args.extend(['-classpath', self.__build_dir])
         args.append(test.name())
 
@@ -211,7 +212,7 @@ def create_test(test: Test, runner: TestRunner, repo: TestRepository):
 
 
 def create_tests():
-    runner = TestRunner(get_java_executable(), build_directory, output_directory)
+    runner = TestRunner(get_java_executable(), build_directory, output_directory, find_agent_file())
 
     for test in test_repo.iterate_tests():
         setattr(NativeAgentTests, to_test_name(test.name()), create_test(test, runner, test_repo))
