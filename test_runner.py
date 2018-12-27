@@ -23,6 +23,13 @@ def get_java_compiler() -> str:
     return os.path.join(JAVA_HOME, 'bin', 'javac')
 
 
+def output_file(name: str, directory: Optional[str] = None) -> str:
+    result = '{}.out'.format(name)
+    if directory is not None:
+        result = os.path.join(directory, result)
+    return result
+
+
 def dynamic_library_name(lib_name) -> str:
     def dynamic_lib_format() -> str:
         os_type = platform.system()
@@ -70,7 +77,7 @@ class Test:
     def __init__(self, name: str, output: str, src_dir: str) -> None:
         self.__name = name
         self.__output = output
-        self.__path = '{}/{}'.format(src_dir, name)
+        self.__path = os.path.join(src_dir, name)
 
     def name(self) -> str:
         return self.__name
@@ -113,7 +120,7 @@ class TestRunner:
 
         out = check_output(args).decode("utf-8").replace('\r\n', '\n')
 
-        with open('{}/{}.out'.format(self.__output_directory, test.name()), mode='w') as out_file:
+        with open(output_file(test.name(), self.__output_directory), mode='w') as out_file:
             out_file.write(out)
 
         return TestResult(test, out)
@@ -131,13 +138,13 @@ class TestRepository:
 
     def read_output(self, name) -> Optional[str]:
         try:
-            with open('{}/{}.out'.format(self.__test_out_dir(), name), mode='r') as file:
+            with open(output_file(name, self.__test_out_dir()), mode='r') as file:
                 return file.read()
         except IOError:
             return None
 
     def write_output(self, name, output):
-        with open('{}/{}.out'.format(self.__test_out_dir(), name), mode='w') as file:
+        with open(output_file(name, self.__test_out_dir()), mode='w') as file:
             file.write(output)
 
     def iterate_tests(self) -> Iterable[Test]:
