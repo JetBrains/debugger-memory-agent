@@ -1,3 +1,72 @@
+plugins {
+    id 'java'
+    id "com.jfrog.bintray" version "1.8.4"
+    id 'maven-publish'
+}
+
+targetCompatibility = 1.6
+
 group 'org.jetbrains.intellij.deps'
 version '0.0.1'
 
+sourceSets {
+    main.java.srcDirs = []
+}
+
+def binariesPath = "$projectDir/../bin"
+
+static def checkBinaries(String binPath) {
+    def expectedFiles = ['libmemory_agent.dylib'/*, 'libmemory_agent.so', 'memory_agent.dll'*/]
+    expectedFiles.collect { new File(binPath, it) }.each { file ->
+        if (!file.exists()) {
+            throw new GradleException("Binary dependency not found: ${file.path}")
+        }
+    }
+}
+
+task includeBinaries {
+    doFirst {
+        checkBinaries(binariesPath)
+    }
+    outputs.files files(binariesPath)
+}
+
+jar {
+    into('bin') {
+        from includeBinaries
+    }
+    version mvnVersion
+}
+task sourceJar(type: Jar) {
+    from file("$projectDir/../src")
+    classifier 'sources'
+    version mvnVersion
+}
+
+publishing {
+    publications {
+        MyPublication(MavenPublication) {
+            from components.java
+            groupId mvnGroupId
+            artifactId mvnArtifactId
+            artifact sourceJar
+            version mvnVersion
+        }
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+
+    publish = true
+
+    pkg {
+        repo = bintrayRepoName
+        name = bintrayPkgName
+        userOrg = bintrayUserOrg //An optional organization name when the repo belongs to one of the user's orgs
+        version.name = mvnVersion
+    }
+
+    publications = ['MyPublication']
+}
