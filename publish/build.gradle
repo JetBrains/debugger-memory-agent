@@ -16,7 +16,7 @@ sourceSets {
 def binariesPath = "$projectDir/../bin"
 
 static def checkBinaries(String binPath) {
-    def expectedFiles = ['libmemory_agent.dylib'/*, 'libmemory_agent.so', 'memory_agent.dll'*/]
+    def expectedFiles = [/*'libmemory_agent.dylib', */'libmemory_agent.so'/*',memory_agent.dll'*/]
     expectedFiles.collect { new File(binPath, it) }.each { file ->
         if (!file.exists()) {
             throw new GradleException("Binary dependency not found: ${file.path}")
