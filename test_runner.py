@@ -8,7 +8,7 @@ from typing import Iterable, Optional, List
 from unittest import TestCase
 
 JAVA_HOME = os.getenv("JAVA_HOME")
-AGENT_NAME = "native_memory_agent"
+AGENT_NAME = "memory_agent"
 
 if JAVA_HOME is None:
     print("Java not found. Please specify JAVA_HOME and try again.")

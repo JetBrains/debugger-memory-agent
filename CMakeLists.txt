@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
-project(native_memory_agent)
+project(memory_agent)
 
 set(CMAKE_CXX_STANDARD 14)
 
 find_package(JNI)
 include_directories(${JNI_INCLUDE_DIRS})
 
-add_library(native_memory_agent SHARED
+add_library(memory_agent SHARED
         src/agent.cpp
         src/utils.cpp
         src/utils.h
@@ -14,4 +14,4 @@ add_library(native_memory_agent SHARED
         src/gc_roots.h
         src/gc_roots.cpp
         src/object_size.h
-        src/obect_size.cpp)
+        src/obect_size.cpp src/test.cpp src/test.h)
