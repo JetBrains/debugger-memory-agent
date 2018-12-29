@@ -1,3 +1,15 @@
+# User-specific stuff
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+# Auto-import
+.idea/modules.xml
+.idea/*.iml
+.idea/modules
+
 # Compiled Dynamic libraries
 *.so
 *.dylib
@@ -8,4 +20,6 @@ test_data/.idea/**
 test_data/test_data.iml
 test_outs/**
 venv/**
-.idea/**
+
+# CMake
+cmake-build-*/
