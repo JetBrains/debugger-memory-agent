@@ -45,7 +45,7 @@ jvmtiIterationControl cbHeapCleanupGcPaths(jlong class_tag, jlong size, jlong *t
 }
 
 static void cleanHeapForGcRoots(jvmtiEnv *jvmti) {
-    jvmtiError error = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupGcPaths, nullptr);
+    jvmtiError error = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupGcPaths), nullptr);
     handleError(jvmti, error, "Could not cleanup the heap after gc roots finding");
 }
 
@@ -114,7 +114,7 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     jvmtiError err;
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-    cb.heap_reference_callback = &cbGcPaths;
+    cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbGcPaths);
 
     GcTag *tag = createGcTag();
     err = jvmti->SetTag(object, gcTagToPointer(tag));

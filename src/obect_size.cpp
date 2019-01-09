@@ -49,7 +49,7 @@ jvmtiIterationControl cbHeapCleanupSizeTags(jlong class_tag, jlong size, jlong *
 static void cleanHeapForSizes(jvmtiEnv *jvmti) {
     // For some reason this call does not iterate through all objects :( Please, do not use it
 //    gdata->jvmti->IterateOverReachableObjects(NULL, NULL, &cbHeapCleanupSizeTags, NULL);
-    jvmtiError err = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, &cbHeapCleanupSizeTags, nullptr);
+    jvmtiError err = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupSizeTags), nullptr);
     handleError(jvmti, err, "Could cleanup heap after size estimating");
 }
 
@@ -126,7 +126,7 @@ jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject 
     vector<jlong> tags;
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-    cb.heap_reference_callback = &cbHeapReference;
+    cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbHeapReference);
 
     Tag *tag = createTag(true, true, false);
     tags.push_back(tagToPointer(tag));
