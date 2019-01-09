@@ -6,6 +6,9 @@ from datetime import datetime
 from subprocess import check_output
 from typing import Iterable, Optional, List
 from unittest import TestCase
+from teamcity import is_running_under_teamcity
+from teamcity.unittestpy import TeamcityTestRunner
+
 
 JAVA_HOME = os.getenv("JAVA_HOME")
 AGENT_NAME = "memory_agent"
@@ -227,4 +230,8 @@ def create_tests():
 
 if __name__ == '__main__':
     create_tests()
-    unittest.main()
+    if is_running_under_teamcity():
+        runner = TeamcityTestRunner()
+    else:
+        runner = unittest.TextTestRunner()
+    unittest.main(testRunner=runner)
