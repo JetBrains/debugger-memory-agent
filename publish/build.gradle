@@ -64,6 +64,7 @@ bintray {
     pkg {
         repo = bintrayRepoName
         name = bintrayPkgName
+        userOrg = bintrayUserOrg
         version.name = mvnVersion
     }
 
