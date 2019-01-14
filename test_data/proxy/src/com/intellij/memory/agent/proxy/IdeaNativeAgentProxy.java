@@ -1,14 +1,12 @@
-package memory.agent;
+package com.intellij.memory.agent.proxy;
 
-public class IdeaDebuggerNativeAgentClass {
-  public IdeaDebuggerNativeAgentClass() {
+public class IdeaNativeAgentProxy {
+  public IdeaNativeAgentProxy() {
   }
 
   public static native Object gcRoots(Object var0);
 
   public static native long size(Object var0);
-
-  public static native boolean isLoadedImpl();
 
   public static boolean isLoaded() {
     try {
@@ -17,4 +15,6 @@ public class IdeaDebuggerNativeAgentClass {
       return false;
     }
   }
+
+  private static native boolean isLoadedImpl();
 }
