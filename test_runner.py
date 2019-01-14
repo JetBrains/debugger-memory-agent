@@ -1,5 +1,6 @@
 import os
 import platform
+import distutils.dir_util
 import time
 import unittest
 from datetime import datetime
@@ -9,9 +10,10 @@ from unittest import TestCase
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
-
 JAVA_HOME = os.getenv("JAVA_HOME")
 AGENT_NAME = "memory_agent"
+IS_UNDER_TEAMCITY = is_running_under_teamcity()
+PROXY_COMPILED_PATH = os.path.join('test_data', 'proxy', 'build') if IS_UNDER_TEAMCITY else None
 
 if JAVA_HOME is None:
     print("Java not found. Please specify JAVA_HOME and try again.")
@@ -68,10 +70,12 @@ class JavaCompiler:
         self.__output = output_path
         self.__javac = javac
 
-    def compile_java(self, source_files: List[str]):
+    def compile_java(self, source_files: List[str], classpath: str):
         args = list()
         args.append(self.__javac)
         args.extend(['-d', self.__output])
+        if classpath is not None:
+            args.extend(['-classpath', classpath])
         args.extend(source_files)
         check_output(args)
 
@@ -168,8 +172,15 @@ class TestRepository:
         return os.path.join(self.__path, 'src')
 
     def get_all_files_for_compilation(self) -> List[str]:
+        result = self.__list_files_from_src_root(os.path.join(self.__path, 'src'))
+        if PROXY_COMPILED_PATH is None:
+            result.extend(self.__list_files_from_src_root(os.path.join(self.__path, 'proxy/src')))
+        return result
+
+    @staticmethod
+    def __list_files_from_src_root(src_root) -> List[str]:
         result = list()
-        for root, dirs, files in os.walk(os.path.join(self.__path, 'src')):
+        for root, dirs, files in os.walk(src_root):
             for file in files:
                 result.append(os.path.join(root, file))
         return result
@@ -199,7 +210,9 @@ class NativeAgentTests(unittest.TestCase):
         os.makedirs(build_directory)
         os.makedirs(output_directory)
         JavaCompiler(get_java_compiler(), build_directory) \
-            .compile_java(test_repo.get_all_files_for_compilation())
+            .compile_java(test_repo.get_all_files_for_compilation(), PROXY_COMPILED_PATH)
+        if PROXY_COMPILED_PATH is not None:
+            distutils.dir_util.copy_tree(PROXY_COMPILED_PATH, build_directory)
 
 
 def to_test_name(value: str) -> str:
@@ -230,7 +243,7 @@ def create_tests():
 
 if __name__ == '__main__':
     create_tests()
-    if is_running_under_teamcity():
+    if IS_UNDER_TEAMCITY:
         runner = TeamcityTestRunner()
     else:
         runner = unittest.TextTestRunner()

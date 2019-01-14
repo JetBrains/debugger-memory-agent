@@ -1,17 +1,21 @@
 package common;
 
-import memory.agent.IdeaDebuggerNativeAgentClass;
+import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 
 import java.util.Objects;
 
 public abstract class TestBase {
   static {
-    if(IdeaDebuggerNativeAgentClass.isLoaded()) {
+    if(IdeaNativeAgentProxy.isLoaded()) {
       System.out.println("Agent loaded");
     }
     else {
       System.out.println("Agent not loaded");
     }
+  }
+
+  protected static void printSize(Object object) {
+    System.out.println(IdeaNativeAgentProxy.size(object));
   }
 
   protected static void assertTrue(boolean condition) {

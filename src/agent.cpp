@@ -52,7 +52,7 @@ JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
 
 // TODO: Return jlong
 extern "C"
-JNIEXPORT jint JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(
+JNIEXPORT jint JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
@@ -60,7 +60,7 @@ JNIEXPORT jint JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_size(
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gcRoots(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_gcRoots(
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
@@ -68,7 +68,7 @@ JNIEXPORT jobjectArray JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_gc
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_memory_agent_IdeaDebuggerNativeAgentClass_isLoadedImpl(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
         JNIEnv *env,
         jclass thisClass) {
     return (uint8_t) 1;
