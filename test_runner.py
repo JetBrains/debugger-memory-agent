@@ -53,16 +53,23 @@ def agent_lib_name() -> str:
     return dynamic_library_name(AGENT_NAME)
 
 
-def find_agent_file() -> str:
-    library_file_name = agent_lib_name()
+def find_agent_in_project_directory(file_name: str):
     result = list()
     for root, dirs, files in os.walk('.'):
-        result.extend((os.path.join(root, file) for file in files if library_file_name == file))
+        result.extend((os.path.join(root, file) for file in files if file_name == file))
     if len(result) == 0:
         raise AssertionError("Agent not found")
     if len(result) > 1:
         raise AssertionError("Too many agents found: " + str(result))
     return result[0]
+
+
+def find_agent_file() -> str:
+    library_file_name = agent_lib_name()
+    if IS_UNDER_TEAMCITY:
+        return os.path.join('bin', library_file_name)
+    else:
+        return find_agent_in_project_directory(library_file_name)
 
 
 class JavaCompiler:
