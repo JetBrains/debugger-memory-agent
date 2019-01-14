@@ -35,8 +35,7 @@ task includeBinaries {
 
 task includeClasses {
     doFirst {
-        def proxy = new File(proxyPath)
-        if (!proxy.exists(proxy)) {
+        if (!new File(proxyPath).exists()) {
             throw new GradleScriptException("Agent proxy not found")
         }
     }
