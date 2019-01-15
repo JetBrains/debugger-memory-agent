@@ -124,7 +124,6 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
 
     set<jlong> unique_tags;
     walk(gcTagToPointer(tag), unique_tags);
-    cout << "Total reachable unique tags: " << unique_tags.size() << endl;
 
     unordered_map<jlong, jint> tag_to_index;
     vector<jlong> tags;
@@ -135,7 +134,6 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
         ++i;
     }
 
-    cout << "start building reversed links" << endl;
     vector<vector<jint>> previous_links(unique_tags.size());
     for (jlong reachable_tag: unique_tags) {
         jint index = tag_to_index[reachable_tag];
@@ -144,8 +142,6 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
             previous_links[index].push_back(previous_index);
         }
     }
-
-    cout << "prepare result arrays" << endl;
 
     jobjectArray objects = createJavaArrayWithObjectsByTags(jni, jvmti, tags, tag_to_index);
     jobjectArray prev = toJavaArray(jni, previous_links);
