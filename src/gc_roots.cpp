@@ -45,7 +45,9 @@ jvmtiIterationControl cbHeapCleanupGcPaths(jlong class_tag, jlong size, jlong *t
 }
 
 static void cleanHeapForGcRoots(jvmtiEnv *jvmti) {
-    jvmtiError error = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupGcPaths), nullptr);
+    jvmtiError error = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED,
+                                              reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupGcPaths),
+                                              nullptr);
     handleError(jvmti, error, "Could not cleanup the heap after gc roots finding");
 }
 
