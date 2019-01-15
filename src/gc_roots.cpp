@@ -59,11 +59,11 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind reference_kind,
         return JVMTI_VISIT_OBJECTS;
     }
 
-    if (referrer_tag_ptr == nullptr) {
-        if (*tag_ptr == 0) {
-            *tag_ptr = gcTagToPointer(createGcTag());
-        }
-    } else {
+    if (*tag_ptr == 0) {
+        *tag_ptr = gcTagToPointer(createGcTag());
+    }
+
+    if (referrer_tag_ptr != nullptr) {
         if (*referrer_tag_ptr == 0) {
             *referrer_tag_ptr = gcTagToPointer(createGcTag());
         }
