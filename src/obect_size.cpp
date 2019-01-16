@@ -2,6 +2,7 @@
 
 #include <jvmti.h>
 #include <vector>
+#include <set>
 #include <iostream>
 #include <cstring>
 #include "object_size.h"
@@ -49,7 +50,8 @@ jvmtiIterationControl cbHeapCleanupSizeTags(jlong class_tag, jlong size, jlong *
 static void cleanHeapForSizes(jvmtiEnv *jvmti) {
     // For some reason this call does not iterate through all objects :( Please, do not use it
 //    gdata->jvmti->IterateOverReachableObjects(NULL, NULL, &cbHeapCleanupSizeTags, NULL);
-    jvmtiError err = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED, reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupSizeTags), nullptr);
+    jvmtiError err = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED,
+                                            reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupSizeTags), nullptr);
     handleError(jvmti, err, "Could cleanup heap after size estimating");
 }
 
@@ -83,16 +85,16 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
     if (*referrer_tag_ptr != 0) {
         //referrer has tag
         Tag *referrer_tag = pointerToTag(*referrer_tag_ptr);
-        if (referrer_tag->in_subtree) {
-            cout << get_tag_description(referrer_tag) << "" << get_reference_type_description(reference_kind)
-                 << " link from initial object subtree" << endl;
-            cout << *tag_ptr << endl;
-        }
+//        if (referrer_tag->in_subtree) {
+//            cout << get_tag_description(referrer_tag) << "" << get_reference_type_description(reference_kind)
+//                 << " link from initial object subtree" << endl;
+//            cout << *tag_ptr << endl;
+//        }
         if (*tag_ptr != 0) {
             Tag *referee_tag = pointerToTag(*tag_ptr);
             if (referrer_tag->in_subtree) {
                 referee_tag->in_subtree = true;
-                ((vector<jlong> *) (ptrdiff_t) user_data)->push_back(*tag_ptr);
+                ((set<jlong> *) (ptrdiff_t) user_data)->insert(*tag_ptr);
             }
             if (referrer_tag->reachable_outside && !referee_tag->start_object) {
                 referee_tag->reachable_outside = true;
@@ -100,7 +102,7 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
         } else {
             Tag *referee_tag = createTag(false, referrer_tag->in_subtree, referrer_tag->reachable_outside);
             *tag_ptr = tagToPointer(referee_tag);
-            if (referee_tag->in_subtree) ((vector<jlong> *) (ptrdiff_t) user_data)->push_back(*tag_ptr);
+            if (referee_tag->in_subtree) ((set<jlong> *) (ptrdiff_t) user_data)->insert(*tag_ptr);
         }
     } else {
         // referrer has no tag yet
@@ -123,13 +125,13 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
 
 jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
     jvmtiError err;
-    vector<jlong> tags;
+    std::set<jlong> tags;
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbHeapReference);
 
     Tag *tag = createTag(true, true, false);
-    tags.push_back(tagToPointer(tag));
+    tags.insert(tagToPointer(tag));
     err = jvmti->SetTag(object, tagToPointer(tag));
     handleError(jvmti, err, "Could not set a tag for target object");
     jint count = 0;
@@ -137,7 +139,10 @@ jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject 
     handleError(jvmti, err, "Could not follow references for object size estimation");
     jobject *objects;
     jlong *objects_tags;
-    err = jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()), tags.data(), &count, &objects, &objects_tags);
+    vector<jlong> retained_tags(tags.begin(), tags.end());
+    err = jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()),
+                                    retained_tags.data(), &count, &objects,
+                                    &objects_tags);
     handleError(jvmti, err, "Could not get objects by their tags");
 
     jlong retainedSize = 0;
@@ -153,10 +158,6 @@ jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject 
             retainedSize += size;
         }
     }
-
-    cout << "Total objects in the subtree: " << objectsInSubtree << endl;
-    cout << "Total objects retained: " << retainedObjectsCount << endl;
-    cout << "Retained size: " << retainedSize << endl;
 
     cleanHeapForSizes(jvmti);
 
