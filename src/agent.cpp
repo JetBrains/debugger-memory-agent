@@ -23,6 +23,18 @@ using namespace std;
 
 static GlobalAgentData *gdata;
 
+static void required_capabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
+    jvmtiCapabilities potential;
+    std::memset(&potential, 0, sizeof(jvmtiCapabilities));
+    std::memset(&effective, 0, sizeof(jvmtiCapabilities));
+
+    jvmti->GetPotentialCapabilities(&potential);
+
+    if (potential.can_tag_objects) {
+        effective.can_tag_objects = 1;
+    }
+}
+
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
     jvmtiEnv *jvmti = nullptr;
     jvmtiCapabilities capabilities;
@@ -34,8 +46,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
         return result;
     }
 
-    std::memset(&capabilities, 0, sizeof(jvmtiCapabilities));
-    capabilities.can_tag_objects = 1;
+    required_capabilities(jvmti, capabilities);
     error = jvmti->AddCapabilities(&capabilities);
     handleError(jvmti, error, "Could not set capabilities");
 
