@@ -35,6 +35,13 @@ static void required_capabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective)
     }
 }
 
+static jboolean can_tag_objects() {
+    jvmtiCapabilities capabilities;
+    std::memset(&capabilities, 0, sizeof(jvmtiCapabilities));
+    gdata->jvmti->GetCapabilities(&capabilities);
+    return static_cast<jboolean>(capabilities.can_tag_objects);
+}
+
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
     jvmtiEnv *jvmti = nullptr;
     jvmtiCapabilities capabilities;
@@ -61,6 +68,13 @@ JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
 
 #pragma clang diagnostic pop
 
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canEstimateObjectSize(
+        JNIEnv *env,
+        jclass thisClass) {
+    return (uint8_t) 1;
+}
+
 // TODO: Return jlong
 extern "C"
 JNIEXPORT jint JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
@@ -68,6 +82,14 @@ JNIEXPORT jint JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy
         jclass thisClass,
         jobject object) {
     return estimateObjectSize(env, gdata->jvmti, thisClass, object);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindGcRoots(
+        JNIEnv *env,
+        jclass thisClass,
+        jobject object) {
+    return can_tag_objects();
 }
 
 extern "C"
