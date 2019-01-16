@@ -77,7 +77,7 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind reference_kind,
 }
 
 static void walk(jlong current, std::set<jlong> &visited) {
-    visited.insert(current);
+    if (!visited.insert(current).second) return; // already visited
     if (visited.find(current) != visited.end()) {
         for (jlong tag : pointerToGcTag(current)->prev) {
             walk(tag, visited);
