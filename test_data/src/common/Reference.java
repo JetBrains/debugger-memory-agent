@@ -2,8 +2,8 @@ package common;
 
 @SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class Reference {
-  private Object referent1;
-  private Object referent2;
+  public Object referent1;
+  public Object referent2;
   private static int num = 0;
   private final int number;
 

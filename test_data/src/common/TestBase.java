@@ -2,10 +2,8 @@ package common;
 
 import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.lang.management.ManagementFactory;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public abstract class TestBase {
@@ -24,7 +22,6 @@ public abstract class TestBase {
 
   protected static void printGcRoots(Object object) {
     Object result = IdeaNativeAgentProxy.gcRoots(object);
-    int a = 100;
     Object[] arrayResult = (Object[]) result;
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];
@@ -69,10 +66,27 @@ public abstract class TestBase {
     }
   }
 
+  protected static void waitForDebugger() {
+    System.out.println(ManagementFactory.getRuntimeMXBean().getName());
+    try {
+      Thread.sleep(20000);
+    } catch (InterruptedException ignored) {
+    }
+  }
+
   private static String asString(Object obj) {
+    return asStringImpl(obj, new HashMap<>());
+  }
+
+  private static String asStringImpl(Object obj, Map<Object, Integer> visited) {
+    if (visited.containsKey(obj)) {
+      return "#recursive" + visited.get(obj) + "#";
+    }
+
+    visited.put(obj, visited.size());
     if (obj == null) return "null";
     if (obj instanceof Object[]) {
-      return Arrays.stream((Object[]) obj).map(TestBase::asString).collect(Collectors.joining(", ", "[", "]"));
+      return Arrays.stream((Object[]) obj).map(x -> asStringImpl(x, visited)).collect(Collectors.joining(", ", "[", "]"));
     }
     return obj.toString();
   }

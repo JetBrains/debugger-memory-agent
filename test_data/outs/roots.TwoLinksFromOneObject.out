@@ -1,0 +1,3 @@
+Agent loaded
+[ref 1] <- 
+test object <- [ref 1], [ref 1]

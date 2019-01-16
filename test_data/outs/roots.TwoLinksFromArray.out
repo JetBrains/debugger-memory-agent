@@ -1,0 +1,3 @@
+Agent loaded
+[test object, null, #recursive1#] <- 
+test object <- [test object, null, #recursive1#], [test object, null, #recursive1#]
