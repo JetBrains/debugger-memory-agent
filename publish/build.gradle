@@ -7,7 +7,7 @@ plugins {
 targetCompatibility = 1.6
 
 group 'org.jetbrains.intellij.deps'
-version '0.0.1'
+version $mvnVersion
 
 sourceSets {
     main.java.srcDirs = []
