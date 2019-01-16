@@ -75,9 +75,8 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
     return (uint8_t) 1;
 }
 
-// TODO: Return jlong
 extern "C"
-JNIEXPORT jint JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
+JNIEXPORT jlong JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
         JNIEnv *env,
         jclass thisClass,
         jobject object) {

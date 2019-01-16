@@ -123,7 +123,7 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
     return JVMTI_VISIT_OBJECTS;
 }
 
-jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
+jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
     jvmtiError err;
     std::set<jlong> tags;
     jvmtiHeapCallbacks cb;
@@ -164,5 +164,5 @@ jint estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject 
     if (tag_balance_for_sizes != 0) {
         cerr << "tag balance is not zero: " << tag_balance_for_sizes << endl;
     }
-    return static_cast<jint>(retainedSize);
+    return retainedSize;
 }
