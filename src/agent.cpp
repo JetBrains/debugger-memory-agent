@@ -66,8 +66,6 @@ JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
     delete gdata;
 }
 
-#pragma clang diagnostic pop
-
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canEstimateObjectSize(
         JNIEnv *env,
@@ -105,3 +103,5 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
         jclass thisClass) {
     return (uint8_t) 1;
 }
+
+#pragma clang diagnostic pop
