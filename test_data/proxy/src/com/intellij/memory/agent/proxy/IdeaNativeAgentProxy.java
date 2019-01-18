@@ -8,6 +8,8 @@ public class IdeaNativeAgentProxy {
 
   public static native boolean canEstimateObjectSize();
 
+  public static native boolean canEstimateObjectsSizes();
+
   public static native Object gcRoots(Object object);
 
   public static native long size(Object object);
