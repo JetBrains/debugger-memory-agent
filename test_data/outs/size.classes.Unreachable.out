@@ -1,0 +1,7 @@
+Agent loaded
+Instance is reachable on the stack
+Shallow sizes by class:
+	size.classes.Unreachable -> 16
+Instance becomes unreachable
+Shallow sizes by class:
+	size.classes.Unreachable -> 16

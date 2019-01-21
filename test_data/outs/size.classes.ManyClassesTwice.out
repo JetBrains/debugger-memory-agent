@@ -1,0 +1,9 @@
+Agent loaded
+Shallow sizes by class:
+	size.classes.ManyClasses$1ThirdClass -> 0
+	size.classes.OneClass -> 16
+	size.classes.ManyClasses$1SecondClass -> 32
+Shallow sizes by class:
+	size.classes.ManyClasses$1ThirdClass -> 0
+	size.classes.OneClass -> 32
+	size.classes.ManyClasses$1SecondClass -> 64

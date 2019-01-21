@@ -13,6 +13,7 @@
 #include "utils.h"
 #include "object_size.h"
 #include "gc_roots.h"
+#include "size_by_classes.h"
 
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
@@ -77,7 +78,7 @@ extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canEstimateObjectsSizes(
         JNIEnv *env,
         jclass thisClass) {
-    return (uint8_t) 0;
+    return (uint8_t) 1;
 }
 
 extern "C"
@@ -109,6 +110,14 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
         JNIEnv *env,
         jclass thisClass) {
     return (uint8_t) 1;
+}
+
+extern "C"
+JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowSizeByClasses(
+        JNIEnv *env,
+        jclass thisClass,
+        jobjectArray classesArray) {
+    return getSizes(classesArray, gdata->jvmti, env);
 }
 
 #pragma clang diagnostic pop

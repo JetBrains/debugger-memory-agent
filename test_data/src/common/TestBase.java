@@ -20,6 +20,16 @@ public abstract class TestBase {
     System.out.println(IdeaNativeAgentProxy.size(object));
   }
 
+  protected static void printSizeByClasses(Class<?>... classes) {
+    assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
+    long[] sizes = IdeaNativeAgentProxy.getShallowSizeByClasses(classes);
+    assertEquals(classes.length, sizes.length);
+    System.out.println("Shallow sizes by class:");
+    for (int i = 0; i < sizes.length; i++) {
+      System.out.println("\t" + classes[i].getTypeName() + " -> " + sizes[i]);
+    }
+  }
+
   protected static void printGcRoots(Object object) {
     Object result = IdeaNativeAgentProxy.gcRoots(object);
     Object[] arrayResult = (Object[]) result;

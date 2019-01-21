@@ -10,6 +10,8 @@ public class IdeaNativeAgentProxy {
 
   public static native boolean canEstimateObjectsSizes();
 
+  public static native long[] getShallowSizeByClasses(Class<?>[] klass);
+
   public static native Object gcRoots(Object object);
 
   public static native long size(Object object);
