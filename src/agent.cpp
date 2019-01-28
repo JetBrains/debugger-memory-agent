@@ -43,6 +43,8 @@ static jboolean can_tag_objects() {
     return static_cast<jboolean>(capabilities.can_tag_objects);
 }
 
+extern void handleOptions(const char *);
+
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
     jvmtiEnv *jvmti = nullptr;
     jvmtiCapabilities capabilities;
@@ -56,7 +58,12 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
 
     required_capabilities(jvmti, capabilities);
     error = jvmti->AddCapabilities(&capabilities);
-    handleError(jvmti, error, "Could not set capabilities");
+    if (error != JVMTI_ERROR_NONE) {
+        handleError(jvmti, error, "Could not set capabilities");
+        return JNI_ERR;
+    }
+
+    handleOptions(options);
 
     gdata = new GlobalAgentData();
     gdata->jvmti = jvmti;

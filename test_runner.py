@@ -128,7 +128,7 @@ class TestRunner:
 
         args = list()
         args.append(self.__java)
-        args.append('-agentpath:{}'.format(self.__agent_path))
+        args.append('-agentpath:{}=3'.format(self.__agent_path))
         args.extend(['-classpath', self.__build_dir])
         args.append(test.name())
 
