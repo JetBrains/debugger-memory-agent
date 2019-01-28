@@ -11,8 +11,6 @@
 
 using namespace std;
 
-static int tag_balance_for_sizes = 0;
-
 static Tag *pointerToTag(jlong tag_ptr) {
     if (tag_ptr == 0) {
         std::cerr << "unexpected zero-tag value" << std::endl;
@@ -27,7 +25,6 @@ static jlong tagToPointer(Tag *tag) {
 
 static Tag *createTag(bool start, bool in_subtree, bool reachable_outside) {
     auto *tag = new Tag();
-    ++tag_balance_for_sizes;
     tag->in_subtree = in_subtree;
     tag->start_object = start;
     tag->reachable_outside = reachable_outside;
@@ -41,15 +38,12 @@ jvmtiIterationControl cbHeapCleanupSizeTags(jlong class_tag, jlong size, jlong *
         Tag *t = pointerToTag(*tag_ptr);
         delete t;
         *tag_ptr = 0;
-        --tag_balance_for_sizes;
     }
 
     return JVMTI_ITERATION_CONTINUE;
 }
 
 static void cleanHeapForSizes(jvmtiEnv *jvmti) {
-    // For some reason this call does not iterate through all objects :( Please, do not use it
-//    gdata->jvmti->IterateOverReachableObjects(NULL, NULL, &cbHeapCleanupSizeTags, NULL);
     jvmtiError err = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED,
                                             reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupSizeTags), nullptr);
     handleError(jvmti, err, "Could cleanup heap after size estimating");
@@ -161,8 +155,5 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
 
     cleanHeapForSizes(jvmti);
 
-    if (tag_balance_for_sizes != 0) {
-        cerr << "tag balance is not zero: " << tag_balance_for_sizes << endl;
-    }
     return retainedSize;
 }

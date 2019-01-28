@@ -34,16 +34,23 @@ static void required_capabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective)
     if (potential.can_tag_objects) {
         effective.can_tag_objects = 1;
     }
+    if (potential.can_generate_object_free_events) {
+        effective.can_generate_object_free_events = 1;
+    }
 }
 
-static jboolean can_tag_objects() {
+static jboolean can_add_and_remove_tags() {
     jvmtiCapabilities capabilities;
     std::memset(&capabilities, 0, sizeof(jvmtiCapabilities));
     gdata->jvmti->GetCapabilities(&capabilities);
-    return static_cast<jboolean>(capabilities.can_tag_objects);
+    return static_cast<jboolean>(capabilities.can_tag_objects && capabilities.can_generate_object_free_events);
 }
 
 extern void handleOptions(const char *);
+
+static void JNICALL ObjectFreeCallback(jvmtiEnv *jvmti_env, jlong tag) {
+    delete reinterpret_cast<const char *>(tag);
+}
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
     jvmtiEnv *jvmti = nullptr;
@@ -64,6 +71,11 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     }
 
     handleOptions(options);
+
+    jvmtiEventCallbacks callbacks;
+    std::memset(&callbacks, 0, sizeof(jvmtiEventCallbacks));
+    callbacks.ObjectFree = ObjectFreeCallback;
+    jvmti->SetEventCallbacks(&callbacks, sizeof(jvmtiEventCallbacks));
 
     gdata = new GlobalAgentData();
     gdata->jvmti = jvmti;
@@ -101,7 +113,7 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
-    return can_tag_objects();
+    return can_add_and_remove_tags();
 }
 
 extern "C"
