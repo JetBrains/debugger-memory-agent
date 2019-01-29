@@ -47,10 +47,6 @@ bool isIgnoredReference(jvmtiHeapReferenceKind kind) {
            kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL;
 }
 
-static std::string from_bool(bool value) {
-    return std::string(value ? "true" : "false");
-}
-
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects) {
     auto count = static_cast<jsize>(objects.size());
     jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Object"), nullptr);
@@ -77,20 +73,6 @@ jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items) {
 jintArray toJavaArray(JNIEnv *env, jint value) {
     std::vector<jint> vector = {value};
     return toJavaArray(env, vector);
-}
-
-jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev) {
-    jobjectArray res = env->NewObjectArray(static_cast<jsize>(prev.size()),
-                                           env->FindClass("java/lang/Object"),
-                                           nullptr);
-    for (int i = 0; i < prev.size(); i++) {
-        auto parentСount = static_cast<jsize>(prev[i].size());
-        jintArray intArray = env->NewIntArray(parentСount);
-        env->SetIntArrayRegion(intArray, 0, parentСount, prev[i].data());
-        env->SetObjectArrayElement(res, i, intArray);
-    }
-
-    return res;
 }
 
 jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second) {

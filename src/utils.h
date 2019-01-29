@@ -14,8 +14,6 @@ bool isIgnoredReference(jvmtiHeapReferenceKind kind);
 
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject>& objects);
 
-jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev);
-
 jintArray toJavaArray(JNIEnv* env, std::vector<jint> &items);
 
 jlongArray toJavaArray(JNIEnv* env, std::vector<jlong> &items);
