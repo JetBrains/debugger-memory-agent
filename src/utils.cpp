@@ -1,8 +1,10 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 #include <jvmti.h>
-#include "utils.h"
+#include <sstream>
 #include <vector>
+#include "utils.h"
+#include "log.h"
 
 const char *get_reference_type_description(jvmtiHeapReferenceKind kind) {
     if (kind == JVMTI_HEAP_REFERENCE_CLASS) return "Reference from an object to its class.";
@@ -56,12 +58,32 @@ std::string get_tag_description(Tag *tag) {
 
 }
 
-jobjectArray toJavaArray(JNIEnv *env, jobject *objects, jint count) {
+jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects) {
+    auto count = static_cast<jsize>(objects.size());
     jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Object"), nullptr);
     for (auto i = 0; i < count; ++i) {
         env->SetObjectArrayElement(res, i, objects[i]);
     }
     return res;
+}
+
+jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items) {
+    auto count = static_cast<jsize>(items.size());
+    jlongArray result = env->NewLongArray(count);
+    env->SetLongArrayRegion(result, 0, count, items.data());
+    return result;
+}
+
+jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items) {
+    auto count = static_cast<jsize>(items.size());
+    jintArray result = env->NewIntArray(count);
+    env->SetIntArrayRegion(result, 0, count, items.data());
+    return result;
+}
+
+jintArray toJavaArray(JNIEnv *env, jint value) {
+    std::vector<jint> vector = {value};
+    return toJavaArray(env, vector);
 }
 
 jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev) {
@@ -78,24 +100,27 @@ jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev) {
     return res;
 }
 
-jobjectArray wrapWithArray(JNIEnv *env, jobjectArray first, jobjectArray second) {
+jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second) {
     jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(res, 0, first);
     env->SetObjectArrayElement(res, 1, second);
     return res;
 }
 
-void handleError(jvmtiEnv *jvmti, jvmtiError error, const char *message) {
-    if (error != JVMTI_ERROR_NONE) {
+void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
+    if (err != JVMTI_ERROR_NONE) {
         char *errorName = nullptr;
         const char *name;
-        if (jvmti->GetErrorName(error, &errorName) != JVMTI_ERROR_NONE) {
+        if (jvmti->GetErrorName(err, &errorName) != JVMTI_ERROR_NONE) {
             name = "UNKNOWN";
         } else {
             name = errorName;
         }
 
-        std::cerr << "ERROR: JVMTI: " << error << "(" << name << "): " << message << std::endl;
+        std::stringstream ss;
+
+        ss << "ERROR: JVMTI: " << err << "(" << name << "): " << message << std::endl;
+        error(ss.str().data());
     }
 }
 

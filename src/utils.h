@@ -14,12 +14,18 @@ bool is_ignored_reference(jvmtiHeapReferenceKind kind);
 
 std::string get_tag_description(Tag *tag);
 
-jobjectArray toJavaArray(JNIEnv *env, jobject *objects, jint count);
+jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject>& objects);
 
 jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev);
 
-jobjectArray wrapWithArray(JNIEnv *env, jobjectArray first, jobjectArray second);
+jintArray toJavaArray(JNIEnv* env, std::vector<jint> &items);
 
-void handleError(jvmtiEnv *jvmti, jvmtiError error, const char *message);
+jlongArray toJavaArray(JNIEnv* env, std::vector<jlong> &items);
+
+jintArray toJavaArray(JNIEnv* env, jint value);
+
+jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second);
+
+void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message);
 
 #endif //NATIVE_MEMORY_AGENT_UTILS_H
