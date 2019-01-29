@@ -50,6 +50,7 @@ static jboolean can_add_and_remove_tags() {
 extern void handleOptions(const char *);
 
 static void JNICALL ObjectFreeCallback(jvmtiEnv *jvmti_env, jlong tag) {
+    debug("tagged object has been freed");
     delete reinterpret_cast<const char *>(tag);
 }
 

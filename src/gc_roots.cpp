@@ -9,6 +9,7 @@
 #include "gc_roots.h"
 #include "types.h"
 #include "utils.h"
+#include "log.h"
 
 using namespace std;
 
@@ -269,22 +270,29 @@ static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, std::vector
 jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
     jvmtiError err;
     jvmtiHeapCallbacks cb;
+    info("Looking for paths to gc roots started");
+
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbGcPaths);
 
     GcTag *tag = createGcTag();
     err = jvmti->SetTag(object, gcTagToPointer(tag));
     handleError(jvmti, err, "Could not set tag for target object");
+    info("start following through references");
     err = jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, nullptr);
     handleError(jvmti, err, "FollowReference call failed");
 
+    info("heap tagged");
     set<jlong> unique_tags;
+    info("start walking through collected tags");
     walk(gcTagToPointer(tag), unique_tags);
 
+    info("create resulting java objects");
     unordered_map<jlong, jint> tag_to_index;
     vector<jlong> tags(unique_tags.begin(), unique_tags.end());
     jobjectArray result = createResultObject(jni, jvmti, tags);
 
+    info("remove all tags from objects in heap");
     cleanHeapForGcRoots(jvmti);
     return result;
 }

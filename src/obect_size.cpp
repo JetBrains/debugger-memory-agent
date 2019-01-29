@@ -8,6 +8,7 @@
 #include "object_size.h"
 #include "utils.h"
 #include "types.h"
+#include "log.h"
 
 using namespace std;
 
@@ -121,6 +122,8 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     jvmtiError err;
     std::set<jlong> tags;
     jvmtiHeapCallbacks cb;
+    info("Looking for retained set started");
+
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbHeapReference);
 
@@ -129,10 +132,14 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     err = jvmti->SetTag(object, tagToPointer(tag));
     handleError(jvmti, err, "Could not set a tag for target object");
     jint count = 0;
+
+    info("start following through references");
     err = jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, &tags);
     handleError(jvmti, err, "Could not follow references for object size estimation");
+    info("heap tagged");
     jobject *objects;
     jlong *objects_tags;
+    info("create resulting java objects");
     vector<jlong> retained_tags(tags.begin(), tags.end());
     err = jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()),
                                     retained_tags.data(), &count, &objects,
@@ -153,6 +160,7 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
         }
     }
 
+    info("remove all tags from objects in heap");
     cleanHeapForSizes(jvmti);
 
     return retainedSize;
