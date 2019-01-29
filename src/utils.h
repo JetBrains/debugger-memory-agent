@@ -8,11 +8,9 @@
 #include <jvmti.h>
 
 
-const char *get_reference_type_description(jvmtiHeapReferenceKind kind);
+const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind);
 
-bool is_ignored_reference(jvmtiHeapReferenceKind kind);
-
-std::string get_tag_description(Tag *tag);
+bool isIgnoredReference(jvmtiHeapReferenceKind kind);
 
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject>& objects);
 

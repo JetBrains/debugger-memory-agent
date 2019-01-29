@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "log.h"
 
-const char *get_reference_type_description(jvmtiHeapReferenceKind kind) {
+const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind) {
     if (kind == JVMTI_HEAP_REFERENCE_CLASS) return "Reference from an object to its class.";
     if (kind == JVMTI_HEAP_REFERENCE_FIELD)
         return "Reference from an object to the value of one of its instance fields.";
@@ -37,7 +37,7 @@ const char *get_reference_type_description(jvmtiHeapReferenceKind kind) {
     return "Unknown reference kind";
 }
 
-bool is_ignored_reference(jvmtiHeapReferenceKind kind) {
+bool isIgnoredReference(jvmtiHeapReferenceKind kind) {
     return kind == JVMTI_HEAP_REFERENCE_CLASS ||
            kind == JVMTI_HEAP_REFERENCE_CLASS_LOADER ||
            kind == JVMTI_HEAP_REFERENCE_SIGNERS ||
@@ -49,13 +49,6 @@ bool is_ignored_reference(jvmtiHeapReferenceKind kind) {
 
 static std::string from_bool(bool value) {
     return std::string(value ? "true" : "false");
-}
-
-std::string get_tag_description(Tag *tag) {
-    return std::string("tag[start = ") + from_bool(tag->start_object) +
-           std::string(", in_subtree = ") + from_bool(tag->in_subtree) +
-           std::string(", reachable outside = ") + from_bool(tag->reachable_outside) + std::string("]");
-
 }
 
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects) {
@@ -91,9 +84,9 @@ jobjectArray toJavaArray(JNIEnv *env, std::vector<std::vector<jint>> &prev) {
                                            env->FindClass("java/lang/Object"),
                                            nullptr);
     for (int i = 0; i < prev.size(); i++) {
-        auto parent_count = static_cast<jsize>(prev[i].size());
-        jintArray intArray = env->NewIntArray(parent_count);
-        env->SetIntArrayRegion(intArray, 0, parent_count, prev[i].data());
+        auto parentСount = static_cast<jsize>(prev[i].size());
+        jintArray intArray = env->NewIntArray(parentСount);
+        env->SetIntArrayRegion(intArray, 0, parentСount, prev[i].data());
         env->SetObjectArrayElement(res, i, intArray);
     }
 

@@ -12,9 +12,9 @@ typedef struct {
 } GlobalAgentData;
 
 typedef struct Tag {
-    bool in_subtree;
-    bool reachable_outside;
-    bool start_object;
+    bool inSubtree;
+    bool reachableOutside;
+    bool startObject;
 } Tag;
 
 #endif //NATIVE_MEMORY_AGENT_TYPES_H

@@ -12,33 +12,33 @@
 
 using namespace std;
 
-static Tag *pointerToTag(jlong tag_ptr) {
-    if (tag_ptr == 0) {
+static Tag *pointerToTag(jlong tagPtr) {
+    if (tagPtr == 0) {
         std::cerr << "unexpected zero-tag value" << std::endl;
         return nullptr;
     }
-    return (Tag *) (ptrdiff_t) (void *) tag_ptr;
+    return (Tag *) (ptrdiff_t) (void *) tagPtr;
 }
 
 static jlong tagToPointer(Tag *tag) {
     return (jlong) (ptrdiff_t) (void *) tag;
 }
 
-static Tag *createTag(bool start, bool in_subtree, bool reachable_outside) {
+static Tag *createTag(bool start, bool inSubtree, bool reachableOutside) {
     auto *tag = new Tag();
-    tag->in_subtree = in_subtree;
-    tag->start_object = start;
-    tag->reachable_outside = reachable_outside;
+    tag->inSubtree = inSubtree;
+    tag->startObject = start;
+    tag->reachableOutside = reachableOutside;
     return tag;
 }
 
 extern "C"
 JNIEXPORT
-jvmtiIterationControl cbHeapCleanupSizeTags(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
-    if (*tag_ptr != 0) {
-        Tag *t = pointerToTag(*tag_ptr);
+jvmtiIterationControl cbHeapCleanupSizeTags(jlong classTag, jlong size, jlong *tagPtr, void *userData) {
+    if (*tagPtr != 0) {
+        Tag *t = pointerToTag(*tagPtr);
         delete t;
-        *tag_ptr = 0;
+        *tagPtr = 0;
     }
 
     return JVMTI_ITERATION_CONTINUE;
@@ -51,68 +51,63 @@ static void cleanHeapForSizes(jvmtiEnv *jvmti) {
 }
 
 extern "C"
-JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind reference_kind,
-                               const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
-                               jlong referrer_class_tag, jlong size, jlong *tag_ptr,
-                               jlong *referrer_tag_ptr, jint length, void *user_data) {
-    if (is_ignored_reference(reference_kind)) {
+JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind referenceKind,
+                               const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
+                               jlong referrerClassTag, jlong size, jlong *tagPtr,
+                               jlong *referrerTagPtr, jint length, void *userData) {
+    if (isIgnoredReference(referenceKind)) {
         return JVMTI_VISIT_OBJECTS;
     }
 
-    if (referrer_tag_ptr == nullptr) {
-        if (tag_ptr == nullptr) {
+    if (referrerTagPtr == nullptr) {
+        if (tagPtr == nullptr) {
             cerr << "Unexpected null pointer to referrer and referee tags. Reference kind: "
-                 << get_reference_type_description(reference_kind) << endl;
+                 << getReferenceTypeDescription(referenceKind) << endl;
             return JVMTI_VISIT_ABORT;
         }
 
-        if (*tag_ptr != 0) {
-            Tag *tag = pointerToTag(*tag_ptr);
-            if (!tag->start_object) {
-                tag->reachable_outside = true;
+        if (*tagPtr != 0) {
+            Tag *tag = pointerToTag(*tagPtr);
+            if (!tag->startObject) {
+                tag->reachableOutside = true;
             }
         } else {
-            *tag_ptr = tagToPointer(createTag(false, false, true));
+            *tagPtr = tagToPointer(createTag(false, false, true));
         }
         return JVMTI_VISIT_OBJECTS;
     }
 
-    if (*referrer_tag_ptr != 0) {
+    if (*referrerTagPtr != 0) {
         //referrer has tag
-        Tag *referrer_tag = pointerToTag(*referrer_tag_ptr);
-//        if (referrer_tag->in_subtree) {
-//            cout << get_tag_description(referrer_tag) << "" << get_reference_type_description(reference_kind)
-//                 << " link from initial object subtree" << endl;
-//            cout << *tag_ptr << endl;
-//        }
-        if (*tag_ptr != 0) {
-            Tag *referee_tag = pointerToTag(*tag_ptr);
-            if (referrer_tag->in_subtree) {
-                referee_tag->in_subtree = true;
-                ((set<jlong> *) (ptrdiff_t) user_data)->insert(*tag_ptr);
+        Tag *referrerTag = pointerToTag(*referrerTagPtr);
+        if (*tagPtr != 0) {
+            Tag *refereeTag = pointerToTag(*tagPtr);
+            if (referrerTag->inSubtree) {
+                refereeTag->inSubtree = true;
+                ((set<jlong> *) (ptrdiff_t) userData)->insert(*tagPtr);
             }
-            if (referrer_tag->reachable_outside && !referee_tag->start_object) {
-                referee_tag->reachable_outside = true;
+            if (referrerTag->reachableOutside && !refereeTag->startObject) {
+                refereeTag->reachableOutside = true;
             }
         } else {
-            Tag *referee_tag = createTag(false, referrer_tag->in_subtree, referrer_tag->reachable_outside);
-            *tag_ptr = tagToPointer(referee_tag);
-            if (referee_tag->in_subtree) ((set<jlong> *) (ptrdiff_t) user_data)->insert(*tag_ptr);
+            Tag *refereeTag = createTag(false, referrerTag->inSubtree, referrerTag->reachableOutside);
+            *tagPtr = tagToPointer(refereeTag);
+            if (refereeTag->inSubtree) ((set<jlong> *) (ptrdiff_t) userData)->insert(*tagPtr);
         }
     } else {
         // referrer has no tag yet
-        Tag *referrer_tag = createTag(false, false, true);
-        if (*tag_ptr != 0) {
-            Tag *referee_tag = pointerToTag(*tag_ptr);
-            if (!referee_tag->start_object) {
-                referee_tag->reachable_outside = true;
+        Tag *referrerTag = createTag(false, false, true);
+        if (*tagPtr != 0) {
+            Tag *refereeTag = pointerToTag(*tagPtr);
+            if (!refereeTag->startObject) {
+                refereeTag->reachableOutside = true;
             }
         } else {
-            Tag *referee_tag = createTag(false, false, true);
-            *tag_ptr = tagToPointer(referee_tag);
+            Tag *refereeTag = createTag(false, false, true);
+            *tagPtr = tagToPointer(refereeTag);
         }
 
-        *referrer_tag_ptr = tagToPointer(referrer_tag);
+        *referrerTagPtr = tagToPointer(referrerTag);
     }
 
     return JVMTI_VISIT_OBJECTS;
@@ -138,12 +133,12 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     handleError(jvmti, err, "Could not follow references for object size estimation");
     info("heap tagged");
     jobject *objects;
-    jlong *objects_tags;
+    jlong *objectsTags;
     info("create resulting java objects");
-    vector<jlong> retained_tags(tags.begin(), tags.end());
+    vector<jlong> retainedTags(tags.begin(), tags.end());
     err = jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()),
-                                    retained_tags.data(), &count, &objects,
-                                    &objects_tags);
+                                    retainedTags.data(), &count, &objects,
+                                    &objectsTags);
     handleError(jvmti, err, "Could not get objects by their tags");
 
     jlong retainedSize = 0;
@@ -153,7 +148,7 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
         jlong size;
         jobject obj = objects[i];
         objectsInSubtree++;
-        if (!pointerToTag(objects_tags[i])->reachable_outside) {
+        if (!pointerToTag(objectsTags[i])->reachableOutside) {
             jvmti->GetObjectSize(obj, &size);
             retainedObjectsCount++;
             retainedSize += size;

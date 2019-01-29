@@ -25,7 +25,7 @@ using namespace std;
 
 static GlobalAgentData *gdata;
 
-static void required_capabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
+static void requiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
     jvmtiCapabilities potential;
     std::memset(&potential, 0, sizeof(jvmtiCapabilities));
     std::memset(&effective, 0, sizeof(jvmtiCapabilities));
@@ -40,7 +40,7 @@ static void required_capabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective)
     }
 }
 
-static jboolean can_add_and_remove_tags() {
+static jboolean canAddAndRemoveTags() {
     jvmtiCapabilities capabilities;
     std::memset(&capabilities, 0, sizeof(jvmtiCapabilities));
     gdata->jvmti->GetCapabilities(&capabilities);
@@ -68,7 +68,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
         return result;
     }
 
-    required_capabilities(jvmti, capabilities);
+    requiredCapabilities(jvmti, capabilities);
 
     debug("set capabilities");
     error = jvmti->AddCapabilities(&capabilities);
@@ -121,7 +121,7 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
-    return can_add_and_remove_tags();
+    return canAddAndRemoveTags();
 }
 
 extern "C"

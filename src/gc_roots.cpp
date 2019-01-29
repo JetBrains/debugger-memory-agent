@@ -105,19 +105,19 @@ jlong gcTagToPointer(GcTag *tag) {
     return (jlong) (ptrdiff_t) (void *) tag;
 }
 
-GcTag *pointerToGcTag(jlong tag_ptr) {
-    if (tag_ptr == 0) {
+GcTag *pointerToGcTag(jlong tagPtr) {
+    if (tagPtr == 0) {
         return new GcTag();
     }
-    return (GcTag *) (ptrdiff_t) (void *) tag_ptr;
+    return (GcTag *) (ptrdiff_t) (void *) tagPtr;
 }
 
 extern "C"
 JNIEXPORT
-jvmtiIterationControl cbHeapCleanupGcPaths(jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
-    if (*tag_ptr != 0) {
-        GcTag *t = pointerToGcTag(*tag_ptr);
-        *tag_ptr = 0;
+jvmtiIterationControl cbHeapCleanupGcPaths(jlong classTag, jlong size, jlong *tagPtr, void *userData) {
+    if (*tagPtr != 0) {
+        GcTag *t = pointerToGcTag(*tagPtr);
+        *tagPtr = 0;
         delete t;
     }
 
@@ -167,30 +167,30 @@ referenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const
 }
 
 extern "C"
-JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind reference_kind,
-                         const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
-                         jlong referrer_class_tag, jlong size, jlong *tag_ptr,
-                         jlong *referrer_tag_ptr, jint length, void *user_data) {
+JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
+                         const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
+                         jlong referrerClassTag, jlong size, jlong *tagPtr,
+                         jlong *referrerTagPtr, jint length, void *userData) {
 
-    if (is_ignored_reference(reference_kind)) {
+    if (isIgnoredReference(referenceKind)) {
         return JVMTI_VISIT_OBJECTS;
     }
 
-    if (*tag_ptr == 0) {
-        *tag_ptr = gcTagToPointer(createGcTag());
+    if (*tagPtr == 0) {
+        *tagPtr = gcTagToPointer(createGcTag());
     }
 
 
-    PathNodeTag *tag = pointerToGcTag(*tag_ptr);
-    if (referrer_tag_ptr != nullptr) {
-        if (*referrer_tag_ptr == 0) {
-            *referrer_tag_ptr = gcTagToPointer(createGcTag());
+    PathNodeTag *tag = pointerToGcTag(*tagPtr);
+    if (referrerTagPtr != nullptr) {
+        if (*referrerTagPtr == 0) {
+            *referrerTagPtr = gcTagToPointer(createGcTag());
         }
 
-        tag->backRefs.push_back(createReferenceInfo(*referrer_tag_ptr, reference_kind, reference_info));
+        tag->backRefs.push_back(createReferenceInfo(*referrerTagPtr, referenceKind, referenceInfo));
     } else {
         // gc root found
-        tag->backRefs.push_back(createReferenceInfo(-1, reference_kind, reference_info));
+        tag->backRefs.push_back(createReferenceInfo(-1, referenceKind, referenceInfo));
     }
     return JVMTI_VISIT_OBJECTS;
 }
@@ -283,13 +283,13 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     handleError(jvmti, err, "FollowReference call failed");
 
     info("heap tagged");
-    set<jlong> unique_tags;
+    set<jlong> uniqueTags;
     info("start walking through collected tags");
-    walk(gcTagToPointer(tag), unique_tags);
+    walk(gcTagToPointer(tag), uniqueTags);
 
     info("create resulting java objects");
     unordered_map<jlong, jint> tag_to_index;
-    vector<jlong> tags(unique_tags.begin(), unique_tags.end());
+    vector<jlong> tags(uniqueTags.begin(), uniqueTags.end());
     jobjectArray result = createResultObject(jni, jvmti, tags);
 
     info("remove all tags from objects in heap");

@@ -6,9 +6,9 @@
 #include <cstring>
 #include "utils.h"
 
-static jint cbHeapObjectIterationCallback(jlong class_tag, jlong size, jlong *tag_ptr, jint length, void *user_data) {
-    if (class_tag != 0) {
-        reinterpret_cast<jlong *>(user_data)[class_tag - 1] += size;
+static jint cbHeapObjectIterationCallback(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+    if (classTag != 0) {
+        reinterpret_cast<jlong *>(userData)[classTag - 1] += size;
     }
     return JVMTI_VISIT_OBJECTS;
 }
