@@ -77,7 +77,7 @@ public abstract class TestBase {
       oldIndexToNewIndex.put(indexOfReference(objects, sortedObjects[i]), i);
     }
     for (int i = 0; i < sortedObjects.length; i++) {
-      Object obj = objects[i];
+      Object obj = sortedObjects[i];
       Object[] objLinks = (Object[]) links[i];
       int[] indices = (int[]) objLinks[0];
       int[] kinds = (int[]) objLinks[1];
