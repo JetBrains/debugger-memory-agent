@@ -1,2 +1,2 @@
 Agent loaded
-only variable <- 
+0: only variable <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 1]

@@ -16,6 +16,28 @@ public abstract class TestBase {
     }
   }
 
+  private static Map<Integer, String> referenceDescription = new HashMap<>();
+
+  static {
+    referenceDescription.put(1, "CLASS");
+    referenceDescription.put(2, "FIELD");
+    referenceDescription.put(3, "ARRAY_ELEMENT");
+    referenceDescription.put(4, "CLASS_LOADER");
+    referenceDescription.put(5, "SIGNERS");
+    referenceDescription.put(6, "PROTECTION_DOMAIN");
+    referenceDescription.put(7, "INTERFACE");
+    referenceDescription.put(8, "STATIC_FIELD");
+    referenceDescription.put(9, "CONSTANT_POOL");
+    referenceDescription.put(10, "SUPERCLASS");
+    referenceDescription.put(21, "JNI_GLOBAL");
+    referenceDescription.put(22, "SYSTEM_CLASS");
+    referenceDescription.put(23, "MONITOR");
+    referenceDescription.put(24, "STACK_LOCAL");
+    referenceDescription.put(25, "JNI_LOCAL");
+    referenceDescription.put(26, "THREAD");
+    referenceDescription.put(27, "OTHER");
+  }
+
   protected static void printSize(Object object) {
     System.out.println(IdeaNativeAgentProxy.size(object));
   }
@@ -30,21 +52,74 @@ public abstract class TestBase {
     }
   }
 
+  private static int indexOfReference(Object[] array, Object value) {
+    int result = -1;
+    for (int i = 0; i < array.length; i++) {
+      if (array[i] == value) {
+        if (result != -1) {
+          fail("Object " + value.toString() + " appeared twice in the objects list");
+        }
+        result = i;
+      }
+    }
+
+    return result;
+  }
+
   protected static void printGcRoots(Object object) {
     Object result = IdeaNativeAgentProxy.gcRoots(object);
     Object[] arrayResult = (Object[]) result;
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];
-    List<String> lines = new ArrayList<>();
-    for (int i = 0; i < objects.length; i++) {
+    Object[] sortedObjects = Arrays.stream(objects).sorted(Comparator.comparing(TestBase::asString)).toArray();
+    Map<Integer, Integer> oldIndexToNewIndex = new HashMap<>();
+    for (int i = 0; i < sortedObjects.length; i++) {
+      oldIndexToNewIndex.put(indexOfReference(objects, sortedObjects[i]), i);
+    }
+    for (int i = 0; i < sortedObjects.length; i++) {
       Object obj = objects[i];
-      int[] objLinks = (int[]) links[i];
-      String referencesFrom = Arrays.stream(objLinks).mapToObj(x -> asString(objects[x])).collect(Collectors.joining(", "));
-      lines.add(asString(obj) + " <- " + referencesFrom);
+      Object[] objLinks = (Object[]) links[i];
+      int[] indices = (int[]) objLinks[0];
+      int[] kinds = (int[]) objLinks[1];
+      Object[] infos = (Object[]) objLinks[2];
+
+      String referencedFrom = buildReferencesString(indices, kinds, infos, oldIndexToNewIndex);
+      System.out.println(i + ": " + asString(obj) + " <- " + referencedFrom);
+    }
+  }
+
+  private static String interpretInfo(int kind, Object info) {
+    if (kind == 2 || kind == 8 // field or static field
+        || kind == 3 // array element
+        || kind == 9) { // constant pool element
+      return "index = " + ((int[]) info)[0];
     }
 
-    lines.sort(String::compareTo);
-    lines.forEach(System.out::println);
+    if (kind == 24 || kind == 25) { // stack local (jni)
+      Object[] infos = (Object[]) info;
+      assertEquals(2, infos.length);
+      long[] stackInfo = (long[]) infos[0];
+      return "thread id = " + stackInfo[0] + " depth = " + stackInfo[1] + " slot = " + stackInfo[2];
+    }
+
+    return "no details";
+  }
+
+  private static String buildReferencesString(int[] indices, int[] kinds, Object[] infos, Map<Integer, Integer> indicesMap) {
+    assertEquals(indices.length, kinds.length);
+    assertEquals(kinds.length, infos.length);
+
+    List<String> references = new ArrayList<>();
+    for (int i = 0; i < indices.length; i++) {
+      int index = indices[i];
+      String refFrom = index == -1 ? "root" : indicesMap.get(index).toString();
+      String kind = referenceDescription.get(kinds[i]);
+      references.add(String.format("[%s :: %s :: %s]", refFrom, kind, interpretInfo(kinds[i], infos[i])));
+    }
+
+    references.sort(String::compareTo);
+
+    return String.join(", ", references);
   }
 
   protected static Object createTestObject(String name) {
@@ -60,10 +135,18 @@ public abstract class TestBase {
     return createTestObject("test object");
   }
 
-  protected static void assertTrue(boolean condition) {
+  protected static void fail(String message) {
+    throw new AssertionError(message);
+  }
+
+  protected static void assertTrue(boolean condition, String message) {
     if (!condition) {
-      throw new AssertionError("Expected: true, but actual false");
+      throw new AssertionError(message);
     }
+  }
+
+  protected static void assertTrue(boolean condition) {
+    assertTrue(condition, "Expected: true, but actual false");
   }
 
   protected static void assertEquals(Object expected, Object actual) {

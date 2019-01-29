@@ -1,4 +1,4 @@
 Agent loaded
-[[test object]] <- 
-[test object] <- [[test object]]
-test object <- [test object]
+0: test object <- [1 :: ARRAY_ELEMENT :: index = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 1]
+1: [[test object]] <- [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 2]
+2: [test object] <- [0 :: ARRAY_ELEMENT :: index = 0]

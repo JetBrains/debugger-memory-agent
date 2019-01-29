@@ -1,4 +1,4 @@
 Agent loaded
-[ref 1] <- [ref 2]
-[ref 2] <- 
-test object <- [ref 1]
+0: test object <- [0 :: FIELD :: index = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 1]
+1: [ref 2] <- [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 2]
+2: [ref 1] <- [1 :: FIELD :: index = 0]
