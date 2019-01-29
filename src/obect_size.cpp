@@ -55,10 +55,6 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind referenceKind,
                                const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
                                jlong referrerClassTag, jlong size, jlong *tagPtr,
                                jlong *referrerTagPtr, jint length, void *userData) {
-    if (isIgnoredReference(referenceKind)) {
-        return JVMTI_VISIT_OBJECTS;
-    }
-
     if (referrerTagPtr == nullptr) {
         if (tagPtr == nullptr) {
             cerr << "Unexpected null pointer to referrer and referee tags. Reference kind: "

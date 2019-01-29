@@ -172,10 +172,6 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
                          jlong referrerClassTag, jlong size, jlong *tagPtr,
                          jlong *referrerTagPtr, jint length, void *userData) {
 
-    if (isIgnoredReference(referenceKind)) {
-        return JVMTI_VISIT_OBJECTS;
-    }
-
     if (*tagPtr == 0) {
         *tagPtr = gcTagToPointer(createGcTag());
     }

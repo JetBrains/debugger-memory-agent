@@ -37,16 +37,6 @@ const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind) {
     return "Unknown reference kind";
 }
 
-bool isIgnoredReference(jvmtiHeapReferenceKind kind) {
-    return kind == JVMTI_HEAP_REFERENCE_CLASS ||
-           kind == JVMTI_HEAP_REFERENCE_CLASS_LOADER ||
-           kind == JVMTI_HEAP_REFERENCE_SIGNERS ||
-           kind == JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN ||
-           kind == JVMTI_HEAP_REFERENCE_INTERFACE ||
-           kind == JVMTI_HEAP_REFERENCE_SUPERCLASS ||
-           kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL;
-}
-
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects) {
     auto count = static_cast<jsize>(objects.size());
     jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Object"), nullptr);

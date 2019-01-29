@@ -10,8 +10,6 @@
 
 const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind);
 
-bool isIgnoredReference(jvmtiHeapReferenceKind kind);
-
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject>& objects);
 
 jintArray toJavaArray(JNIEnv* env, std::vector<jint> &items);
