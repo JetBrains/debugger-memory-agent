@@ -3,6 +3,7 @@
 #include <vector>
 #include <jvmti.h>
 #include <iostream>
+#include <cstring>
 #include "utils.h"
 
 static jint cbHeapObjectIterationCallback(jlong class_tag, jlong size, jlong *tag_ptr, jint length, void *user_data) {
