@@ -9,6 +9,7 @@
 #include <set>
 #include <unordered_map>
 #include <cstring>
+#include "log.h"
 #include "types.h"
 #include "utils.h"
 #include "object_size.h"
@@ -57,6 +58,9 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     jvmtiCapabilities capabilities;
     jvmtiError error;
 
+    handleOptions(options);
+
+    debug("on agent load");
     jint result = jvm->GetEnv((void **) &jvmti, JVMTI_VERSION_1_0);
     if (result != JNI_OK || jvmti == nullptr) {
         cerr << "ERROR: Unable to access JVMTI!" << std::endl;
@@ -64,14 +68,15 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     }
 
     required_capabilities(jvmti, capabilities);
+
+    debug("set capabilities");
     error = jvmti->AddCapabilities(&capabilities);
     if (error != JVMTI_ERROR_NONE) {
         handleError(jvmti, error, "Could not set capabilities");
         return JNI_ERR;
     }
 
-    handleOptions(options);
-
+    debug("set callbacks");
     jvmtiEventCallbacks callbacks;
     std::memset(&callbacks, 0, sizeof(jvmtiEventCallbacks));
     callbacks.ObjectFree = ObjectFreeCallback;
@@ -79,10 +84,12 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
 
     gdata = new GlobalAgentData();
     gdata->jvmti = jvmti;
+    debug("initializing done");
     return JNI_OK;
 }
 
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
+    debug("on agent unload");
     delete gdata;
 }
 

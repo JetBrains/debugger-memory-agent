@@ -12,9 +12,87 @@
 
 using namespace std;
 
-using referenceInfo = std::tuple<jlong, jvmtiHeapReferenceKind, const jvmtiHeapReferenceInfo *>;
+class referenceInfo {
+public:
+    referenceInfo(jlong tag, jvmtiHeapReferenceKind kind) : tag_(tag), kind_(kind) {}
+
+    virtual ~referenceInfo() = default;
+
+    virtual jobject getReferenceInfo(JNIEnv *env, jvmtiEnv *jvmti) {
+        return nullptr;
+    }
+
+    jlong tag() {
+        return tag_;
+    }
+
+    jvmtiHeapReferenceKind kind() {
+        return kind_;
+    }
+
+private:
+    jlong tag_;
+    jvmtiHeapReferenceKind kind_;
+};
+
+class infoWithIndex : public referenceInfo {
+public:
+    infoWithIndex(jlong tag, jvmtiHeapReferenceKind kind, jint index) : referenceInfo(tag, kind), index_(index) {}
+
+    jobject getReferenceInfo(JNIEnv *env, jvmtiEnv *jvmti) override {
+        return toJavaArray(env, index_);
+    }
+
+private:
+    jint index_;
+};
+
+static jlongArray buildStackInfo(JNIEnv *env, jlong threadId, jint depth, jint slot) {
+    std::vector<jlong> vector = {threadId, depth, slot};
+    return toJavaArray(env, vector);
+}
+
+static jobjectArray buildMethodInfo(JNIEnv *env, jvmtiEnv *jvmti, jmethodID id) {
+    char *name, *signature, *genericSignature;
+    jvmti->GetMethodName(id, &name, &signature, &genericSignature);
+    jobjectArray result = env->NewObjectArray(3, env->FindClass("java/lang/String"), nullptr);
+    env->SetObjectArrayElement(result, 0, env->NewStringUTF(name));
+    env->SetObjectArrayElement(result, 1, env->NewStringUTF(signature));
+    env->SetObjectArrayElement(result, 2, env->NewStringUTF(genericSignature));
+    jvmti->Deallocate(reinterpret_cast<unsigned char *>(name));
+    jvmti->Deallocate(reinterpret_cast<unsigned char *>(signature));
+    jvmti->Deallocate(reinterpret_cast<unsigned char *>(genericSignature));
+    return result;
+}
+
+class stackInfo : public referenceInfo {
+public:
+    stackInfo(jlong tag, jvmtiHeapReferenceKind kind, jlong threadId, jint slot, jint depth, jmethodID methodId)
+            : referenceInfo(tag, kind), threadId_(threadId), slot_(slot), depth_(depth), methodId_(methodId) {}
+
+public:
+    jobject getReferenceInfo(JNIEnv *env, jvmtiEnv *jvmti) override {
+        return wrapWithArray(env,
+                             buildStackInfo(env, threadId_, depth_, slot_),
+                             buildMethodInfo(env, jvmti, methodId_)
+        );
+    }
+
+private:
+    jlong threadId_;
+    jint slot_;
+    jint depth_;
+    jmethodID methodId_;
+};
+
 typedef struct PathNodeTag {
-    std::vector<referenceInfo> backRefs;
+    std::vector<referenceInfo *> backRefs;
+
+    ~PathNodeTag() {
+        for (auto info : backRefs) {
+            delete info;
+        }
+    }
 } GcTag;
 
 GcTag *createGcTag() {
@@ -52,6 +130,41 @@ static void cleanHeapForGcRoots(jvmtiEnv *jvmti) {
     handleError(jvmti, error, "Could not cleanup the heap after gc roots finding");
 }
 
+referenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const jvmtiHeapReferenceInfo *info) {
+    switch (kind) {
+        case JVMTI_HEAP_REFERENCE_STATIC_FIELD:
+        case JVMTI_HEAP_REFERENCE_FIELD:
+            return new infoWithIndex(tag, kind, info->field.index);
+        case JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT:
+            return new infoWithIndex(tag, kind, info->array.index);
+        case JVMTI_HEAP_REFERENCE_CONSTANT_POOL:
+            return new infoWithIndex(tag, kind, info->constant_pool.index);
+        case JVMTI_HEAP_REFERENCE_STACK_LOCAL: {
+            jvmtiHeapReferenceInfoStackLocal const &stackLocal = info->stack_local;
+            return new stackInfo(tag, kind, stackLocal.thread_id, stackLocal.slot, stackLocal.depth, stackLocal.method);
+        }
+        case JVMTI_HEAP_REFERENCE_JNI_LOCAL: {
+            jvmtiHeapReferenceInfoJniLocal const &jniLocal = info->jni_local;
+            return new stackInfo(tag, kind, jniLocal.thread_id, -1, jniLocal.depth, jniLocal.method);
+        }
+            // no information provided
+        case JVMTI_HEAP_REFERENCE_CLASS:
+        case JVMTI_HEAP_REFERENCE_CLASS_LOADER:
+        case JVMTI_HEAP_REFERENCE_SIGNERS:
+        case JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN:
+        case JVMTI_HEAP_REFERENCE_INTERFACE:
+        case JVMTI_HEAP_REFERENCE_SUPERCLASS:
+        case JVMTI_HEAP_REFERENCE_JNI_GLOBAL:
+        case JVMTI_HEAP_REFERENCE_SYSTEM_CLASS:
+        case JVMTI_HEAP_REFERENCE_MONITOR:
+        case JVMTI_HEAP_REFERENCE_THREAD:
+        case JVMTI_HEAP_REFERENCE_OTHER:
+            break;
+    }
+
+    return nullptr;
+}
+
 extern "C"
 JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind reference_kind,
                          const jvmtiHeapReferenceInfo *reference_info, jlong class_tag,
@@ -73,80 +186,24 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind reference_kind,
             *referrer_tag_ptr = gcTagToPointer(createGcTag());
         }
 
-        tag->backRefs.emplace_back(*referrer_tag_ptr, reference_kind, reference_info);
+        tag->backRefs.push_back(createReferenceInfo(*referrer_tag_ptr, reference_kind, reference_info));
     } else {
         // gc root found
-        tag->backRefs.emplace_back(-1, reference_kind, reference_info);
+        tag->backRefs.push_back(createReferenceInfo(-1, reference_kind, reference_info));
     }
     return JVMTI_VISIT_OBJECTS;
 }
 
 static void walk(jlong current, std::set<jlong> &visited) {
     if (!visited.insert(current).second) return; // already visited
-    for (referenceInfo &info: pointerToGcTag(current)->backRefs) {
-        jlong tag = std::get<0>(info);
+    for (referenceInfo *info: pointerToGcTag(current)->backRefs) {
+        jlong tag = info->tag();
         if (tag != -1) {
             walk(tag, visited);
         }
     }
 }
 
-jlongArray stackInfo(JNIEnv *env, jlong threadId, jint depth, jint slot) {
-    std::vector<jlong> vector = {threadId, depth, slot};
-    return toJavaArray(env, vector);
-}
-
-jobjectArray methodInfo(JNIEnv *env, jvmtiEnv *jvmti, jmethodID id) {
-    char *name, *signature, *genericSignature;
-//    jvmti->GetMethodName(id, &name, nullptr, nullptr);
-    jobjectArray result = env->NewObjectArray(3, env->FindClass("java/lang/String"), nullptr);
-    env->SetObjectArrayElement(result, 0, nullptr);
-    env->SetObjectArrayElement(result, 1, nullptr);
-    env->SetObjectArrayElement(result, 2, nullptr);
-    return result;
-}
-
-jobject convertReferenceInfo(JNIEnv *env, jvmtiEnv *jvmti, jvmtiHeapReferenceKind kind,
-                             const jvmtiHeapReferenceInfo *info) {
-    switch (kind) {
-        case JVMTI_HEAP_REFERENCE_STATIC_FIELD:
-        case JVMTI_HEAP_REFERENCE_FIELD:
-            return toJavaArray(env, info->field.index);
-        case JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT:
-            std::cout << info->array.index << std::endl;
-            return toJavaArray(env, info->array.index);
-        case JVMTI_HEAP_REFERENCE_CONSTANT_POOL:
-            return toJavaArray(env, info->constant_pool.index);
-        case JVMTI_HEAP_REFERENCE_STACK_LOCAL: {
-            jvmtiHeapReferenceInfoStackLocal const &stackLocal = info->stack_local;
-            return wrapWithArray(env,
-                                 stackInfo(env, stackLocal.thread_id, stackLocal.depth, stackLocal.slot),
-                                 methodInfo(env, jvmti, stackLocal.method)
-            );
-        }
-        case JVMTI_HEAP_REFERENCE_JNI_LOCAL: {
-            jvmtiHeapReferenceInfoJniLocal const &jniLocal = info->jni_local;
-            return wrapWithArray(env,
-                                 stackInfo(env, jniLocal.thread_id, jniLocal.depth, -1),
-                                 methodInfo(env, jvmti, jniLocal.method));
-        }
-            // no information provided
-        case JVMTI_HEAP_REFERENCE_CLASS:
-        case JVMTI_HEAP_REFERENCE_CLASS_LOADER:
-        case JVMTI_HEAP_REFERENCE_SIGNERS:
-        case JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN:
-        case JVMTI_HEAP_REFERENCE_INTERFACE:
-        case JVMTI_HEAP_REFERENCE_SUPERCLASS:
-        case JVMTI_HEAP_REFERENCE_JNI_GLOBAL:
-        case JVMTI_HEAP_REFERENCE_SYSTEM_CLASS:
-        case JVMTI_HEAP_REFERENCE_MONITOR:
-        case JVMTI_HEAP_REFERENCE_THREAD:
-        case JVMTI_HEAP_REFERENCE_OTHER:
-            break;
-    }
-
-    return nullptr;
-}
 
 jintArray convertKinds(JNIEnv *env, std::vector<jvmtiHeapReferenceKind> &kinds) {
     auto kindsCount = static_cast<jsize>(kinds.size());
@@ -162,12 +219,11 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, un
     std::vector<jint> refKinds;
     std::vector<jobject> refInfos;
 
-    for (referenceInfo &info : gcTag->backRefs) {
-        jlong prevTag = std::get<0>(info);
+    for (referenceInfo *info : gcTag->backRefs) {
+        jlong prevTag = info->tag();
         prevIndices.push_back(prevTag == -1 ? -1 : tagToIndex[prevTag]);
-        auto kind = std::get<1>(info);
-        refKinds.push_back(static_cast<jint>(kind));
-        refInfos.push_back(convertReferenceInfo(env, jvmti, kind, std::get<2>(info)));
+        refKinds.push_back(static_cast<jint>(info->kind()));
+        refInfos.push_back(info->getReferenceInfo(env, jvmti));
     }
 
     jobjectArray result = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
