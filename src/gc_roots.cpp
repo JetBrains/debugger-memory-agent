@@ -163,7 +163,7 @@ referenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const
             break;
     }
 
-    return nullptr;
+    return new referenceInfo(tag, kind);
 }
 
 extern "C"
