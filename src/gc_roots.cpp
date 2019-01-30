@@ -202,14 +202,6 @@ static void walk(jlong current, std::set<jlong> &visited) {
 }
 
 
-jintArray convertKinds(JNIEnv *env, std::vector<jvmtiHeapReferenceKind> &kinds) {
-    auto kindsCount = static_cast<jsize>(kinds.size());
-    jintArray result = env->NewIntArray(kindsCount);
-    std::vector<jint> intKinds(kinds.begin(), kinds.end());
-    env->SetIntArrayRegion(result, 0, kindsCount, intKinds.data());
-    return result;
-}
-
 static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, unordered_map<jlong, jint> tagToIndex) {
     GcTag *gcTag = pointerToGcTag(tag);
     std::vector<jint> prevIndices;
