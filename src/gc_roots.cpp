@@ -6,6 +6,7 @@
 #include <vector>
 #include <jvmti.h>
 #include <cstring>
+#include <stack>
 #include "gc_roots.h"
 #include "types.h"
 #include "utils.h"
@@ -191,12 +192,19 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
     return JVMTI_VISIT_OBJECTS;
 }
 
-static void walk(jlong current, std::set<jlong> &visited) {
-    if (!visited.insert(current).second) return; // already visited
-    for (referenceInfo *info: pointerToGcTag(current)->backRefs) {
-        jlong tag = info->tag();
-        if (tag != -1) {
-            walk(tag, visited);
+static void walk(jlong start, std::set<jlong> &visited) {
+    std::stack<jlong> stack;
+    stack.push(start);
+    jlong tag;
+    while (!stack.empty()) {
+        tag = stack.top();
+        stack.pop();
+        visited.insert(tag);
+        for (referenceInfo *info: pointerToGcTag(tag)->backRefs) {
+            jlong parentTag = info->tag();
+            if (parentTag != -1 && visited.find(parentTag) == visited.end()) {
+                stack.push(parentTag);
+            }
         }
     }
 }
