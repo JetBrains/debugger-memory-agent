@@ -2,6 +2,7 @@
 
 #include <jvmti.h>
 #include <sstream>
+#include <cstring>
 #include <vector>
 #include "utils.h"
 #include "log.h"
