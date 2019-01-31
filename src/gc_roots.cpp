@@ -176,11 +176,11 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
     return JVMTI_VISIT_OBJECTS;
 }
 
-static void walk(jlong start, std::set<jlong> &visited) {
+static void walk(jlong start, set<jlong> &visited, jint limit) {
     std::queue<jlong> queue;
     queue.push(start);
     jlong tag;
-    while (!queue.empty()) {
+    while (!queue.empty() && visited.size() <= limit) {
         tag = queue.front();
         queue.pop();
         visited.insert(tag);
@@ -200,18 +200,24 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, un
     std::vector<jint> refKinds;
     std::vector<jobject> refInfos;
 
+    jint exceedLimitCount = 0;
     for (referenceInfo *info : gcTag->backRefs) {
         jlong prevTag = info->tag();
+        if (prevTag != -1 && tagToIndex.find(prevTag) == tagToIndex.end()) {
+            ++exceedLimitCount;
+            continue;
+        }
         prevIndices.push_back(prevTag == -1 ? -1 : tagToIndex[prevTag]);
         refKinds.push_back(static_cast<jint>(info->kind()));
         refInfos.push_back(info->getReferenceInfo(env, jvmti));
     }
 
-    jobjectArray result = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
+
+    jobjectArray result = env->NewObjectArray(4, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(result, 0, toJavaArray(env, prevIndices));
     env->SetObjectArrayElement(result, 1, toJavaArray(env, refKinds));
     env->SetObjectArrayElement(result, 2, toJavaArray(env, refInfos));
-
+    env->SetObjectArrayElement(result, 3, toJavaArray(env, exceedLimitCount));
     return result;
 }
 
@@ -246,7 +252,7 @@ static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, std::vector
     return result;
 }
 
-jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
+jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object, jint limit) {
     jvmtiError err;
     jvmtiHeapCallbacks cb;
     info("Looking for paths to gc roots started");
@@ -264,7 +270,7 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     info("heap tagged");
     set<jlong> uniqueTags;
     info("start walking through collected tags");
-    walk(gcTagToPointer(tag), uniqueTags);
+    walk(gcTagToPointer(tag), uniqueTags, limit);
 
     info("create resulting java objects");
     unordered_map<jlong, jint> tag_to_index;

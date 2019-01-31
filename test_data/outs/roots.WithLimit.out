@@ -1,0 +1,12 @@
+Agent loaded
+0: [test object] <- (more 1 found)
+1: test object <- [0 :: ARRAY_ELEMENT :: index = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 1](more 999 found)
+0: [test object] <- (more 1 found)
+1: [test object] <- (more 1 found)
+2: test object <- [0 :: ARRAY_ELEMENT :: index = 0], [1 :: ARRAY_ELEMENT :: index = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 1](more 998 found)
+0: [test object] <- (more 1 found)
+1: [test object] <- (more 1 found)
+2: [test object] <- (more 1 found)
+3: [test object] <- (more 1 found)
+4: [test object] <- (more 1 found)
+5: test object <- [0 :: ARRAY_ELEMENT :: index = 0], [1 :: ARRAY_ELEMENT :: index = 0], [2 :: ARRAY_ELEMENT :: index = 0], [3 :: ARRAY_ELEMENT :: index = 0], [4 :: ARRAY_ELEMENT :: index = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 1](more 995 found)

@@ -128,8 +128,9 @@ extern "C"
 JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_gcRoots(
         JNIEnv *env,
         jclass thisClass,
-        jobject object) {
-    return findGcRoots(env, gdata->jvmti, thisClass, object);
+        jobject object,
+        jint limit) {
+    return findGcRoots(env, gdata->jvmti, thisClass, object, limit);
 }
 
 extern "C"

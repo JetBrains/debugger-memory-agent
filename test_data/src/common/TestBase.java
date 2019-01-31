@@ -16,6 +16,7 @@ public abstract class TestBase {
     }
   }
 
+  private static final int DEFAULT_LIMIT = 5000;
   private static Map<Integer, String> referenceDescription = new HashMap<>();
 
   static {
@@ -67,7 +68,11 @@ public abstract class TestBase {
   }
 
   protected static void printGcRoots(Object object) {
-    Object result = IdeaNativeAgentProxy.gcRoots(object);
+    printGcRoots(object, DEFAULT_LIMIT);
+  }
+
+  protected static void printGcRoots(Object object, int limit) {
+    Object result = IdeaNativeAgentProxy.gcRoots(object, limit);
     Object[] arrayResult = (Object[]) result;
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];
@@ -82,8 +87,9 @@ public abstract class TestBase {
       int[] indices = (int[]) objLinks[0];
       int[] kinds = (int[]) objLinks[1];
       Object[] infos = (Object[]) objLinks[2];
+      int[] moreLinks = (int[]) objLinks[3];
 
-      String referencedFrom = buildReferencesString(indices, kinds, infos, oldIndexToNewIndex);
+      String referencedFrom = buildReferencesString(indices, kinds, infos, oldIndexToNewIndex, moreLinks[0]);
       System.out.println(i + ": " + asString(obj) + " <- " + referencedFrom);
     }
   }
@@ -105,7 +111,7 @@ public abstract class TestBase {
     return "no details";
   }
 
-  private static String buildReferencesString(int[] indices, int[] kinds, Object[] infos, Map<Integer, Integer> indicesMap) {
+  private static String buildReferencesString(int[] indices, int[] kinds, Object[] infos, Map<Integer, Integer> indicesMap, int moreLinks) {
     assertEquals(indices.length, kinds.length);
     assertEquals(kinds.length, infos.length);
 
@@ -119,7 +125,13 @@ public abstract class TestBase {
 
     references.sort(String::compareTo);
 
-    return String.join(", ", references);
+    String refs = String.join(", ", references);
+    assertTrue(moreLinks >= 0);
+    if (moreLinks != 0) {
+      refs += "(more " + moreLinks + " found)";
+    }
+
+    return refs;
   }
 
   protected static Object createTestObject(String name) {
