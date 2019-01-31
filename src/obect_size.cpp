@@ -32,6 +32,10 @@ static Tag *createTag(bool start, bool inSubtree, bool reachableOutside) {
     return tag;
 }
 
+static void cleanTag(jlong tag) {
+    delete pointerToTag(tag);
+}
+
 extern "C"
 JNIEXPORT
 jvmtiIterationControl cbHeapCleanupSizeTags(jlong classTag, jlong size, jlong *tagPtr, void *userData) {
@@ -42,12 +46,6 @@ jvmtiIterationControl cbHeapCleanupSizeTags(jlong classTag, jlong size, jlong *t
     }
 
     return JVMTI_ITERATION_CONTINUE;
-}
-
-static void cleanHeapForSizes(jvmtiEnv *jvmti) {
-    jvmtiError err = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED,
-                                            reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupSizeTags), nullptr);
-    handleError(jvmti, err, "Could cleanup heap after size estimating");
 }
 
 extern "C"
@@ -152,7 +150,8 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     }
 
     info("remove all tags from objects in heap");
-    cleanHeapForSizes(jvmti);
+    err = removeAllTagsFromHeap(jvmti, cleanTag);
+    handleError(jvmti, err, "Could not clean heap");
 
     return retainedSize;
 }

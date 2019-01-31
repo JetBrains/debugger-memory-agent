@@ -89,3 +89,65 @@ void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
     }
 }
 
+typedef std::pair<std::set<jlong> *, tagReleasedCallback> iterationInfo;
+
+static jint JNICALL freeObjectCallback(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+    auto info = reinterpret_cast<iterationInfo *>(userData);
+    jlong tagValue = *tagPtr;
+    if (info->first->find(tagValue) == info->first->end()) {
+        *tagPtr = 0;
+        info->second(tagValue);
+    }
+
+    return JVMTI_ITERATION_CONTINUE;
+}
+
+static bool isOk(jvmtiError error) {
+    return error == JVMTI_ERROR_NONE;
+}
+
+jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tagReleasedCallback callback) {
+    jvmtiHeapCallbacks cb;
+    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    cb.heap_iteration_callback = freeObjectCallback;
+    std::set<jlong> ignoredSet(ignoredTags.begin(), ignoredTags.end());
+    iterationInfo userData(&ignoredSet, callback);
+    debug("remove tags");
+    jvmtiError err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, &userData);
+    debug("tags removed");
+    return err;
+}
+
+jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
+                                        std::vector<std::pair<jobject, jlong>> &result, tagReleasedCallback callback) {
+    jvmtiError err;
+    std::set<jlong> uniqueTags(tags.begin(), tags.end());
+    removeTagsFromHeap(jvmti, uniqueTags, callback);
+    tags.assign(uniqueTags.begin(), uniqueTags.end());
+    jint objectsCount = 0;
+    jobject *objects;
+    jlong *objectsTags;
+    jint tagsCount = static_cast<jint>(tags.size());
+    debug("call GetObjectsWithTags");
+    err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, &objects, &objectsTags);
+    if (!isOk(err))
+        return err;
+    debug("call GetObjectsWithTags finished");
+
+    for (int i = 0; i < objectsCount; ++i) {
+        result.emplace_back(objects[i], objectsTags[i]);
+    }
+
+    err = jvmti->Deallocate(reinterpret_cast<unsigned char *>(objects));
+    if (isOk(err)) {
+        err = jvmti->Deallocate(reinterpret_cast<unsigned char *>(objectsTags));
+    }
+
+    return err;
+}
+
+jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) {
+    std::set<jlong> ignored;
+    return removeTagsFromHeap(jvmti, ignored, callback);
+}
+

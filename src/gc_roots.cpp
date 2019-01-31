@@ -113,23 +113,8 @@ GcTag *pointerToGcTag(jlong tagPtr) {
     return (GcTag *) (ptrdiff_t) (void *) tagPtr;
 }
 
-extern "C"
-JNIEXPORT
-jvmtiIterationControl cbHeapCleanupGcPaths(jlong classTag, jlong size, jlong *tagPtr, void *userData) {
-    if (*tagPtr != 0) {
-        GcTag *t = pointerToGcTag(*tagPtr);
-        *tagPtr = 0;
-        delete t;
-    }
-
-    return JVMTI_ITERATION_CONTINUE;
-}
-
-static void cleanHeapForGcRoots(jvmtiEnv *jvmti) {
-    jvmtiError error = jvmti->IterateOverHeap(JVMTI_HEAP_OBJECT_TAGGED,
-                                              reinterpret_cast<jvmtiHeapObjectCallback>(&cbHeapCleanupGcPaths),
-                                              nullptr);
-    handleError(jvmti, error, "Could not cleanup the heap after gc roots finding");
+void cleanTag(jlong tag) {
+    delete pointerToGcTag(tag);
 }
 
 referenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const jvmtiHeapReferenceInfo *info) {
@@ -176,7 +161,6 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
     if (*tagPtr == 0) {
         *tagPtr = gcTagToPointer(createGcTag());
     }
-
 
     PathNodeTag *tag = pointerToGcTag(*tagPtr);
     if (referrerTagPtr != nullptr) {
@@ -234,26 +218,25 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, un
 static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jlong> &tags) {
     jclass langObject = env->FindClass("java/lang/Object");
     jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
-    jint objectsCount = 0;
-    jobject *objects;
-    jlong *objTags;
     jvmtiError err;
 
-    err = jvmti->GetObjectsWithTags(static_cast<jint>(tags.size()), tags.data(), &objectsCount, &objects, &objTags);
+    std::vector<std::pair<jobject, jlong>> objectToTag;
+    err = cleanHeapAndGetObjectsByTags(jvmti, tags, objectToTag, cleanTag);
     handleError(jvmti, err, "Could not receive objects by their tags");
     // TODO: Assert objectsCount == tags.size()
+    jint objectsCount = static_cast<jint>(objectToTag.size());
 
     jobjectArray resultObjects = env->NewObjectArray(objectsCount, langObject, nullptr);
     jobjectArray links = env->NewObjectArray(objectsCount, langObject, nullptr);
 
     unordered_map<jlong, jint> tagToIndex;
     for (jsize i = 0; i < objectsCount; ++i) {
-        tagToIndex[objTags[i]] = i;
+        tagToIndex[objectToTag[i].second] = i;
     }
 
     for (jsize i = 0; i < objectsCount; ++i) {
-        env->SetObjectArrayElement(resultObjects, i, objects[i]);
-        auto infos = createLinksInfos(env, jvmti, objTags[i], tagToIndex);
+        env->SetObjectArrayElement(resultObjects, i, objectToTag[i].first);
+        auto infos = createLinksInfos(env, jvmti, objectToTag[i].second, tagToIndex);
         env->SetObjectArrayElement(links, i, infos);
     }
 
@@ -289,6 +272,7 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     jobjectArray result = createResultObject(jni, jvmti, tags);
 
     info("remove all tags from objects in heap");
-    cleanHeapForGcRoots(jvmti);
+    err = removeAllTagsFromHeap(jvmti, cleanTag);
+    handleError(jvmti, err, "Count not remove all tags");
     return result;
 }
