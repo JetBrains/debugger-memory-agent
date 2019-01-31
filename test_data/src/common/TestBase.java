@@ -77,13 +77,17 @@ public abstract class TestBase {
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];
     Object[] sortedObjects = Arrays.stream(objects).sorted(Comparator.comparing(TestBase::asString)).toArray();
-    Map<Integer, Integer> oldIndexToNewIndex = new HashMap<>();
+    int[] oldIndexToNewIndex = new int[objects.length];
+    int[] newIndexToOldIndex = new int[objects.length];
     for (int i = 0; i < sortedObjects.length; i++) {
-      oldIndexToNewIndex.put(indexOfReference(objects, sortedObjects[i]), i);
+      int old = indexOfReference(objects, sortedObjects[i]);
+      oldIndexToNewIndex[old] = i;
+      newIndexToOldIndex[i] = old;
+
     }
     for (int i = 0; i < sortedObjects.length; i++) {
       Object obj = sortedObjects[i];
-      Object[] objLinks = (Object[]) links[i];
+      Object[] objLinks = (Object[]) links[newIndexToOldIndex[i]];
       int[] indices = (int[]) objLinks[0];
       int[] kinds = (int[]) objLinks[1];
       Object[] infos = (Object[]) objLinks[2];
@@ -111,14 +115,14 @@ public abstract class TestBase {
     return "no details";
   }
 
-  private static String buildReferencesString(int[] indices, int[] kinds, Object[] infos, Map<Integer, Integer> indicesMap, int moreLinks) {
+  private static String buildReferencesString(int[] indices, int[] kinds, Object[] infos, int[] indicesMap, int moreLinks) {
     assertEquals(indices.length, kinds.length);
     assertEquals(kinds.length, infos.length);
 
     List<String> references = new ArrayList<>();
     for (int i = 0; i < indices.length; i++) {
       int index = indices[i];
-      String refFrom = index == -1 ? "root" : indicesMap.get(index).toString();
+      String refFrom = index == -1 ? "root" : Integer.toString(indicesMap[index]);
       String kind = referenceDescription.get(kinds[i]);
       references.add(String.format("[%s :: %s :: %s]", refFrom, kind, interpretInfo(kinds[i], infos[i])));
     }
