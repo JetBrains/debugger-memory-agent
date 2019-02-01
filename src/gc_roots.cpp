@@ -102,10 +102,6 @@ GcTag *createGcTag() {
     return tag;
 }
 
-jlong gcTagToPointer(GcTag *tag) {
-    return (jlong) (ptrdiff_t) (void *) tag;
-}
-
 GcTag *pointerToGcTag(jlong tagPtr) {
     if (tagPtr == 0) {
         return new GcTag();
@@ -159,13 +155,13 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
                          jlong *referrerTagPtr, jint length, void *userData) {
 
     if (*tagPtr == 0) {
-        *tagPtr = gcTagToPointer(createGcTag());
+        *tagPtr = pointerToTag(createGcTag());
     }
 
     PathNodeTag *tag = pointerToGcTag(*tagPtr);
     if (referrerTagPtr != nullptr) {
         if (*referrerTagPtr == 0) {
-            *referrerTagPtr = gcTagToPointer(createGcTag());
+            *referrerTagPtr = pointerToTag(createGcTag());
         }
 
         tag->backRefs.push_back(createReferenceInfo(*referrerTagPtr, referenceKind, referenceInfo));
@@ -261,7 +257,7 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbGcPaths);
 
     GcTag *tag = createGcTag();
-    err = jvmti->SetTag(object, gcTagToPointer(tag));
+    err = jvmti->SetTag(object, pointerToTag(tag));
     handleError(jvmti, err, "Could not set tag for target object");
     info("start following through references");
     err = jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, nullptr);
@@ -270,7 +266,7 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     info("heap tagged");
     set<jlong> uniqueTags;
     info("start walking through collected tags");
-    walk(gcTagToPointer(tag), uniqueTags, limit);
+    walk(pointerToTag(tag), uniqueTags, limit);
 
     info("create resulting java objects");
     unordered_map<jlong, jint> tag_to_index;

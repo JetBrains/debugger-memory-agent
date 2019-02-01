@@ -152,3 +152,8 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
 
+template<typename T>
+jlong pointerToTag(T tag) {
+    return reinterpret_cast<jlong>(tag);
+}
+

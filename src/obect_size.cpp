@@ -12,16 +12,12 @@
 
 using namespace std;
 
-static Tag *pointerToTag(jlong tagPtr) {
+static Tag *tagToPointer(jlong tagPtr) {
     if (tagPtr == 0) {
         std::cerr << "unexpected zero-tag value" << std::endl;
         return nullptr;
     }
     return (Tag *) (ptrdiff_t) (void *) tagPtr;
-}
-
-static jlong tagToPointer(Tag *tag) {
-    return (jlong) (ptrdiff_t) (void *) tag;
 }
 
 static Tag *createTag(bool start, bool inSubtree, bool reachableOutside) {
@@ -33,14 +29,14 @@ static Tag *createTag(bool start, bool inSubtree, bool reachableOutside) {
 }
 
 static void cleanTag(jlong tag) {
-    delete pointerToTag(tag);
+    delete tagToPointer(tag);
 }
 
 extern "C"
 JNIEXPORT
 jvmtiIterationControl cbHeapCleanupSizeTags(jlong classTag, jlong size, jlong *tagPtr, void *userData) {
     if (*tagPtr != 0) {
-        Tag *t = pointerToTag(*tagPtr);
+        Tag *t = tagToPointer(*tagPtr);
         delete t;
         *tagPtr = 0;
     }
@@ -61,21 +57,21 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind referenceKind,
         }
 
         if (*tagPtr != 0) {
-            Tag *tag = pointerToTag(*tagPtr);
+            Tag *tag = tagToPointer(*tagPtr);
             if (!tag->startObject) {
                 tag->reachableOutside = true;
             }
         } else {
-            *tagPtr = tagToPointer(createTag(false, false, true));
+            *tagPtr = pointerToTag(createTag(false, false, true));
         }
         return JVMTI_VISIT_OBJECTS;
     }
 
     if (*referrerTagPtr != 0) {
         //referrer has tag
-        Tag *referrerTag = pointerToTag(*referrerTagPtr);
+        Tag *referrerTag = tagToPointer(*referrerTagPtr);
         if (*tagPtr != 0) {
-            Tag *refereeTag = pointerToTag(*tagPtr);
+            Tag *refereeTag = tagToPointer(*tagPtr);
             if (referrerTag->inSubtree) {
                 refereeTag->inSubtree = true;
                 ((set<jlong> *) (ptrdiff_t) userData)->insert(*tagPtr);
@@ -85,23 +81,23 @@ JNIEXPORT jint cbHeapReference(jvmtiHeapReferenceKind referenceKind,
             }
         } else {
             Tag *refereeTag = createTag(false, referrerTag->inSubtree, referrerTag->reachableOutside);
-            *tagPtr = tagToPointer(refereeTag);
+            *tagPtr = pointerToTag(refereeTag);
             if (refereeTag->inSubtree) ((set<jlong> *) (ptrdiff_t) userData)->insert(*tagPtr);
         }
     } else {
         // referrer has no tag yet
         Tag *referrerTag = createTag(false, false, true);
         if (*tagPtr != 0) {
-            Tag *refereeTag = pointerToTag(*tagPtr);
+            Tag *refereeTag = tagToPointer(*tagPtr);
             if (!refereeTag->startObject) {
                 refereeTag->reachableOutside = true;
             }
         } else {
             Tag *refereeTag = createTag(false, false, true);
-            *tagPtr = tagToPointer(refereeTag);
+            *tagPtr = pointerToTag(refereeTag);
         }
 
-        *referrerTagPtr = tagToPointer(referrerTag);
+        *referrerTagPtr = pointerToTag(referrerTag);
     }
 
     return JVMTI_VISIT_OBJECTS;
@@ -117,8 +113,8 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbHeapReference);
 
     Tag *tag = createTag(true, true, false);
-    tags.insert(tagToPointer(tag));
-    err = jvmti->SetTag(object, tagToPointer(tag));
+    tags.insert(pointerToTag(tag));
+    err = jvmti->SetTag(object, pointerToTag(tag));
     handleError(jvmti, err, "Could not set a tag for target object");
     jint count = 0;
 
@@ -142,7 +138,7 @@ jlong estimateObjectSize(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
         jlong size;
         jobject obj = objects[i];
         objectsInSubtree++;
-        if (!pointerToTag(objectsTags[i])->reachableOutside) {
+        if (!tagToPointer(objectsTags[i])->reachableOutside) {
             jvmti->GetObjectSize(obj, &size);
             retainedObjectsCount++;
             retainedSize += size;
