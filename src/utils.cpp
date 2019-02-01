@@ -128,7 +128,7 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
     jint objectsCount = 0;
     jobject *objects;
     jlong *objectsTags;
-    jint tagsCount = static_cast<jint>(tags.size());
+    auto tagsCount = static_cast<jint>(tags.size());
     debug("call GetObjectsWithTags");
     err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, &objects, &objectsTags);
     if (!isOk(err))
@@ -152,8 +152,4 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
 
-template<typename T>
-jlong pointerToTag(T tag) {
-    return reinterpret_cast<jlong>(tag);
-}
 

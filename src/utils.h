@@ -32,7 +32,8 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
                                         std::vector<std::pair<jobject, jlong>> &result,
                                         tagReleasedCallback callback);
 
-template <typename T>
-jlong pointerToTag(T tag);
-
+template<typename T>
+jlong pointerToTag(T tag) {
+    return reinterpret_cast<jlong>(tag);
+}
 #endif //NATIVE_MEMORY_AGENT_UTILS_H
