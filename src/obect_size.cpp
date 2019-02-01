@@ -1,5 +1,6 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
+#include "objects_size.h"
 #include <jvmti.h>
 #include <vector>
 #include <set>
@@ -9,6 +10,12 @@
 #include "utils.h"
 #include "types.h"
 #include "log.h"
+
+typedef struct Tag {
+    bool inSubtree;
+    bool reachableOutside;
+    bool startObject;
+} Tag;
 
 using namespace std;
 
