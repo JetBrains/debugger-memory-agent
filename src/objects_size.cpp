@@ -3,14 +3,13 @@
 #include <unordered_set>
 #include "objects_size.h"
 #include "utils.h"
-#include "object_size.h"
 #include "log.h"
 
 static jlong tagBalance = 0;
 
 typedef struct Tag {
 private:
-    explicit Tag() {}
+    explicit Tag() = default;
 
 public:
     std::unordered_map<jint, uint8_t> states;

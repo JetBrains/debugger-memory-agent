@@ -12,7 +12,6 @@
 #include "log.h"
 #include "types.h"
 #include "utils.h"
-#include "object_size.h"
 #include "gc_roots.h"
 #include "size_by_classes.h"
 #include "objects_size.h"
@@ -122,7 +121,7 @@ JNIEXPORT jlong JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProx
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
-    return estimateObjectSize(env, gdata->jvmti, thisClass, object);
+    return estimateObjectSize(env, gdata->jvmti, object);
 }
 
 extern "C"
