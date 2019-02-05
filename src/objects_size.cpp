@@ -10,16 +10,14 @@ static jlong tagBalance = 0;
 
 typedef struct Tag {
 private:
-    explicit Tag(jlong s) : size(s) {}
+    explicit Tag() {}
 
 public:
-
-    jlong size;
     std::unordered_map<jint, uint8_t> states;
 
-    static Tag *create(jlong size) {
+    static Tag *create() {
         ++tagBalance;
-        return new Tag(size);
+        return new Tag();
     }
 
     ~Tag() {
@@ -83,7 +81,7 @@ jint visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo
 
     bool alreadyVisited = *tagPtr != 0;
     if (!alreadyVisited) {
-        *tagPtr = pointerToTag(Tag::create(size));
+        *tagPtr = pointerToTag(Tag::create());
     }
 
 
@@ -106,9 +104,6 @@ jint visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo
             auto beforeIter = refereeTag->states.find(entry.first);
             uint8_t currentState = beforeIter == refereeTag->states.end() ? create_state(false, false, alreadyVisited)
                                                                           : beforeIter->second;
-            if (size == 152) {
-                int a = 100;
-            }
             refereeTag->states[entry.first] = updateState(currentState, entry.second);
         }
     }
@@ -122,7 +117,7 @@ jint visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *u
     Tag *tag = tagToPointer(*tagPtr);
     for (const auto &entry: tag->states) {
         if (isRetained(entry.second)) {
-            reinterpret_cast<jlong *>(userData)[entry.first] += tag->size;
+            reinterpret_cast<jlong *>(userData)[entry.first] += size;
         }
     }
 
@@ -143,13 +138,10 @@ jvmtiError estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jobjec
     tagBalance = 0;
     for (int i = 0; i < count; i++) {
         jobject object = objects[i];
-        jlong size = -1;
-        err = jvmti->GetObjectSize(object, &size);
-        handleError(jvmti, err, "Could not determine object size");
         jlong oldTag = 0;
         err = jvmti->GetTag(object, &oldTag);
         if (err != JVMTI_ERROR_NONE) return err;
-        Tag *tag = oldTag == 0 ? Tag::create(size) : tagToPointer(oldTag);
+        Tag *tag = oldTag == 0 ? Tag::create() : tagToPointer(oldTag);
         tag->states[i] = create_state(true, true, false);
         err = jvmti->SetTag(objects[i], pointerToTag(tag));
         if (err != JVMTI_ERROR_NONE) return err;
