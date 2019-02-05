@@ -131,8 +131,8 @@ jint visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *u
     return JVMTI_ITERATION_CONTINUE;
 }
 
-jvmtiError estimateObjectsSizedForUnique(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jobject> &objects,
-                                         std::vector<jlong> &result) {
+jvmtiError estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jobject> &objects,
+                                std::vector<jlong> &result) {
     jvmtiError err;
     std::set<jobject> unique(objects.begin(), objects.end());
     size_t count = objects.size();
@@ -146,7 +146,10 @@ jvmtiError estimateObjectsSizedForUnique(JNIEnv *env, jvmtiEnv *jvmti, std::vect
         jlong size = -1;
         err = jvmti->GetObjectSize(object, &size);
         handleError(jvmti, err, "Could not determine object size");
-        Tag *tag = Tag::create(size);
+        jlong oldTag = 0;
+        err = jvmti->GetTag(object, &oldTag);
+        if (err != JVMTI_ERROR_NONE) return err;
+        Tag *tag = oldTag == 0 ? Tag::create(size) : tagToPointer(oldTag);
         tag->states[i] = create_state(true, true, false);
         err = jvmti->SetTag(objects[i], pointerToTag(tag));
         if (err != JVMTI_ERROR_NONE) return err;
@@ -166,48 +169,6 @@ jvmtiError estimateObjectsSizedForUnique(JNIEnv *env, jvmtiEnv *jvmti, std::vect
         fatal("MEMORY LEAK FOUND!");
     }
     return err;
-}
-
-
-static void distinct(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jobject> &in, std::vector<jobject> &out) {
-
-    auto equal = [env](const jobject o1, const jobject &o2) { return env->IsSameObject(o1, o2); };
-    auto hash = [jvmti](const jobject obj) {
-        jint result = 0;
-        jvmtiError err = jvmti->GetObjectHashCode(obj, &result);
-        if (err != JVMTI_ERROR_NONE) {
-            error("Could not receive object hash code");
-        }
-        return result;
-    };
-    std::unordered_set<jobject, decltype(hash), decltype(equal)> unique(10, hash, equal);
-    out.assign(unique.begin(), unique.end());
-}
-
-jvmtiError estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jobject> &objects,
-                                std::vector<jlong> &result) {
-    std::vector<jobject> unique;
-    distinct(env, jvmti, objects, unique);
-    std::unordered_map<jobject, jint> objectToIndexInResult;
-    std::cout << unique.size();
-    bool check = env->IsSameObject(objects[0], objects[1]);
-    if (unique.size() < objects.size()) {
-        debug("remove duplicates in array");
-    }
-    auto uniqueCount = unique.size();
-    for (jint i = 0; i < uniqueCount; ++i) {
-        objectToIndexInResult[unique[i]] = i;
-    }
-    std::vector<jlong> uniqueSizes;
-    jvmtiError err = estimateObjectsSizedForUnique(env, jvmti, unique, uniqueSizes);
-    if (err != JVMTI_ERROR_NONE) return err;
-    result.resize(objects.size());
-    debug("convert to array with duplicates");
-    for (auto i = 0; i < objects.size(); ++i) {
-        result[i] = uniqueSizes[objectToIndexInResult[objects[i]]];
-    }
-
-    return JVMTI_ERROR_NONE;
 }
 
 jlong estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object) {
