@@ -15,6 +15,7 @@
 #include "object_size.h"
 #include "gc_roots.h"
 #include "size_by_classes.h"
+#include "objects_size.h"
 
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
@@ -106,6 +107,14 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
         JNIEnv *env,
         jclass thisClass) {
     return (uint8_t) 1;
+}
+
+extern "C"
+JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
+        JNIEnv *env,
+        jclass thisClass,
+        jobjectArray objects) {
+    return estimateObjectsSizes(env, gdata->jvmti, objects);
 }
 
 extern "C"

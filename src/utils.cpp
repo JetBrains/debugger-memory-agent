@@ -73,6 +73,14 @@ jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second) {
     return res;
 }
 
+void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result) {
+    auto arrayLength = static_cast<size_t>(env->GetArrayLength(javaArray));
+    result.resize(arrayLength);
+    for (jsize i = 0; i < arrayLength; ++i) {
+        result[i] = env->GetObjectArrayElement(javaArray, i);
+    }
+}
+
 void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
     if (err != JVMTI_ERROR_NONE) {
         char *errorName = nullptr;

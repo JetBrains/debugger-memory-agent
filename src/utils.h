@@ -20,6 +20,8 @@ jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items);
 
 jintArray toJavaArray(JNIEnv *env, jint value);
 
+void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result);
+
 jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second);
 
 void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message);
@@ -36,4 +38,5 @@ template<typename T>
 jlong pointerToTag(T tag) {
     return reinterpret_cast<jlong>(tag);
 }
+
 #endif //NATIVE_MEMORY_AGENT_UTILS_H

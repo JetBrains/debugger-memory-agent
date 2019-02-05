@@ -15,6 +15,8 @@ add_library(memory_agent SHARED
         src/gc_roots.cpp
         src/object_size.h
         src/object_size.cpp
+        src/objects_size.cpp
+        src/objects_size.h
         src/size_by_classes.cpp
         src/size_by_classes.h
         src/log.cpp
