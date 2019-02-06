@@ -74,7 +74,7 @@ uint8_t updateState(uint8_t currentState, uint8_t referrerState) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-jint visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                     jlong referrerClassTag, jlong size, jlong *tagPtr,
                     jlong *referrerTagPtr, jint length, void *_) { // NOLINT(readability-non-const-parameter)
 
@@ -112,7 +112,7 @@ jint visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo
 
 #pragma clang diagnostic pop
 
-jint visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     Tag *tag = tagToPointer(*tagPtr);
     for (const auto &entry: tag->states) {
         if (isRetained(entry.second)) {
@@ -149,7 +149,7 @@ jvmtiError estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jobjec
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&visitReference);
-    cb.heap_iteration_callback = visitObject;
+    cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&visitObject);
     debug("tag heap");
     err = jvmti->FollowReferences(0, nullptr, nullptr, &cb, nullptr);
     if (err != JVMTI_ERROR_NONE) return err;
