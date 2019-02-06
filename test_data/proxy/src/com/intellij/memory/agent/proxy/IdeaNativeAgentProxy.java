@@ -16,6 +16,8 @@ public class IdeaNativeAgentProxy {
 
   public static native long size(Object object);
 
+  public static native long[] estimateRetainedSize(Object[] objects);
+
   public static boolean isLoaded() {
     try {
       return isLoadedImpl();

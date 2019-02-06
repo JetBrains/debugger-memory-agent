@@ -11,10 +11,4 @@ typedef struct {
     jvmtiEnv *jvmti;
 } GlobalAgentData;
 
-typedef struct Tag {
-    bool inSubtree;
-    bool reachableOutside;
-    bool startObject;
-} Tag;
-
 #endif //NATIVE_MEMORY_AGENT_TYPES_H

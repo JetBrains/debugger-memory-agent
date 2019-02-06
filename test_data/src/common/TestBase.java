@@ -4,6 +4,7 @@ import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 
 import java.lang.management.ManagementFactory;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public abstract class TestBase {
@@ -41,6 +42,11 @@ public abstract class TestBase {
 
   protected static void printSize(Object object) {
     System.out.println(IdeaNativeAgentProxy.size(object));
+  }
+
+  protected static void printSizes(Object... objects) {
+    String names = Arrays.toString(Arrays.stream(objects).map(TestBase::asString).toArray());
+    System.out.println(names + " -> " + Arrays.toString(IdeaNativeAgentProxy.estimateRetainedSize(objects)));
   }
 
   protected static void printSizeByClasses(Class<?>... classes) {

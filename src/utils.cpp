@@ -73,6 +73,14 @@ jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second) {
     return res;
 }
 
+void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result) {
+    auto arrayLength = static_cast<size_t>(env->GetArrayLength(javaArray));
+    result.resize(arrayLength);
+    for (jsize i = 0; i < arrayLength; ++i) {
+        result[i] = env->GetObjectArrayElement(javaArray, i);
+    }
+}
+
 void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
     if (err != JVMTI_ERROR_NONE) {
         char *errorName = nullptr;
@@ -128,7 +136,7 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
     jint objectsCount = 0;
     jobject *objects;
     jlong *objectsTags;
-    jint tagsCount = static_cast<jint>(tags.size());
+    auto tagsCount = static_cast<jint>(tags.size());
     debug("call GetObjectsWithTags");
     err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, &objects, &objectsTags);
     if (!isOk(err))
@@ -151,4 +159,5 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
     std::set<jlong> ignored;
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
+
 
