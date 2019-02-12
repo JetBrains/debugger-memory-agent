@@ -3,6 +3,10 @@ project(memory_agent)
 
 set(CMAKE_CXX_STANDARD 14)
 
+SET(CMAKE_CXX_FLAGS_RELEASE "/MT /O2")
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /O2")
+SET(CMAKE_CXX_FLAGS_MINSIZEREL "/MT")
+
 find_package(JNI)
 include_directories(${JNI_INCLUDE_DIRS})
 
