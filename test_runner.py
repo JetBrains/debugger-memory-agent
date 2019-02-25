@@ -120,7 +120,7 @@ class TestRunner:
         self.__java = java
         self.__build_dir = build_dir
         self.__output_directory = output_dir
-        self.__agent_path = agent_path
+        self.__agent_path = os.path.abspath(agent_path)
 
     def run(self, test: Test) -> TestResult:
         if not os.path.exists(self.__output_directory):
