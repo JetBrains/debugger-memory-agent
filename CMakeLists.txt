@@ -28,4 +28,5 @@ add_library(memory_agent SHARED
 
 if ((UNIX OR MINGW) AND NOT APPLE)
     target_link_libraries(memory_agent PRIVATE -static-libstdc++ -static-libgcc)
+    set_target_properties(memory_agent PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
 endif ()
