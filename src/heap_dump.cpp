@@ -1,22 +1,26 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 #include <unordered_map>
-#include <set>
 #include <iostream>
 #include <vector>
 #include <jvmti.h>
 #include <cstring>
-#include <queue>
-#include "gc_roots.h"
-#include "types.h"
+#include <algorithm>
 #include "utils.h"
 #include "log.h"
 
 using namespace std;
 
+FILE *fp;
+
+const jlong SHIFT_SIZE = 30;
+const jlong SHIFT = 1 << SHIFT_SIZE;
+const jlong NODE_MASK = SHIFT - 1;
+
+
 class node_data {
 public:
-    node_data() : edges(vector<jsize>()), size(0), class_id(-1) {}
+    node_data() : edges(), size(0), class_id(0) {}
 
     ~node_data() {
         edges.clear();
@@ -42,19 +46,41 @@ public:
     jsize global_index;
 };
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+void outputGraph(unordered_map<jsize, node_data> &graph) {
+    for (auto &p : graph) {
+        fprintf(fp, "Edges for node %d\n", p.first);
+        for (auto v : p.second.edges) {
+            fprintf(fp, "%d ", v);
+        }
+        fprintf(fp, "\n");
+    }
+    fflush(fp);
+}
+#pragma clang diagnostic pop
+
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+void cleanTag1(jlong tag) {
+#pragma clang diagnostic pop
+}
 
 jsize get_tag_or_create(data *d, jlong *tag_ptr) {
     if (tag_ptr == nullptr) {
         return 0;
     }
-    if (*tag_ptr == 0) {
-        *tag_ptr = ++(d->global_index);
+    if ((*tag_ptr & NODE_MASK) == 0) {
+        *tag_ptr += ++(d->global_index);
     }
 
-    return (jsize)(*tag_ptr);
+    return (jsize)(*tag_ptr & NODE_MASK);
 }
 
 extern "C"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 JNIEXPORT jint cbBuildGraph(jvmtiHeapReferenceKind referenceKind,
                             const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
                             jlong referrerClassTag, jlong size, jlong *tagPtr,
@@ -66,19 +92,23 @@ JNIEXPORT jint cbBuildGraph(jvmtiHeapReferenceKind referenceKind,
     jsize referee_id = get_tag_or_create(d, tagPtr);
     if (referee_id == 0) return JVMTI_VISIT_OBJECTS;
 
-    if (referrer_id != 0 && referrerClassTag != 0) {
+    if (referrer_id != 0) {
         node_data &referrer_data = d->nodes[referrer_id];
-        referrer_data.class_id = referrerClassTag;
         referrer_data.edges.push_back(referee_id);
+        if (referrerClassTag >= SHIFT) {
+            referrer_data.class_id = referrerClassTag >> SHIFT_SIZE;
+        }
     }
-    if (classTag != 0) {
-        node_data &referee_data = d->nodes[referee_id];
-        referee_data.class_id = classTag;
-        referee_data.size = size;
+
+    node_data &referee_data = d->nodes[referee_id];
+    referee_data.size = size;
+    if (classTag >= SHIFT) {
+        referee_data.class_id = classTag >> SHIFT_SIZE;
     }
 
     return JVMTI_VISIT_OBJECTS;
 }
+#pragma clang diagnostic pop
 
 /*
 static void walk(jlong start, set<jlong> &visited, jint limit) {
@@ -129,7 +159,10 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, un
 }
 */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 static jobjectArray createResultObject1(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jlong> &tags) {
+#pragma clang diagnostic pop
     jclass langObject = env->FindClass("java/lang/Object");
     jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
     return result;
@@ -167,42 +200,102 @@ static bool shouldSkipClass(const string &str) {
            || str.size() < 5;
 }
 
-static vector<string> tagClasses(JNIEnv *jni, jvmtiEnv *jvmti, jint count, jclass *classes) {
+static vector<string> tagClasses(jvmtiEnv *jvmti, jint count, jclass *classes) {
     auto result = vector<string>();
     if (count == 0) {
         return result;
     }
 
-
+    char *signature;
     for (jsize i = 0; i < count; ++i) {
         jclass clazz = classes[i];
-//        jmethodID mid_getName = jni->GetMethodID(classes[i], "getName", "()Ljava/lang/String;");
-//        if (mid_getName == nullptr) {
-//            info("no getName!");
-        char *signature;
         jvmtiError err = jvmti->GetClassSignature(clazz, &signature, nullptr);
         handleError(jvmti, err, "failed to get signature");
         std::string str = std::string(signature);
-        //info(signature);
         jvmti->Deallocate(reinterpret_cast<unsigned char *>(signature));
-//        }
-//        jstring name = (jstring)jni->CallObjectMethod(clazz, mid_getName); // NOLINT(hicpp-use-auto,modernize-use-auto)
-//        const char *chars = jni->GetStringUTFChars(name, nullptr);
-//
-//        jni->ReleaseStringUTFChars(name, chars);
 
         if (shouldSkipClass(str)) {
             continue;
         }
 
         result.push_back(str);
-        err = jvmti->SetTag(clazz, i + 1);
+        err = jvmti->SetTag(clazz, result.size() << SHIFT_SIZE);
         handleError(jvmti, err, "Could not tag class");
     }
     return result;
 }
 
+static void untagClasses(jvmtiEnv *jvmti, jint count, jclass *classes) {
+    if (count == 0) {
+        return;
+    }
+
+    for (jsize i = 0; i < count; ++i) {
+        jclass clazz = classes[i];
+        jvmtiError err = jvmti->SetTag(clazz, 0);
+        handleError(jvmti, err, "Could not tag class");
+    }
+}
+
+static void dfs1(jsize v,
+                 unordered_map<jsize, node_data> &graph,
+                 vector<jsize> &order,
+                 vector<bool> &visited) {
+    visited[v] = true;
+
+    for (auto i : graph[v].edges) {
+        if (!visited[i]) {
+            dfs1(i, graph, order, visited);
+        }
+    }
+    order.push_back(v);
+}
+
+static unordered_map<jsize, node_data> transpose(unordered_map<jsize, node_data> &graph) {
+    unordered_map<jsize, node_data> result = unordered_map<jsize, node_data>();
+
+    for (auto &pair : graph) {
+        for (auto v : pair.second.edges) {
+            result[v].edges.push_back(pair.first);
+        }
+    }
+
+    return result;
+}
+
+static vector<vector<jsize>> condense(data &data) {
+    jsize nodes_count = data.global_index;
+    vector<jsize> order = vector<jsize>();
+    vector<bool> visited = vector<bool>(nodes_count + 1);
+
+    for (int i = 1; i <= nodes_count; ++i) {
+        if (!visited[i]) {
+            dfs1(i, data.nodes, order, visited);
+        }
+    }
+
+    unordered_map<jsize, node_data> transposed = transpose(data.nodes);
+//    outputGraph(transposed);
+
+    reverse(begin(order), end(order));
+
+    vector<vector<jsize>> components = vector<vector<jsize>>();
+    visited.assign(nodes_count + 1, false);
+    for (auto v : order) {
+        if (!visited[v]) {
+            vector<jsize> current_component;
+            dfs1(v, transposed, current_component, visited);
+            components.push_back(current_component);
+        }
+    }
+
+    info("Condensation finished. Components count:");
+    info(to_string(components.size()).c_str());
+    return components;
+}
+
 jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
+    fp=fopen("/Users/valich/work/debugger-memory-agent/log.txt", "w");
     jvmtiError err;
     jvmtiHeapCallbacks cb;
 
@@ -211,8 +304,7 @@ jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
     jclass *classes_ptr;
     err = jvmti->GetLoadedClasses(&classes_count, &classes_ptr);
     handleError(jvmti, err, "Could not get list of classes");
-    vector<string> class_names = tagClasses(jni, jvmti, classes_count, classes_ptr);
-    jvmti->Deallocate(reinterpret_cast<unsigned char *>(classes_ptr));
+    vector<string> class_names = tagClasses(jvmti, classes_count, classes_ptr);
 
     info("Looking for paths to gc roots started");
 
@@ -225,12 +317,27 @@ jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
     err = jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, &graph);
     handleError(jvmti, err, "FollowReference call failed");
 
+    untagClasses(jvmti, classes_count, classes_ptr);
+    jvmti->Deallocate(reinterpret_cast<unsigned char *>(classes_ptr));
 
     info("Completed. Nodes discovered:");
     info(to_string(graph.global_index).c_str());
-//    info("heap tagged");
-//    set<jlong> uniqueTags;
-//    info("start walking through collected tags");
+
+//    outputGraph(graph.nodes);
+
+    info("start shortening the graph");
+    const vector<vector<jsize>> &components = condense(graph);
+
+    fprintf(fp, "Component %d\n", (int)components.size());
+    for (const auto &comp : components) {
+        if (comp.size() < 2) continue;
+        for (auto v : comp) {
+            jsize class_id = graph.nodes[v].class_id;
+            fprintf(fp, "%s ", class_id == 0 ? "0" : class_names[class_id - 1].c_str());
+        }
+        fprintf(fp, "\n");
+        fflush(fp);
+    }
 //    walk();
 //
 //    info("create resulting java objects");
@@ -238,9 +345,9 @@ jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
 //    vector<jlong> tags(uniqueTags.begin(), uniqueTags.end());
     vector<jlong> v = vector<jlong>();
     jobjectArray result = createResultObject1(jni, jvmti, v);
+    err = removeAllTagsFromHeap(jvmti, cleanTag1);
+    handleError(jvmti, err, "Count not remove all tags");
 //
 //    info("remove all tags from objects in heap");
-//    err = removeAllTagsFromHeap(jvmti, cleanTag);
-//    handleError(jvmti, err, "Count not remove all tags");
     return result;
 }
