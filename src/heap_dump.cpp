@@ -16,15 +16,27 @@ using namespace std;
 
 class node_data {
 public:
+    node_data() : edges(vector<jsize>()), size(0), class_id(-1) {}
+
+    ~node_data() {
+        edges.clear();
+    }
+
     vector<jsize> edges;
 
     jlong size;
 
-    jsize class_id = -1;
+    jsize class_id;
 };
 
 class data {
 public:
+    data() : global_index(0), nodes(unordered_map<jsize, node_data>()) {}
+
+    ~data() {
+        nodes.clear();
+    }
+
     unordered_map<jsize, node_data> nodes;
 
     jsize global_index;
@@ -32,11 +44,14 @@ public:
 
 
 jsize get_tag_or_create(data *d, jlong *tag_ptr) {
-
+    if (tag_ptr == nullptr) {
+        return 0;
+    }
     if (*tag_ptr == 0) {
         *tag_ptr = ++(d->global_index);
     }
-    return *tag_ptr;
+
+    return (jsize)(*tag_ptr);
 }
 
 extern "C"
@@ -49,8 +64,9 @@ JNIEXPORT jint cbBuildGraph(jvmtiHeapReferenceKind referenceKind,
 
     jsize referrer_id = get_tag_or_create(d, referrerTagPtr);
     jsize referee_id = get_tag_or_create(d, tagPtr);
+    if (referee_id == 0) return JVMTI_VISIT_OBJECTS;
 
-    if (referrerClassTag != 0) {
+    if (referrer_id != 0 && referrerClassTag != 0) {
         node_data &referrer_data = d->nodes[referrer_id];
         referrer_data.class_id = referrerClassTag;
         referrer_data.edges.push_back(referee_id);
@@ -146,36 +162,44 @@ static jobjectArray createResultObject1(JNIEnv *env, jvmtiEnv *jvmti, std::vecto
 }
 
 static bool shouldSkipClass(const string &str) {
-    return str.find("java.") == string::npos
-           && str.find("sun.") == string::npos;
+    return str.find("Ljava/") != string::npos
+           || str.find("Lsun/") != string::npos
+           || str.size() < 5;
 }
 
-static vector<jstring> tagClasses(JNIEnv *jni, jvmtiEnv *jvmti, jint count, jclass *classes) {
-    auto result = vector<jstring>();
+static vector<string> tagClasses(JNIEnv *jni, jvmtiEnv *jvmti, jint count, jclass *classes) {
+    auto result = vector<string>();
     if (count == 0) {
         return result;
     }
 
-    jmethodID mid_getName = jni->GetMethodID(classes[0], "getName", "()Ljava/lang/String;");
-    if (mid_getName == nullptr) {
-        error("no getName!");
-    }
 
     for (jsize i = 0; i < count; ++i) {
         jclass clazz = classes[i];
-        jstring name = (jstring)jni->CallObjectMethod(clazz, mid_getName); // NOLINT(hicpp-use-auto,modernize-use-auto)
-        const char *chars = jni->GetStringUTFChars(name, nullptr);
-        std::string str = std::string(chars);
-        jni->ReleaseStringUTFChars(name, chars);
+//        jmethodID mid_getName = jni->GetMethodID(classes[i], "getName", "()Ljava/lang/String;");
+//        if (mid_getName == nullptr) {
+//            info("no getName!");
+        char *signature;
+        jvmtiError err = jvmti->GetClassSignature(clazz, &signature, nullptr);
+        handleError(jvmti, err, "failed to get signature");
+        std::string str = std::string(signature);
+        //info(signature);
+        jvmti->Deallocate(reinterpret_cast<unsigned char *>(signature));
+//        }
+//        jstring name = (jstring)jni->CallObjectMethod(clazz, mid_getName); // NOLINT(hicpp-use-auto,modernize-use-auto)
+//        const char *chars = jni->GetStringUTFChars(name, nullptr);
+//
+//        jni->ReleaseStringUTFChars(name, chars);
 
         if (shouldSkipClass(str)) {
             continue;
         }
 
-        result.push_back(name);
-        jvmtiError err = jvmti->SetTag(clazz, i + 1);
+        result.push_back(str);
+        err = jvmti->SetTag(clazz, i + 1);
         handleError(jvmti, err, "Could not tag class");
     }
+    return result;
 }
 
 jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
@@ -187,7 +211,7 @@ jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
     jclass *classes_ptr;
     err = jvmti->GetLoadedClasses(&classes_count, &classes_ptr);
     handleError(jvmti, err, "Could not get list of classes");
-    vector<jstring> class_names = tagClasses(jni, jvmti, classes_count, classes_ptr);
+    vector<string> class_names = tagClasses(jni, jvmti, classes_count, classes_ptr);
     jvmti->Deallocate(reinterpret_cast<unsigned char *>(classes_ptr));
 
     info("Looking for paths to gc roots started");
