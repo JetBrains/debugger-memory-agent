@@ -13,6 +13,7 @@
 #include "types.h"
 #include "utils.h"
 #include "gc_roots.h"
+#include "heap_dump.h"
 #include "size_by_classes.h"
 #include "objects_size.h"
 
@@ -139,6 +140,13 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jobject object,
         jint limit) {
     return findGcRoots(env, gdata->jvmti, thisClass, object, limit);
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_fetchHeapDump(
+        JNIEnv *env,
+        jclass thisClass) {
+    return fetchHeapDump(env, gdata->jvmti);
 }
 
 extern "C"
