@@ -7,8 +7,8 @@
 #include <jvmti.h>
 #include <unordered_map>
 
-jlong estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
-
 jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objects);
+
+jobjectArray estimateObjectsSizesByPluginClassLoaders(JNIEnv *env, jvmtiEnv *jvmti);
 
 #endif //MEMORY_AGENT_OBJECTS_SIZE_H

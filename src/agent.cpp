@@ -118,11 +118,10 @@ JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgen
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSizesByPluginClassLoaders(
         JNIEnv *env,
-        jclass thisClass,
-        jobject object) {
-    return estimateObjectSize(env, gdata->jvmti, object);
+        jclass thisClass) {
+    return estimateObjectsSizesByPluginClassLoaders(env, gdata->jvmti);
 }
 
 extern "C"
