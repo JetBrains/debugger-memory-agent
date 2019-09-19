@@ -130,55 +130,6 @@ JNIEXPORT jint cbBuildGraph(jvmtiHeapReferenceKind referenceKind,
 }
 #pragma clang diagnostic pop
 
-/*
-static void walk(jlong start, set<jlong> &visited, jint limit) {
-    std::queue<jlong> queue;
-    queue.push(start);
-    jlong tag;
-    while (!queue.empty() && visited.size() <= limit) {
-        tag = queue.front();
-        queue.pop();
-        visited.insert(tag);
-        for (referenceInfo *info: pointerToGcTag(tag)->backRefs) {
-            jlong parentTag = info->tag();
-            if (parentTag != -1 && visited.find(parentTag) == visited.end()) {
-                queue.push(parentTag);
-            }
-        }
-    }
-}
-*/
-
-
-/*
-static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, unordered_map<jlong, jint> tagToIndex) {
-    GcTag *gcTag = pointerToGcTag(tag);
-    std::vector<jint> prevIndices;
-    std::vector<jint> refKinds;
-    std::vector<jobject> refInfos;
-
-    jint exceedLimitCount = 0;
-    for (referenceInfo *info : gcTag->backRefs) {
-        jlong prevTag = info->tag();
-        if (prevTag != -1 && tagToIndex.find(prevTag) == tagToIndex.end()) {
-            ++exceedLimitCount;
-            continue;
-        }
-        prevIndices.push_back(prevTag == -1 ? -1 : tagToIndex[prevTag]);
-        refKinds.push_back(static_cast<jint>(info->kind()));
-        refInfos.push_back(info->getReferenceInfo(env, jvmti));
-    }
-
-
-    jobjectArray result = env->NewObjectArray(4, env->FindClass("java/lang/Object"), nullptr);
-    env->SetObjectArrayElement(result, 0, toJavaArray(env, prevIndices));
-    env->SetObjectArrayElement(result, 1, toJavaArray(env, refKinds));
-    env->SetObjectArrayElement(result, 2, toJavaArray(env, refInfos));
-    env->SetObjectArrayElement(result, 3, toJavaArray(env, exceedLimitCount));
-    return result;
-}
-*/
-
 static jobjectArray
 createResultObject1(JNIEnv *env, jvmtiEnv *jvmti, const vector<merged_node> &graph, const vector<jclass> &class_names) {
     jvmtiError err;
@@ -216,30 +167,6 @@ createResultObject1(JNIEnv *env, jvmtiEnv *jvmti, const vector<merged_node> &gra
     env->SetObjectArrayElement(result, 1, jni_graph);
 
     return result;
-//
-//    std::vector<std::pair<jobject, jlong>> objectToTag;
-//    err = cleanHeapAndGetObjectsByTags(jvmti, tags, objectToTag, cleanTag);
-//    handleError(jvmti, err, "Could not receive objects by their tags");
-//    // TODO: Assert objectsCount == tags.size()
-//    jint objectsCount = static_cast<jint>(objectToTag.size());
-//
-//    jobjectArray resultObjects = env->NewObjectArray(objectsCount, langObject, nullptr);
-//    jobjectArray links = env->NewObjectArray(objectsCount, langObject, nullptr);
-//
-//    unordered_map<jlong, jint> tagToIndex;
-//    for (jsize i = 0; i < objectsCount; ++i) {
-//        tagToIndex[objectToTag[i].second] = i;
-//    }
-//
-//    for (jsize i = 0; i < objectsCount; ++i) {
-//        auto infos = createLinksInfos(env, jvmti, objectToTag[i].second, tagToIndex);
-//        env->SetObjectArrayElement(links, i, infos);
-//    }
-//
-//    env->SetObjectArrayElement(result, 0, resultObjects);
-//    env->SetObjectArrayElement(result, 1, links);
-//
-//    return result;
 }
 
 static bool shouldSkipClass(const string &str) {
