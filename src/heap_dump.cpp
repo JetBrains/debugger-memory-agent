@@ -46,6 +46,26 @@ public:
     jsize global_index;
 };
 
+class merged_node {
+public:
+    merged_node(const vector<jsize> &component, unordered_map<jsize, node_data> &graph) : own_size(0) {
+        for (auto v : component) {
+            node_data &node_data = graph[v];
+            jsize class_id = node_data.class_id;
+            if (class_id != 0) {
+                meaningful_nodes.push_back(class_id);
+            }
+            own_size += node_data.size;
+        }
+    }
+
+    vector<jsize> edges;
+
+    vector<jsize> meaningful_nodes;
+
+    jlong own_size;
+};
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 void outputGraph(unordered_map<jsize, node_data> &graph) {
@@ -159,14 +179,43 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, un
 }
 */
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-static jobjectArray createResultObject1(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jlong> &tags) {
-#pragma clang diagnostic pop
+static jobjectArray
+createResultObject1(JNIEnv *env, jvmtiEnv *jvmti, const vector<merged_node> &graph, const vector<jclass> &class_names) {
+    jvmtiError err;
+
     jclass langObject = env->FindClass("java/lang/Object");
+    jclass langClass = env->FindClass("java/lang/Class");
+
     jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
+
+    jobjectArray class_names_array = env->NewObjectArray(class_names.size(), langClass, nullptr);
+    for (size_t i = 0; i < class_names.size(); ++i) {
+        env->SetObjectArrayElement(class_names_array, i, class_names[i]);
+    }
+    env->SetObjectArrayElement(result, 0, class_names_array);
+
+    vector<jlong> graph_data;
+    graph_data.push_back(graph.size());
+    for (const merged_node &node : graph) {
+        graph_data.push_back(node.own_size);
+
+        graph_data.push_back(node.meaningful_nodes.size());
+        for (const jlong v : node.meaningful_nodes) {
+            graph_data.push_back(v);
+        }
+
+        graph_data.push_back(node.edges.size());
+        for (const jlong v : node.edges) {
+            graph_data.push_back(v);
+        }
+    }
+
+    jlongArray jni_graph = env->NewLongArray(graph_data.size());
+    env->SetLongArrayRegion(jni_graph, 0, graph_data.size(), graph_data.data());
+
+    env->SetObjectArrayElement(result, 1, jni_graph);
+
     return result;
-//    jvmtiError err;
 //
 //    std::vector<std::pair<jobject, jlong>> objectToTag;
 //    err = cleanHeapAndGetObjectsByTags(jvmti, tags, objectToTag, cleanTag);
@@ -183,7 +232,6 @@ static jobjectArray createResultObject1(JNIEnv *env, jvmtiEnv *jvmti, std::vecto
 //    }
 //
 //    for (jsize i = 0; i < objectsCount; ++i) {
-//        env->SetObjectArrayElement(resultObjects, i, objectToTag[i].first);
 //        auto infos = createLinksInfos(env, jvmti, objectToTag[i].second, tagToIndex);
 //        env->SetObjectArrayElement(links, i, infos);
 //    }
@@ -200,8 +248,8 @@ static bool shouldSkipClass(const string &str) {
            || str.size() < 5;
 }
 
-static vector<string> tagClasses(jvmtiEnv *jvmti, jint count, jclass *classes) {
-    auto result = vector<string>();
+static vector<jclass> tagClasses(jvmtiEnv *jvmti, jint count, jclass *classes) {
+    auto result = vector<jclass>();
     if (count == 0) {
         return result;
     }
@@ -218,7 +266,7 @@ static vector<string> tagClasses(jvmtiEnv *jvmti, jint count, jclass *classes) {
             continue;
         }
 
-        result.push_back(str);
+        result.push_back(clazz);
         err = jvmti->SetTag(clazz, result.size() << SHIFT_SIZE);
         handleError(jvmti, err, "Could not tag class");
     }
@@ -294,6 +342,57 @@ static vector<vector<jsize>> condense(data &data) {
     return components;
 }
 
+vector<merged_node> shorten(data &data, const vector<vector<jsize>> &components) {
+    vector<bool> alive(components.size());
+    vector<jlong> size(components.size());
+    vector<set<size_t>> condensed_edges(components.size());
+    unordered_map<jsize, size_t> old_to_condensed;
+    unordered_map<size_t, size_t> condensed_to_shortened;
+
+    vector<merged_node> result;
+
+    for (ssize_t comp_index = components.size() - 1; comp_index >= 0; comp_index--) {
+        const vector<jsize> &comp = components[comp_index];
+        merged_node new_node(comp, data.nodes);
+
+        alive[comp_index] = !new_node.meaningful_nodes.empty();
+        size[comp_index] = new_node.own_size;
+
+        for (auto v : comp) {
+            old_to_condensed[v] = comp_index;
+            // Calc edges in condensed graph
+            for (auto u : data.nodes[v].edges) {
+                auto &to_component = old_to_condensed[u];
+                if (to_component > comp_index) {
+                    condensed_edges[comp_index].insert(to_component);
+                }
+            }
+        }
+
+        // Calc edges in shortened graph
+        set<size_t> raw_edges = condensed_edges[comp_index];
+        condensed_edges[comp_index].clear();
+        for (auto &p : raw_edges) {
+            if (alive[p]) {
+                condensed_edges[comp_index].insert(condensed_to_shortened[p]);
+            }
+            else {
+                // Incorrect BTW!
+                new_node.own_size += size[p];
+                condensed_edges[comp_index].insert(condensed_edges[p].begin(), condensed_edges[p].end());
+            }
+        }
+
+        if (alive[comp_index]) {
+            result.push_back(new_node);
+            result[result.size() - 1].edges.insert(result[result.size() - 1].edges.begin(), condensed_edges[comp_index].begin(), condensed_edges[comp_index].end());
+            condensed_to_shortened[comp_index] = result.size() - 1;
+        }
+    }
+
+    return result;
+}
+
 jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
     fp=fopen("/Users/valich/work/debugger-memory-agent/log.txt", "w");
     jvmtiError err;
@@ -304,7 +403,7 @@ jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
     jclass *classes_ptr;
     err = jvmti->GetLoadedClasses(&classes_count, &classes_ptr);
     handleError(jvmti, err, "Could not get list of classes");
-    vector<string> class_names = tagClasses(jvmti, classes_count, classes_ptr);
+    vector<jclass> class_names = tagClasses(jvmti, classes_count, classes_ptr);
 
     info("Looking for paths to gc roots started");
 
@@ -323,28 +422,15 @@ jobjectArray fetchHeapDump(JNIEnv *jni, jvmtiEnv *jvmti) {
     info("Completed. Nodes discovered:");
     info(to_string(graph.global_index).c_str());
 
-//    outputGraph(graph.nodes);
-
-    info("start shortening the graph");
+    info("start condensing the graph");
     const vector<vector<jsize>> &components = condense(graph);
+    info("start shortening the graph");
+    const vector<merged_node> &shortened = shorten(graph, components);
+    info("Completed. Nodes in the result: ");
+    info(to_string(shortened.size()).c_str());
 
-    fprintf(fp, "Component %d\n", (int)components.size());
-    for (const auto &comp : components) {
-        if (comp.size() < 2) continue;
-        for (auto v : comp) {
-            jsize class_id = graph.nodes[v].class_id;
-            fprintf(fp, "%s ", class_id == 0 ? "0" : class_names[class_id - 1].c_str());
-        }
-        fprintf(fp, "\n");
-        fflush(fp);
-    }
-//    walk();
-//
-//    info("create resulting java objects");
-//    unordered_map<jlong, jint> tag_to_index;
-//    vector<jlong> tags(uniqueTags.begin(), uniqueTags.end());
-    vector<jlong> v = vector<jlong>();
-    jobjectArray result = createResultObject1(jni, jvmti, v);
+    info("create resulting java objects");
+    jobjectArray result = createResultObject1(jni, jvmti, shortened, class_names);
     err = removeAllTagsFromHeap(jvmti, cleanTag1);
     handleError(jvmti, err, "Count not remove all tags");
 //
