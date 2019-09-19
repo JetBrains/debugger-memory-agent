@@ -53,7 +53,7 @@ public:
             node_data &node_data = graph[v];
             jsize class_id = node_data.class_id;
             if (class_id != 0) {
-                meaningful_nodes.push_back(class_id);
+                meaningful_nodes.push_back(class_id - 1);
             }
             own_size += node_data.size;
         }
