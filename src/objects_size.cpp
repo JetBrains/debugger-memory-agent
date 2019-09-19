@@ -1,6 +1,7 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 #include <cstring>
 #include <unordered_set>
+#include <bitset>
 #include "objects_size.h"
 #include "utils.h"
 #include "log.h"
@@ -12,9 +13,9 @@ private:
     explicit Tag() = default;
 
 public:
-    std::unordered_map<jint, uint8_t> states;
+    std::bitset<256> bitset;
 
-    int8_t class_id = -1;
+    int16_t class_id = -1;
 
     static Tag *create() {
         ++tagBalance;
@@ -80,17 +81,19 @@ jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
                     jlong referrerClassTag, jlong size, jlong *tagPtr,
                     jlong *referrerTagPtr, jint length, void *_) { // NOLINT(readability-non-const-parameter)
 
-    bool alreadyVisited = *tagPtr != 0 && tagToPointer(*tagPtr)->states.empty();
     if (*tagPtr == 0) {
         *tagPtr = pointerToTag(Tag::create());
     }
     
     if (classTag != 0) {
-        int8_t class_id = tagToPointer(classTag)->class_id;
+        int16_t class_id = tagToPointer(classTag)->class_id;
         if (class_id != -1) {
-            uint8_t &state = tagToPointer(*tagPtr)->states[class_id];
+            std::bitset<256> &bitset = tagToPointer(*tagPtr)->bitset;
             // start, in subtree, not reachable from outside
-            state = (state | 3u) & ~(1u << 2u);
+            bitset.reset();
+            bitset[class_id] = true;
+
+            return JVMTI_VISIT_OBJECTS;
         }
     }
 
@@ -104,18 +107,24 @@ jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
 
         Tag *referrerTag = tagToPointer(*referrerTagPtr);
         Tag *refereeTag = tagToPointer(*tagPtr);
-        for (auto &entry: refereeTag->states) {
-            if (referrerTag->states.find(entry.first) == referrerTag->states.end()) {
-                entry.second = updateState(entry.second, create_state(false, false, true));
+
+        std::bitset<256> &refereeBitset = refereeTag->bitset;
+        if (refereeBitset.none()) {
+            if (referrerTag->bitset.any()) {
+                refereeBitset = referrerTag->bitset;
+            }
+            else {
+                refereeBitset[255] = true;
             }
         }
+        else if (refereeBitset != referrerTag->bitset) {
+            refereeBitset.reset();
+            refereeBitset[255] = true;
+        }
 
-        // TODO do not allow nested memory counting.
-        for (const auto &entry: referrerTag->states) {
-            auto beforeIter = refereeTag->states.find(entry.first);
-            uint8_t currentState = beforeIter == refereeTag->states.end() ? create_state(false, false, alreadyVisited)
-                                                                          : beforeIter->second;
-            refereeTag->states[entry.first] = updateState(currentState, entry.second);
+        if (refereeBitset[255] && refereeBitset.count() > 1) {
+            error("assert");
+            return JVMTI_VISIT_ABORT;
         }
     }
 
@@ -126,9 +135,12 @@ jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
 
 jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     Tag *tag = tagToPointer(*tagPtr);
-    for (const auto &entry: tag->states) {
-        if (isRetained(entry.second)) {
-            reinterpret_cast<jlong *>(userData)[entry.first] += size;
+    std::bitset<256> &bitset = tag->bitset;
+    if (!bitset[255] && bitset.any()) {
+        for (int i = 0; i < 255; ++i) {
+            if (bitset[i]) {
+                reinterpret_cast<jlong *>(userData)[i] += size;
+            }
         }
     }
 
@@ -176,8 +188,8 @@ jlong estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object) {
 jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objects) {
     debug("start estimate objects sizes");
     debug("convert java array to vector");
-    std::vector<std::vector<jobject>> objects;
-    fromJavaArray(env, arrayOfArrays, objects);
+//    std::vector<std::vector<jobject>> objects;
+//    fromJavaArray(env, arrayOfArrays, objects);
     std::vector<jlong> result;
 //    jvmtiError err = estimateObjectsSizes(env, jvmti, objects, result);
 //    if (err != JVMTI_ERROR_NONE) {
@@ -188,7 +200,7 @@ jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objec
     return toJavaArray(env, result);
 }
 
-void markClass(jvmtiEnv *jvmti, jobject clazz, uint8_t classId) {
+void markClass(jvmtiEnv *jvmti, jobject clazz, int16_t classId) {
     jvmtiError err;
     jlong oldTag = 0;
     err = jvmti->GetTag(clazz, &oldTag);
