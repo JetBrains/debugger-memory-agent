@@ -11,4 +11,6 @@ jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objec
 
 jobjectArray estimateObjectsSizesByPluginClassLoaders(JNIEnv *env, jvmtiEnv *jvmti);
 
+jobjectArray estimateObjectsSizesBySubsystems(JNIEnv *env, jvmtiEnv *jvmti);
+
 #endif //MEMORY_AGENT_OBJECTS_SIZE_H

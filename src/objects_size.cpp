@@ -6,6 +6,37 @@
 #include "utils.h"
 #include "log.h"
 
+const size_t SUBSYSTEMS_COUNT = 25;
+const std::string SUBSYSTEMS[SUBSYSTEMS_COUNT] {
+        "com/intellij/openapi/externalSystem",
+        "com/intellij/openapi/editor",
+        "com/intellij/openapi/codeInsight",
+        "com/intellij/openapi/psi",
+        "com/intellij/openapi/vfs",
+        "com/intellij/openapi/module",
+//        "com/intellij/openapi",
+        "com/intellij/codeInsight",
+        "com/intellij/psi",
+        "com/intellij/vcs",
+        "com/intellij/vfs",
+        "com/intellij/util/io",
+        "com/intellij/util/indexing",
+        "com/intellij/util/containers",
+//        "com/intellij/util",
+        "com/intellij/ide",
+        "com/intellij/debugger",
+        "com/intellij/xdebugger",
+        "com/intellij/configurationStore",
+        "com/intellij/execution",
+        "com/intellij/refactoring",
+        "com/intellij/usageView",
+        "com/intellij/lang",
+        "com/intellij/ide",
+        "com/intellij/ui",
+        "javax/swing",
+        "org/jetbrains/kotlin",
+};
+
 static jlong tagBalance = 0;
 
 typedef struct Tag {
@@ -285,6 +316,37 @@ static std::vector<jobject> tagClasses(JNIEnv *env, jvmtiEnv *jvmti, jint count,
     return result;
 }
 
+std::string getSignature(jvmtiEnv *jvmti, const jclass &clazz) {
+    char *signature;
+    jvmtiError err = jvmti->GetClassSignature(clazz, &signature, nullptr);
+    handleError(jvmti, err, "failed to get signature");
+    std::string str = std::string(signature);
+    jvmti->Deallocate(reinterpret_cast<unsigned char *>(signature));
+    return str;
+}
+
+static std::vector<std::string> tagClassesBySubsystems(JNIEnv *env, jvmtiEnv *jvmti, jint count, jclass *classes) {
+    auto result = std::vector<std::string>();
+    if (count == 0) {
+        return result;
+    }
+
+    for (jsize i = 0; i < count; ++i) {
+        jclass clazz = classes[i];
+        std::string str = getSignature(jvmti, clazz);
+
+        for (size_t j = 0; j < SUBSYSTEMS_COUNT; ++j) {
+            unsigned long index = str.find(SUBSYSTEMS[j]);
+            if (index != std::string::npos) {
+                markClass(jvmti, clazz, j);
+                break;
+            }
+        }
+    }
+
+    return std::vector<std::string>(SUBSYSTEMS, SUBSYSTEMS + SUBSYSTEMS_COUNT);
+}
+
 jobjectArray wrapAnswer(JNIEnv *env, const std::vector<jobject> &classLoaders, std::vector<jlong> &sizes) {
     jclass langObject = env->FindClass("java/lang/Object");
 
@@ -295,6 +357,23 @@ jobjectArray wrapAnswer(JNIEnv *env, const std::vector<jobject> &classLoaders, s
         env->SetObjectArrayElement(classLoadersArray, i, classLoaders[i]);
     }
     env->SetObjectArrayElement(result, 0, classLoadersArray);
+
+    jlongArray sizeArray = toJavaArray(env, sizes);
+    env->SetObjectArrayElement(result, 1, sizeArray);
+
+    return result;
+}
+
+jobjectArray wrapAnswer(JNIEnv *env, const std::vector<std::string> &strings, std::vector<jlong> &sizes) {
+    jclass langObject = env->FindClass("java/lang/Object");
+
+    jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
+
+    jobjectArray stringArray = env->NewObjectArray(strings.size(), langObject, nullptr);
+    for (size_t i = 0; i < strings.size(); ++i) {
+        env->SetObjectArrayElement(stringArray, i, env->NewStringUTF(strings[i].c_str()));
+    }
+    env->SetObjectArrayElement(result, 0, stringArray);
 
     jlongArray sizeArray = toJavaArray(env, sizes);
     env->SetObjectArrayElement(result, 1, sizeArray);
@@ -326,5 +405,32 @@ jobjectArray estimateObjectsSizesByPluginClassLoaders(JNIEnv *env, jvmtiEnv *jvm
     }
 
     return wrapAnswer(env, classLoaders, result);
+
+}
+
+jobjectArray estimateObjectsSizesBySubsystems(JNIEnv *env, jvmtiEnv *jvmti) {
+    jvmtiError err;
+
+    tagBalance = 0;
+
+    info("Get all classes");
+    jint classes_count;
+    jclass *classes_ptr;
+    err = jvmti->GetLoadedClasses(&classes_count, &classes_ptr);
+    handleError(jvmti, err, "Could not get list of classes");
+    info("Mark classes");
+    const std::vector<std::string> &subsystems = tagClassesBySubsystems(env, jvmti, classes_count, classes_ptr);
+    info("Subsystems number:");
+    info(std::to_string(subsystems.size()).c_str());
+    info("Traverse references");
+    std::vector<jlong> result(subsystems.size());
+    estimateObjectsSizes(env, jvmti, result);
+    info("Done");
+    if (err != JVMTI_ERROR_NONE) {
+        handleError(jvmti, err, "Could not estimate objects size");
+        return env->NewObjectArray(0, env->FindClass("java/lang/Object"), nullptr);
+    }
+
+    return wrapAnswer(env, subsystems, result);
 
 }

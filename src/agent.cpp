@@ -125,6 +125,13 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSizesBySubsystems(
+        JNIEnv *env,
+        jclass thisClass) {
+    return estimateObjectsSizesBySubsystems(env, gdata->jvmti);
+}
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindGcRoots(
         JNIEnv *env,
         jclass thisClass,
