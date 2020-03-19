@@ -1,0 +1,6 @@
+Agent loaded
+0: [node 17] <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 3]
+1: [node 18] <- [2 :: FIELD :: index = 0]
+2: [node 19] <- [3 :: FIELD :: index = 0]
+3: [node 20] <- [0 :: FIELD :: index = 0]
+4: [node 2] <- [1 :: FIELD :: index = 0](more 2 found)

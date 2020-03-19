@@ -50,7 +50,7 @@ private:
 };
 
 static jlongArray buildStackInfo(JNIEnv *env, jlong threadId, jint depth, jint slot) {
-    std::vector<jlong> vector = {threadId, depth, slot};
+    vector<jlong> vector = {threadId, depth, slot};
     return toJavaArray(env, vector);
 }
 
@@ -94,7 +94,7 @@ private:
 };
 
 typedef struct PathNodeTag {
-    std::vector<referenceInfo *> backRefs;
+    vector<referenceInfo *> backRefs;
 
     ~PathNodeTag() {
         for (auto info : backRefs) {
@@ -179,7 +179,7 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
 }
 
 static void walk(jlong start, set<jlong> &visited, jint limit) {
-    std::queue<jlong> queue;
+    queue<jlong> queue;
     queue.push(start);
     jlong tag;
     while (!queue.empty() && visited.size() <= limit) {
@@ -195,12 +195,11 @@ static void walk(jlong start, set<jlong> &visited, jint limit) {
     }
 }
 
-
 static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, unordered_map<jlong, jint> tagToIndex) {
     GcTag *gcTag = pointerToGcTag(tag);
-    std::vector<jint> prevIndices;
-    std::vector<jint> refKinds;
-    std::vector<jobject> refInfos;
+    vector<jint> prevIndices;
+    vector<jint> refKinds;
+    vector<jobject> refInfos;
 
     jint exceedLimitCount = 0;
     for (referenceInfo *info : gcTag->backRefs) {
@@ -223,12 +222,12 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag, un
     return result;
 }
 
-static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jlong> &tags) {
+static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, vector<jlong> &tags) {
     jclass langObject = env->FindClass("java/lang/Object");
     jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
     jvmtiError err;
 
-    std::vector<std::pair<jobject, jlong>> objectToTag;
+    vector<pair<jobject, jlong>> objectToTag;
     err = cleanHeapAndGetObjectsByTags(jvmti, tags, objectToTag, cleanTag);
     handleError(jvmti, err, "Could not receive objects by their tags");
     // TODO: Assert objectsCount == tags.size()
@@ -254,20 +253,27 @@ static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, std::vector
     return result;
 }
 
-jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object, jint limit) {
+static GcTag * createTags(jvmtiEnv *jvmti, jobject target) {
     jvmtiError err;
     jvmtiHeapCallbacks cb;
-    info("Looking for paths to gc roots started");
 
-    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbGcPaths);
 
     GcTag *tag = createGcTag();
-    err = jvmti->SetTag(object, pointerToTag(tag));
+    err = jvmti->SetTag(target, pointerToTag(tag));
     handleError(jvmti, err, "Could not set tag for target object");
     info("start following through references");
     err = jvmti->FollowReferences(JVMTI_HEAP_OBJECT_EITHER, nullptr, nullptr, &cb, nullptr);
     handleError(jvmti, err, "FollowReference call failed");
+    info("heap tagged");
+
+    return tag;
+}
+
+jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object, jint limit) {
+    info("Looking for paths to gc roots started");
+    GcTag * tag = createTags(jvmti, object);
 
     info("heap tagged");
     set<jlong> uniqueTags;
@@ -280,7 +286,63 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     jobjectArray result = createResultObject(jni, jvmti, tags);
 
     info("remove all tags from objects in heap");
-    err = removeAllTagsFromHeap(jvmti, cleanTag);
+    jvmtiError err = removeAllTagsFromHeap(jvmti, cleanTag);
     handleError(jvmti, err, "Count not remove all tags");
+
+    return result;
+}
+
+static vector<jlong> collectPath(jlong start, unordered_map<jlong, jlong> &prevNode) {
+    vector<jlong> path;
+    path.push_back(start);
+    while (prevNode[start] != start) {
+        start = prevNode[start];
+        path.push_back(start);
+    }
+
+    reverse(path.begin(), path.end());
+    return path;
+}
+
+static vector<jlong> findPathToClosestGcRoot(jlong start) {
+    queue<jlong> queue;
+    unordered_map<jlong, jlong> prevNode;
+    bool found = false;
+
+    jlong tag = start;
+    queue.push(tag);
+    prevNode[tag] = tag;
+    while (!queue.empty() && !found) {
+        tag = queue.front();
+        queue.pop();
+        for (referenceInfo *info: pointerToGcTag(tag)->backRefs) {
+            jlong parentTag = info->tag();
+            if (parentTag == -1) {
+                found = true;
+                break;
+            } else if (prevNode.find(parentTag) == prevNode.end()) {
+                prevNode[parentTag] = tag;
+                queue.push(parentTag);
+            }
+        }
+    }
+
+    return collectPath(tag, prevNode);
+}
+
+jobjectArray findPathToClosestGcRoot(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object) {
+    info("Looking for shortest path to gc root started");
+    GcTag * tag = createTags(jvmti, object);
+
+    info("start walking through collected tags");
+    vector<jlong> path = findPathToClosestGcRoot(pointerToTag(tag));
+
+    info("create resulting java objects");
+    jobjectArray result = createResultObject(jni, jvmti, path);
+
+    info("remove all tags from objects in heap");
+    jvmtiError err = removeAllTagsFromHeap(jvmti, cleanTag);
+    handleError(jvmti, err, "Count not remove all tags");
+
     return result;
 }

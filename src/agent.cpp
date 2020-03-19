@@ -142,6 +142,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_closestGcRoot(
+        JNIEnv *env,
+        jclass thisClass,
+        jobject object) {
+    return findPathToClosestGcRoot(env, gdata->jvmti, thisClass, object);
+}
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
         JNIEnv *env,
         jclass thisClass) {

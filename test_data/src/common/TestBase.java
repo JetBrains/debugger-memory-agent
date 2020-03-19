@@ -78,7 +78,10 @@ public abstract class TestBase {
   }
 
   protected static void printGcRoots(Object object, int limit) {
-    Object result = IdeaNativeAgentProxy.gcRoots(object, limit);
+    doPrintGcRoots(IdeaNativeAgentProxy.gcRoots(object, limit));
+  }
+
+  protected static void doPrintGcRoots(Object result) {
     Object[] arrayResult = (Object[]) result;
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];

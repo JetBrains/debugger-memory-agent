@@ -14,6 +14,8 @@ public class IdeaNativeAgentProxy {
 
   public static native Object gcRoots(Object object, int limit);
 
+  public static native Object closestGcRoot(Object object);
+
   public static native long size(Object object);
 
   public static native long[] estimateRetainedSize(Object[] objects);
