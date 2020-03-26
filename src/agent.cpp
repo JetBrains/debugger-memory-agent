@@ -3,10 +3,8 @@
 #include <jvmti.h>
 #include <vector>
 #include <queue>
-#include <cstdio>
 #include <iostream>
 #include <memory.h>
-#include <set>
 #include <unordered_map>
 #include <cstring>
 #include "log.h"
@@ -109,6 +107,13 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindPathsToClosestGcRoots(
+        JNIEnv *env,
+        jclass thisClass) {
+    return (uint8_t) 1;
+}
+
+extern "C"
 JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
         JNIEnv *env,
         jclass thisClass,
@@ -142,11 +147,12 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_closestGcRoot(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_findPathsToClosestGcRoots(
         JNIEnv *env,
         jclass thisClass,
-        jobject object) {
-    return findPathToClosestGcRoot(env, gdata->jvmti, thisClass, object);
+        jobject object,
+        jint number) {
+    return findPathsToClosestGcRoots(env, gdata->jvmti, thisClass, object, number);
 }
 
 extern "C"

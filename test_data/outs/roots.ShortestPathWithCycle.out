@@ -1,5 +1,0 @@
-Agent loaded
-0: [node 2] <- [2 :: FIELD :: index = 0](more 1 found)
-1: [node 6] <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 2]
-2: [node 7] <- [0 :: FIELD :: index = 0], [3 :: FIELD :: index = 0]
-3: [node 8] <- [1 :: FIELD :: index = 0]

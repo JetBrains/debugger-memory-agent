@@ -4,7 +4,7 @@ import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import common.TestBase;
 import common.TestNode;
 
-public class ShortestPathWithCycle extends TestBase {
+public class ShortestPathsWithCycle extends TestBase {
     public static void main(String[] args) {
         TestNode root1 = new TestNode(5);
         TestNode root2 = new TestNode(3);
@@ -15,6 +15,6 @@ public class ShortestPathWithCycle extends TestBase {
         last1 = null;
         last2 = null;
 
-        doPrintGcRoots(IdeaNativeAgentProxy.closestGcRoot(root2.getChild(4)));
+        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(root2.getChild(4), 10));
     }
 }

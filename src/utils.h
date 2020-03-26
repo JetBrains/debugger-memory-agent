@@ -30,6 +30,9 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback);
 
 jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tagReleasedCallback callback);
 
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
+                            std::vector<std::pair<jobject, jlong>> &result);
+
 jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
                                         std::vector<std::pair<jobject, jlong>> &result,
                                         tagReleasedCallback callback);
