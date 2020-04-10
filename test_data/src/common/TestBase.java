@@ -4,7 +4,6 @@ import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 
 import java.lang.management.ManagementFactory;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public abstract class TestBase {
@@ -49,14 +48,23 @@ public abstract class TestBase {
     System.out.println(names + " -> " + Arrays.toString(IdeaNativeAgentProxy.estimateRetainedSize(objects)));
   }
 
-  protected static void printSizeByClasses(Class<?>... classes) {
-    assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
-    long[] sizes = IdeaNativeAgentProxy.getShallowSizeByClasses(classes);
+  private static void printSizeByClasses(Class<?>[] classes, long[] sizes) {
     assertEquals(classes.length, sizes.length);
-    System.out.println("Shallow sizes by class:");
     for (int i = 0; i < sizes.length; i++) {
       System.out.println("\t" + classes[i].getTypeName() + " -> " + sizes[i]);
     }
+  }
+
+  protected static void printRetainedSizeByClasses(Class<?>... classes) {
+    assertTrue(IdeaNativeAgentProxy.canGetRetainedSizeByClasses());
+    System.out.println("Retained sizes by class:");
+    printSizeByClasses(classes, IdeaNativeAgentProxy.getRetainedSizeByClasses(classes));
+  }
+
+  protected static void printSizeByClasses(Class<?>... classes) {
+    assertTrue(IdeaNativeAgentProxy.canGetShallowSizeByClasses());
+    System.out.println("Shallow sizes by class:");
+    printSizeByClasses(classes, IdeaNativeAgentProxy.getShallowSizeByClasses(classes));
   }
 
   private static int indexOfReference(Object[] array, Object value) {

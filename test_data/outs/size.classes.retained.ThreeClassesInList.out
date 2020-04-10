@@ -1,0 +1,5 @@
+Agent loaded
+Retained sizes by class:
+	common.TestTreeNode$Impl1 -> 144
+	common.TestTreeNode$Impl2 -> 120
+	common.TestTreeNode$Impl3 -> 96

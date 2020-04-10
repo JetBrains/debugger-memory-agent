@@ -13,17 +13,22 @@ static jint cbHeapObjectIterationCallback(jlong classTag, jlong size, jlong *tag
     return JVMTI_VISIT_OBJECTS;
 }
 
-jlongArray getSizes(jobjectArray classesArray, jvmtiEnv *jvmti, JNIEnv *env) {
+void tagClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, bool setTagToZero = false) {
+    for (jsize i = 0; i < env->GetArrayLength(classesArray); i++) {
+        jobject classObject = env->GetObjectArrayElement(classesArray, i);
+        jvmtiError err = jvmti->SetTag(classObject, setTagToZero ? 0 : i + 1);
+        handleError(jvmti, err, "could not set tag for class object");
+    }
+}
+
+jlongArray getSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
     jvmtiError err;
     jsize classesCount = env->GetArrayLength(classesArray);
     jlongArray result = env->NewLongArray(classesCount);
     auto sizes = new jlong[classesCount];
-    for (jsize i = 0; i < classesCount; i++) {
-        sizes[i] = 0;
-        jobject classObject = env->GetObjectArrayElement(classesArray, i);
-        err = jvmti->SetTag(classObject, i + 1);
-        handleError(jvmti, err, "could not set tag for class object");
-    }
+    std::memset(sizes, 0, sizeof(jlong) * classesCount);
+
+    tagClasses(env, jvmti, classesArray);
 
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));

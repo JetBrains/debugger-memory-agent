@@ -8,11 +8,17 @@ public class IdeaNativeAgentProxy {
 
   public static native boolean canEstimateObjectSize();
 
+  public static native boolean canGetRetainedSizeByClasses();
+
+  public static native boolean canGetShallowSizeByClasses();
+
   public static native boolean canEstimateObjectsSizes();
 
   public static native boolean canFindPathsToClosestGcRoots();
 
-  public static native long[] getShallowSizeByClasses(Class<?>[] klass);
+  public static native long[] getShallowSizeByClasses(Class<?>[] classes);
+
+  public static native long[] getRetainedSizeByClasses(Class<?>[] classes);
 
   public static native Object gcRoots(Object object, int limit);
 
