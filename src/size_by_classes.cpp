@@ -2,7 +2,6 @@
 #include <jni.h>
 #include <vector>
 #include <jvmti.h>
-#include <iostream>
 #include <cstring>
 #include "utils.h"
 
