@@ -12,7 +12,7 @@ static jint cbHeapObjectIterationCallback(jlong classTag, jlong size, jlong *tag
     return JVMTI_VISIT_OBJECTS;
 }
 
-void tagClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, bool setTagToZero = false) {
+static void tagClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, bool setTagToZero = false) {
     for (jsize i = 0; i < env->GetArrayLength(classesArray); i++) {
         jobject classObject = env->GetObjectArrayElement(classesArray, i);
         jvmtiError err = jvmti->SetTag(classObject, setTagToZero ? 0 : i + 1);
@@ -21,7 +21,6 @@ void tagClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, bool se
 }
 
 jlongArray getSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
-    jvmtiError err;
     jsize classesCount = env->GetArrayLength(classesArray);
     jlongArray result = env->NewLongArray(classesCount);
     auto sizes = new jlong[classesCount];
@@ -37,9 +36,7 @@ jlongArray getSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
     jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_CLASS_UNTAGGED, nullptr, &cb, sizes);
     env->SetLongArrayRegion(result, 0, classesCount, sizes);
 
-    for (jsize i = 0; i < classesCount; i++) {
-        jvmti->SetTag(env->GetObjectArrayElement(classesArray, i), 0);
-    }
+    tagClasses(env, jvmti, classesArray, true);
 
     return result;
 }

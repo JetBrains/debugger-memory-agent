@@ -9,7 +9,7 @@
 static jlong tagBalance = 0;
 
 typedef struct Tag {
-private:
+protected:
     explicit Tag() = default;
 
 public:
@@ -20,10 +20,31 @@ public:
         return new Tag();
     }
 
+    virtual jlong getId() {
+        return 0;
+    }
+
     ~Tag() {
         --tagBalance;
     }
 } Tag;
+
+class ClassTag : public Tag {
+private:
+    explicit ClassTag(jlong id) : id(id) {
+
+    }
+
+    jlong id;
+public:
+    jlong getId() override {
+        return id;
+    }
+
+    static ClassTag *create(jlong value) {
+        return new ClassTag(value);
+    }
+};
 
 static Tag *tagToPointer(jlong tag) {
     return reinterpret_cast<Tag *>(tag);
@@ -142,13 +163,14 @@ jint JNICALL visitObjectAndClearTag(jlong classTag, jlong size, jlong *tagPtr, j
 }
 
 jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
-    if (classTag != 0)  {
+    Tag *pClassTag = tagToPointer(classTag);
+    if (classTag != 0 && pClassTag->getId() > 0)  {
         Tag *tag = *tagPtr == 0 ? Tag::create() : tagToPointer(*tagPtr);
-        tag->states[classTag - 1] = create_state(true, true, false);
+        tag->states[pClassTag->getId() - 1] = create_state(true, true, false);
         *tagPtr = pointerToTag(tag);
     }
 
-    return JVMTI_VISIT_OBJECTS;
+    return JVMTI_ITERATION_CONTINUE;
 }
 
 static jvmtiError createTagsForObjects(jvmtiEnv *jvmti, const std::vector<jobject> &objects) {
@@ -160,6 +182,17 @@ static jvmtiError createTagsForObjects(jvmtiEnv *jvmti, const std::vector<jobjec
         Tag *tag = oldTag == 0 ? Tag::create() : tagToPointer(oldTag);
         tag->states[i] = create_state(true, true, false);
         err = jvmti->SetTag(objects[i], pointerToTag(tag));
+        if (err != JVMTI_ERROR_NONE) return err;
+    }
+
+    return JVMTI_ERROR_NONE;
+}
+
+static jvmtiError createTagsForClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
+    for (jsize i = 0; i < env->GetArrayLength(classesArray); i++) {
+        jobject classObject = env->GetObjectArrayElement(classesArray, i);
+        Tag *tag = ClassTag::create(i + 1);
+        jvmtiError err = jvmti->SetTag(classObject, pointerToTag(tag));
         if (err != JVMTI_ERROR_NONE) return err;
     }
 
@@ -230,17 +263,25 @@ jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objec
     return toJavaArray(env, result);
 }
 
-static jvmtiError getRetainedSizeByClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, std::vector<jlong> &result) {
+static jvmtiError tagObjectsOfClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&tagObjectOfTaggedClass);
 
     debug("tag objects of classes");
-    tagClasses(env, jvmti, classesArray);
-    jvmtiError err = jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
-    tagClasses(env, jvmti, classesArray, true);
+    jvmtiError err = createTagsForClasses(env, jvmti, classesArray);
     if (err != JVMTI_ERROR_NONE) return err;
 
+    err = jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
+
+    return err;
+}
+
+static jvmtiError getRetainedSizeByClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, std::vector<jlong> &result) {
+    jvmtiError err = tagObjectsOfClasses(env, jvmti, classesArray);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&visitReference);
     cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&visitObjectAndClearTag);

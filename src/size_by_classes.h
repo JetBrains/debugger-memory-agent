@@ -9,6 +9,4 @@
 
 jlongArray getSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray);
 
-void tagClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, bool setTagToZero = false);
-
 #endif //MEMORY_AGENT_SIZE_BY_CLASSES_H

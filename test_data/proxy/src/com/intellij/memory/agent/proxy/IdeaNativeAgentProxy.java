@@ -16,9 +16,9 @@ public class IdeaNativeAgentProxy {
 
   public static native boolean canFindPathsToClosestGcRoots();
 
-  public static native long[] getShallowSizeByClasses(Class<?>[] classes);
+  public static native long[] getShallowSizeByClasses(Object[] classes);
 
-  public static native long[] getRetainedSizeByClasses(Class<?>[] classes);
+  public static native long[] getRetainedSizeByClasses(Object[] classes);
 
   public static native Object gcRoots(Object object, int limit);
 
