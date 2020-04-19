@@ -193,16 +193,15 @@ static void walk(jlong start, std::set<jlong> &visited, jint limit) {
     }
 }
 
-static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag,
+static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
                                      std::unordered_map<jlong, jint> tagToIndex,
-                                     bool sortBackIndices) {
-    GcTag *gcTag = pointerToGcTag(tag);
+                                     const std::vector<referenceInfo *> &infos) {
     std::vector<jint> prevIndices;
     std::vector<jint> refKinds;
     std::vector<jobject> refInfos;
 
     jint exceedLimitCount = 0;
-    for (referenceInfo *info : gcTag->backRefs) {
+    for (referenceInfo *info : infos) {
         jlong prevTag = info->tag();
         if (prevTag != -1 && tagToIndex.find(prevTag) == tagToIndex.end()) {
             ++exceedLimitCount;
@@ -213,19 +212,21 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag,
         refInfos.push_back(info->getReferenceInfo(env, jvmti));
     }
 
-    if (sortBackIndices) {
-        std::sort(prevIndices.begin(), prevIndices.end());
-    }
-
     jobjectArray result = env->NewObjectArray(4, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(result, 0, toJavaArray(env, prevIndices));
     env->SetObjectArrayElement(result, 1, toJavaArray(env, refKinds));
     env->SetObjectArrayElement(result, 2, toJavaArray(env, refInfos));
     env->SetObjectArrayElement(result, 3, toJavaArray(env, exceedLimitCount));
+
     return result;
 }
 
-static std::vector<std::pair<jobject, jlong>> getObjectToTag(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jlong> &tags) {
+static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti, jlong tag,
+                                     std::unordered_map<jlong, jint> &tagToIndex) {
+    return createLinksInfos(env, jvmti, tagToIndex, pointerToGcTag(tag)->backRefs);
+}
+
+static std::vector<std::pair<jobject, jlong>> getObjectToTag(jvmtiEnv *jvmti, std::vector<jlong> &tags) {
     std::vector<std::pair<jobject, jlong>> objectToTag;
     jvmtiError err = cleanHeapAndGetObjectsByTags(jvmti, tags, objectToTag, cleanTag);
     handleError(jvmti, err, "Could not receive objects by their tags");
@@ -233,21 +234,25 @@ static std::vector<std::pair<jobject, jlong>> getObjectToTag(JNIEnv *env, jvmtiE
     return objectToTag;
 }
 
-static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti,
-                                       const std::vector<std::pair<jobject, jlong>> &objectToTag,
-                                       bool sortBackIndices) {
-    jint objectsCount = static_cast<jint>(objectToTag.size());
+static std::unordered_map<jlong, jint> getTagToIndex(const std::vector<std::pair<jobject, jlong>> &objectToTag) {
     std::unordered_map<jlong, jint> tagToIndex;
-    for (jsize i = 0; i < objectsCount; ++i) {
+    for (jsize i = 0; i < objectToTag.size(); ++i) {
         tagToIndex[objectToTag[i].second] = i;
     }
 
+    return tagToIndex;
+}
+
+static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti,
+                                       const std::vector<std::pair<jobject, jlong>> &objectToTag) {
+    std::unordered_map<jlong, jint> tagToIndex = getTagToIndex(objectToTag);
     jclass langObject = env->FindClass("java/lang/Object");
+    jint objectsCount = static_cast<jint>(objectToTag.size());
     jobjectArray resultObjects = env->NewObjectArray(objectsCount, langObject, nullptr);
     jobjectArray links = env->NewObjectArray(objectsCount, langObject, nullptr);
     for (jsize i = 0; i < objectsCount; ++i) {
         env->SetObjectArrayElement(resultObjects, i, objectToTag[i].first);
-        auto infos = createLinksInfos(env, jvmti, objectToTag[i].second, tagToIndex, sortBackIndices);
+        auto infos = createLinksInfos(env, jvmti, objectToTag[i].second, tagToIndex);
         env->SetObjectArrayElement(links, i, infos);
     }
 
@@ -258,8 +263,8 @@ static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti,
     return result;
 }
 
-static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jlong> &tags) {
-    return createResultObject(env, jvmti, getObjectToTag(env, jvmti, tags), false);
+static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, std::vector<jlong> &&tags) {
+    return createResultObject(env, jvmti, getObjectToTag(jvmti, tags));
 }
 
 static GcTag * createTags(jvmtiEnv *jvmti, jobject target) {
@@ -280,7 +285,7 @@ static GcTag * createTags(jvmtiEnv *jvmti, jobject target) {
     return tag;
 }
 
-jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object, jint limit) {
+jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jobject object, jint limit) {
     info("Looking for paths to gc roots started");
     GcTag * tag = createTags(jvmti, object);
 
@@ -291,8 +296,8 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
 
     info("create resulting java objects");
     std::unordered_map<jlong, jint> tag_to_index;
-    std::vector<jlong> tags(uniqueTags.begin(), uniqueTags.end());
-    jobjectArray result = createResultObject(jni, jvmti, tags);
+    jobjectArray result = createResultObject(jni, jvmti,
+            std::vector<jlong>(uniqueTags.begin(), uniqueTags.end()));
 
     info("remove all tags from objects in heap");
     jvmtiError err = removeAllTagsFromHeap(jvmti, cleanTag);
@@ -301,23 +306,96 @@ jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject
     return result;
 }
 
-static std::vector<std::pair<jlong, jint>> collectPaths(const std::vector<jlong> &roots,
-                                                        std::unordered_map<jlong, jlong> &prevNode) {
-    std::vector<std::pair<jlong, jint>> nodes;
-    std::unordered_set<jlong> nodesSet;
-
-    jint cnt = 0;
-    for (jlong tag : roots) {
-        nodes.emplace_back(tag, cnt++);
-        while (prevNode[tag] != tag) {
-            tag = prevNode[tag];
-            if (nodesSet.insert(tag).second) {
-                nodes.emplace_back(tag, cnt);
-            }
+static referenceInfo *getReferrerInfo(jlong referee, jlong referrer) {
+    GcTag *tag = pointerToGcTag(referee);
+    for (referenceInfo *info : tag->backRefs) {
+        if (info->tag() == referrer) {
+            return info;
         }
     }
 
-    return nodes;
+    return nullptr;
+}
+
+static std::vector<std::pair<jobject, jlong>> getSortedObjectToTag(jvmtiEnv *jvmti,
+                                                                   const std::vector<std::pair<jlong, jint>> &nodes) {
+    std::unordered_map<jlong, jint> tagToPathNumber;
+    std::vector<jlong> tags(nodes.size());
+    for (auto node : nodes) {
+        tags.push_back(node.first);
+        tagToPathNumber[node.first] = node.second;
+    }
+
+    std::vector<std::pair<jobject, jlong>> objectToTag = getObjectToTag(jvmti, tags);
+    std::sort(
+            objectToTag.begin(),
+            objectToTag.end(),
+            [&tagToPathNumber](const auto &left, const auto &right) {
+                return tagToPathNumber[left.second] < tagToPathNumber[right.second] ;
+            }
+    );
+
+    return objectToTag;
+}
+
+static jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti,
+                                                      const std::vector<std::pair<jlong, jint>> &nodes,
+                                                      std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {
+    std::vector<std::pair<jobject, jlong>> objectToTag = getSortedObjectToTag(jvmti, nodes);
+    std::unordered_map<jlong, jint> tagToIndex = getTagToIndex(objectToTag);
+    jint objectsCount = static_cast<jint>(objectToTag.size());
+    jclass langObject = env->FindClass("java/lang/Object");
+    jobjectArray resultObjects = env->NewObjectArray(objectsCount, langObject, nullptr);
+    jobjectArray links = env->NewObjectArray(objectsCount, langObject, nullptr);
+
+    for (jsize i = 0; i < objectsCount; ++i) {
+        env->SetObjectArrayElement(resultObjects, i, objectToTag[i].first);
+        auto infos = createLinksInfos(env, jvmti, tagToIndex, tagToInfos[objectToTag[i].second]);
+        env->SetObjectArrayElement(links, i, infos);
+    }
+
+    jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
+    env->SetObjectArrayElement(result, 0, resultObjects);
+    env->SetObjectArrayElement(result, 1, links);
+
+    return result;
+}
+
+static bool insertInfos(jlong referee, jlong referrer,
+                        std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {
+    referenceInfo *info = getReferrerInfo(referee, referrer);
+    auto it = tagToInfos.find(referee);
+    if (it == tagToInfos.end()) {
+        tagToInfos[referee] = std::vector<referenceInfo*>{info};
+        return false;
+    }
+
+    it->second.push_back(info);
+    return true;
+}
+
+static jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti,
+                                                      const std::vector<jlong> &roots,
+                                                      std::unordered_map<jlong, jlong> &prevNode) {
+    std::vector<std::pair<jlong, jint>> nodes;
+    std::unordered_map<jlong, std::vector<referenceInfo *>> tagToInfos;
+    jint cnt = 0;
+    for (jlong tag : roots) {
+        nodes.emplace_back(tag, cnt++);
+        insertInfos(tag, -1, tagToInfos);
+        while (prevNode[tag] != tag) {
+            jlong prevTag = prevNode[tag];
+
+            if (insertInfos(prevTag, tag, tagToInfos)) {
+                break;
+            }
+
+            nodes.emplace_back(prevTag, cnt);
+            tag = prevTag;
+        }
+    }
+
+    return createResultObjectForGcRootsPaths(env, jvmti, nodes, tagToInfos);
 }
 
 static bool isValidGcRoot(jlong tag, jint kind) {
@@ -326,15 +404,16 @@ static bool isValidGcRoot(jlong tag, jint kind) {
            kind != JVMTI_HEAP_REFERENCE_JNI_LOCAL;
 }
 
-static std::vector<std::pair<jlong, jint>> findPathsToClosestGcRoots(jlong start, jint number) {
+static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti,
+                                                 jlong start, jint number) {
     std::queue<jlong> queue;
-    std::unordered_map<jlong, jlong> prevNode;
+    std::unordered_map<jlong, jlong> prevTag;
     std::unordered_set<jlong> foundRootsSet;
     std::vector<jlong> foundRoots;
 
     jlong tag = start;
     queue.push(tag);
-    prevNode[tag] = tag;
+    prevTag[tag] = tag;
     while (!queue.empty() && number > foundRoots.size()) {
         tag = queue.front();
         queue.pop();
@@ -343,8 +422,8 @@ static std::vector<std::pair<jlong, jint>> findPathsToClosestGcRoots(jlong start
             if (isValidGcRoot(parentTag, info->kind()) &&
                 foundRootsSet.insert(tag).second) {
                 foundRoots.push_back(tag);
-            } else if (parentTag != -1 && prevNode.find(parentTag) == prevNode.end()) {
-                prevNode[parentTag] = tag;
+            } else if (parentTag != -1 && prevTag.find(parentTag) == prevTag.end()) {
+                prevTag[parentTag] = tag;
                 queue.push(parentTag);
             }
 
@@ -354,41 +433,18 @@ static std::vector<std::pair<jlong, jint>> findPathsToClosestGcRoots(jlong start
         }
     }
 
+
     return foundRoots.empty() ?
-            std::vector<std::pair<jlong, jint>>(1, std::make_pair(start, 0)) :
-            collectPaths(foundRoots, prevNode);
+            createResultObject(env, jvmti, std::vector<jlong>{start}) :
+            createResultObjectForGcRootsPaths(env, jvmti, foundRoots, prevTag);
 }
 
-static jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti,
-                                                      const std::vector<std::pair<jlong, jint>> &nodes) {
-    std::unordered_map<jlong, jint> tagToPathNumber;
-    std::vector<jlong> tags(nodes.size());
-    for (auto node : nodes) {
-        tags.push_back(node.first);
-        tagToPathNumber[node.first] = node.second;
-    }
-
-    std::vector<std::pair<jobject, jlong>> objectToTag = getObjectToTag(env, jvmti, tags);
-    std::sort(
-            objectToTag.begin(),
-            objectToTag.end(),
-            [&tagToPathNumber](const auto& lhs, const auto& rhs) {
-                return tagToPathNumber[lhs.second] < tagToPathNumber[rhs.second] ;
-            }
-    );
-
-    return createResultObject(env, jvmti, objectToTag, true);
-}
-
-jobjectArray findPathsToClosestGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jclass thisClass, jobject object, jint number) {
+jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint number) {
     info("Looking for shortest path to gc root started");
     GcTag * tag = createTags(jvmti, object);
 
-    info("start walking through collected tags");
-    std::vector<std::pair<jlong, jint>> nodes = findPathsToClosestGcRoots(pointerToTag(tag), number);
-
     info("create resulting java objects");
-    jobjectArray result = createResultObjectForGcRootsPaths(jni, jvmti, nodes);
+    jobjectArray result = collectPathsToClosestGcRoots(env, jvmti, pointerToTag(tag), number);
 
     info("remove all tags from objects in heap");
     jvmtiError err = removeAllTagsFromHeap(jvmti, cleanTag);

@@ -164,7 +164,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobject object,
         jint limit) {
-    return findGcRoots(env, gdata->jvmti, thisClass, object, limit);
+    return findGcRoots(env, gdata->jvmti, object, limit);
 }
 
 extern "C"
@@ -173,7 +173,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobject object,
         jint number) {
-    return findPathsToClosestGcRoots(env, gdata->jvmti, thisClass, object, number);
+    return findPathsToClosestGcRoots(env, gdata->jvmti, object, number);
 }
 
 extern "C"

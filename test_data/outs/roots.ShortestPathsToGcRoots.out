@@ -3,7 +3,7 @@ Agent loaded
 1: [node 18] <- [2 :: FIELD :: index = 0]
 2: [node 19] <- [3 :: FIELD :: index = 0]
 3: [node 20] <- [0 :: FIELD :: index = 0]
-4: [node 2] <- [1 :: FIELD :: index = 0](more 2 found)
+4: [node 2] <- [1 :: FIELD :: index = 0]
 0: [node 11] <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 2]
 1: [node 12] <- [2 :: FIELD :: index = 0]
 2: [node 13] <- [3 :: FIELD :: index = 0]
@@ -14,7 +14,7 @@ Agent loaded
 7: [node 18] <- [8 :: FIELD :: index = 0]
 8: [node 19] <- [9 :: FIELD :: index = 0]
 9: [node 20] <- [6 :: FIELD :: index = 0]
-10: [node 2] <- [1 :: FIELD :: index = 0], [7 :: FIELD :: index = 0](more 1 found)
+10: [node 2] <- [1 :: FIELD :: index = 0], [7 :: FIELD :: index = 0]
 0: [node 10] <- [10 :: FIELD :: index = 0]
 1: [node 11] <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 2]
 2: [node 12] <- [3 :: FIELD :: index = 0]

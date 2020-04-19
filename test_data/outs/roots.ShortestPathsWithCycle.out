@@ -5,5 +5,5 @@ Agent loaded
 3: [node 4] <- [4 :: FIELD :: index = 0]
 4: [node 5] <- [0 :: FIELD :: index = 0]
 5: [node 6] <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 2]
-6: [node 7] <- [1 :: FIELD :: index = 0], [7 :: FIELD :: index = 0]
+6: [node 7] <- [7 :: FIELD :: index = 0]
 7: [node 8] <- [5 :: FIELD :: index = 0]
