@@ -55,6 +55,16 @@ public abstract class TestBase {
     }
   }
 
+  protected static void printShallowAndRetainedSizeByClasses(Class<?>... classes) {
+    assertTrue(IdeaNativeAgentProxy.canGetRetainedSizeByClasses());
+    assertTrue(IdeaNativeAgentProxy.canGetShallowSizeByClasses());
+    Object[] arrayResult = (Object[]) IdeaNativeAgentProxy.getShallowAndRetainedSizeByClasses(classes);
+    System.out.println("Shallow sizes by class:");
+    printSizeByClasses(classes, (long[])arrayResult[0]);
+    System.out.println("Retained sizes by class:");
+    printSizeByClasses(classes, (long[])arrayResult[1]);
+  }
+
   protected static void printRetainedSizeByClasses(Class<?>... classes) {
     assertTrue(IdeaNativeAgentProxy.canGetRetainedSizeByClasses());
     System.out.println("Retained sizes by class:");

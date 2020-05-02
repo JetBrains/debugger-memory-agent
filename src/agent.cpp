@@ -155,7 +155,7 @@ JNIEXPORT jlong JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProx
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
-    return estimateObjectSize(env, gdata->jvmti, object);
+    return estimateObjectSize(gdata->jvmti, object);
 }
 
 extern "C"
@@ -190,6 +190,14 @@ JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgen
         jclass thisClass,
         jobjectArray classesArray) {
     return getRetainedSizeByClasses(env, gdata->jvmti, classesArray);
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClasses(
+        JNIEnv *env,
+        jclass thisClass,
+        jobjectArray classesArray) {
+    return getShallowAndRetainedSizeByClasses(env, gdata->jvmti, classesArray);
 }
 
 #pragma clang diagnostic pop

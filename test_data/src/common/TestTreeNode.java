@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public abstract class TestTreeNode {
-    private TestTreeNode left;
-    private TestTreeNode right;
+    public TestTreeNode left;
+    public TestTreeNode right;
 
     @FunctionalInterface
     private interface ImplCreator {
@@ -40,8 +40,7 @@ public abstract class TestTreeNode {
     }
 
     public static TestTreeNode createTreeFromString(String str) {
-        ArrayList<String> tokens = new ArrayList<>(Arrays.asList(str.split("\\s+")));
-        return createNode(tokens.iterator());
+        return createNode(Arrays.asList(str.split("\\s+")).iterator());
     }
 
     public static class Impl1 extends TestTreeNode {

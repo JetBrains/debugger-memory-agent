@@ -19,7 +19,7 @@ public class ThreeClassesInList extends TestBase {
               3
         */
         TestTreeNode root = TestTreeNode.createTreeFromString("1 2 3 1 2 3 0 0 0 0 0 0 0");
-        printRetainedSizeByClasses(
+        printShallowAndRetainedSizeByClasses(
                 TestTreeNode.Impl1.class,
                 TestTreeNode.Impl2.class,
                 TestTreeNode.Impl3.class

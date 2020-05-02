@@ -441,7 +441,7 @@ static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti,
 
 jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint number) {
     info("Looking for shortest path to gc root started");
-    GcTag * tag = createTags(jvmti, object);
+    GcTag *tag = createTags(jvmti, object);
 
     info("create resulting java objects");
     jobjectArray result = collectPathsToClosestGcRoots(env, jvmti, pointerToTag(tag), number);

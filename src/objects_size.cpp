@@ -101,7 +101,7 @@ static bool checkIfAlreadyVisited(const jlong *tagPtr) {
         return false;
     }
 
-    auto & states = tagToPointer(*tagPtr)->states;
+    auto &states = tagToPointer(*tagPtr)->states;
     auto state = states.begin();
     if (states.size() == 1 &&
         isStartObject(state->second) &&
@@ -113,8 +113,8 @@ static bool checkIfAlreadyVisited(const jlong *tagPtr) {
 }
 
 jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
-                    jlong referrerClassTag, jlong size, jlong *tagPtr,
-                    jlong *referrerTagPtr, jint length, void *_) { // NOLINT(readability-non-const-parameter)
+                            jlong referrerClassTag, jlong size, jlong *tagPtr,
+                            jlong *referrerTagPtr, jint length, void *_) { // NOLINT(readability-non-const-parameter)
     bool alreadyVisited = checkIfAlreadyVisited(tagPtr);
     if (*tagPtr == 0) {
         *tagPtr = pointerToTag(Tag::create());
@@ -148,7 +148,8 @@ jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
 
 #pragma clang diagnostic pop
 
-jint JNICALL visitObjectAndClearTag(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+jint JNICALL visitObjectAndClearTag(jlong classTag, jlong size, jlong *tagPtr,
+                                    jint length, void *userData) {
     Tag *tag = tagToPointer(*tagPtr);
     for (const auto &entry : tag->states) {
         if (isRetained(entry.second)) {
@@ -162,7 +163,28 @@ jint JNICALL visitObjectAndClearTag(jlong classTag, jlong size, jlong *tagPtr, j
     return JVMTI_ITERATION_CONTINUE;
 }
 
-jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+jint JNICALL visitObjectForShallowAndRetainedSize(jlong classTag, jlong size, jlong *tagPtr,
+                                                  jint length, void *userData) {
+    Tag *tag = tagToPointer(*tagPtr);
+    for (const auto &entry : tag->states) {
+        auto *arrays = reinterpret_cast<std::pair<jlong *, jlong *> *>(userData);
+        if (isRetained(entry.second)) {
+            arrays->second[entry.first] += size;
+        }
+
+        if (isStartObject(entry.second)) {
+            arrays->first[entry.first] += size;
+        }
+    }
+
+    delete tag;
+    *tagPtr = 0;
+
+    return JVMTI_ITERATION_CONTINUE;
+}
+
+jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr,
+                                    jint length, void *userData) {
     Tag *pClassTag = tagToPointer(classTag);
     if (classTag != 0 && pClassTag->getId() > 0)  {
         Tag *tag = *tagPtr == 0 ? Tag::create() : tagToPointer(*tagPtr);
@@ -230,7 +252,7 @@ static jvmtiError estimateObjectsSizes(jvmtiEnv *jvmti, std::vector<jobject> &ob
     return err;
 }
 
-jlong estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object) {
+jlong estimateObjectSize(jvmtiEnv *jvmti, jobject object) {
     std::vector<jobject> objects;
     objects.push_back(object);
     std::vector<jlong> result;
@@ -290,14 +312,39 @@ static jvmtiError getRetainedSizeByClasses(JNIEnv *env, jvmtiEnv *jvmti, jobject
     err = jvmti->FollowReferences(0, nullptr, nullptr, &cb, nullptr);
     if (err != JVMTI_ERROR_NONE) return err;
 
+
     debug("calculate retained sizes");
+    result.resize(env->GetArrayLength(classesArray));
     err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, result.data());
 
     return err;
 }
 
+static jvmtiError getShallowAndRetainedSizeByClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray,
+                                                     std::vector<jlong> &shallowSizes, std::vector<jlong> &retainedSizes) {
+    jvmtiError err = tagObjectsOfClasses(env, jvmti, classesArray);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    jvmtiHeapCallbacks cb;
+    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&visitReference);
+    cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&visitObjectForShallowAndRetainedSize);
+
+    debug("tag heap");
+    err = jvmti->FollowReferences(0, nullptr, nullptr, &cb, nullptr);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    debug("calculate shallow and retained sizes");
+    retainedSizes.resize(env->GetArrayLength(classesArray));
+    shallowSizes.resize(env->GetArrayLength(classesArray));
+    std::pair<jlong *, jlong *> arrays = std::make_pair(shallowSizes.data(), retainedSizes.data());
+    err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, &arrays);
+
+    return err;
+}
+
 jlongArray getRetainedSizeByClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
-    std::vector<jlong> result(env->GetArrayLength(classesArray));
+    std::vector<jlong> result;
     jvmtiError err = getRetainedSizeByClasses(env, jvmti, classesArray, result);
     if (err != JVMTI_ERROR_NONE) {
         handleError(jvmti, err, "Could not estimate retained size by classes");
@@ -305,4 +352,22 @@ jlongArray getRetainedSizeByClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray c
     }
 
     return toJavaArray(env, result);
+}
+
+jobjectArray getShallowAndRetainedSizeByClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
+    std::vector<jlong> shallowSizes;
+    std::vector<jlong> retainedSizes;
+    jvmtiError err = getShallowAndRetainedSizeByClasses(env, jvmti, classesArray,
+            shallowSizes, retainedSizes);
+
+    jclass langObject = env->FindClass("java/lang/Object");
+    jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
+    if (err != JVMTI_ERROR_NONE) {
+        handleError(jvmti, err, "Could not estimate retained size by classes");
+        return result;
+    }
+
+    env->SetObjectArrayElement(result, 0, toJavaArray(env, shallowSizes));
+    env->SetObjectArrayElement(result, 1, toJavaArray(env, retainedSizes));
+    return result;
 }
