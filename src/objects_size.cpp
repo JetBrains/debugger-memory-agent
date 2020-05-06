@@ -62,7 +62,7 @@ bool isReachableOutside(uint8_t state) {
     return (state & (1u << 2u)) != 0u;
 }
 
-uint8_t create_state(bool isStartObject, bool isInSubtree, bool isReachableOutside) {
+uint8_t createState(bool isStartObject, bool isInSubtree, bool isReachableOutside) {
     uint8_t state = 0;
     if (isStartObject) {
         state |= 1u;
@@ -82,11 +82,11 @@ bool isRetained(uint8_t state) {
 }
 
 uint8_t defaultState() {
-    return create_state(false, false, false);
+    return createState(false, false, false);
 }
 
 uint8_t updateState(uint8_t currentState, uint8_t referrerState) {
-    return create_state(
+    return createState(
             isStartObject(currentState),
             isInSubtree(currentState) || isInSubtree(referrerState),
             isReachableOutside(currentState) || (!isStartObject(referrerState) && isReachableOutside(referrerState))
@@ -131,13 +131,13 @@ jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
         Tag *refereeTag = tagToPointer(*tagPtr);
         for (auto &entry : refereeTag->states) {
             if (referrerTag->states.find(entry.first) == referrerTag->states.end()) {
-                entry.second = updateState(entry.second,create_state(false, false, true));
+                entry.second = updateState(entry.second, createState(false, false, true));
             }
         }
 
         for (const auto &entry : referrerTag->states) {
             auto beforeIter = refereeTag->states.find(entry.first);
-            uint8_t currentState = beforeIter == refereeTag->states.end() ? create_state(false, false, alreadyVisited)
+            uint8_t currentState = beforeIter == refereeTag->states.end() ? createState(false, false, alreadyVisited)
                                                                           : beforeIter->second;
             refereeTag->states[entry.first] = updateState(currentState, entry.second);
         }
@@ -188,7 +188,7 @@ jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr,
     Tag *pClassTag = tagToPointer(classTag);
     if (classTag != 0 && pClassTag->getId() > 0)  {
         Tag *tag = *tagPtr == 0 ? Tag::create() : tagToPointer(*tagPtr);
-        tag->states[pClassTag->getId() - 1] = create_state(true, true, false);
+        tag->states[pClassTag->getId() - 1] = createState(true, true, false);
         *tagPtr = pointerToTag(tag);
     }
 
@@ -202,7 +202,7 @@ static jvmtiError createTagsForObjects(jvmtiEnv *jvmti, const std::vector<jobjec
         jvmtiError err = jvmti->GetTag(object, &oldTag);
         if (err != JVMTI_ERROR_NONE) return err;
         Tag *tag = oldTag == 0 ? Tag::create() : tagToPointer(oldTag);
-        tag->states[i] = create_state(true, true, false);
+        tag->states[i] = createState(true, true, false);
         err = jvmti->SetTag(objects[i], pointerToTag(tag));
         if (err != JVMTI_ERROR_NONE) return err;
     }

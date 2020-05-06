@@ -17,7 +17,7 @@ public abstract class TestBase {
   }
 
   private static final int DEFAULT_LIMIT = 5000;
-  private static Map<Integer, String> referenceDescription = new HashMap<>();
+  private static final Map<Integer, String> referenceDescription = new HashMap<>();
 
   static {
     referenceDescription.put(1, "CLASS");
@@ -65,12 +65,6 @@ public abstract class TestBase {
     printSizeByClasses(classes, (long[])arrayResult[1]);
   }
 
-  protected static void printRetainedSizeByClasses(Class<?>... classes) {
-    assertTrue(IdeaNativeAgentProxy.canGetRetainedSizeByClasses());
-    System.out.println("Retained sizes by class:");
-    printSizeByClasses(classes, IdeaNativeAgentProxy.getRetainedSizeByClasses(classes));
-  }
-
   protected static void printSizeByClasses(Class<?>... classes) {
     assertTrue(IdeaNativeAgentProxy.canGetShallowSizeByClasses());
     System.out.println("Shallow sizes by class:");
@@ -103,6 +97,7 @@ public abstract class TestBase {
     Object[] arrayResult = (Object[]) result;
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];
+    boolean[] weakSoftReachable = (boolean[]) arrayResult[2];
     Object[] sortedObjects = Arrays.stream(objects).sorted(Comparator.comparing(TestBase::asString)).toArray();
     int[] oldIndexToNewIndex = new int[objects.length];
     int[] newIndexToOldIndex = new int[objects.length];
@@ -121,7 +116,12 @@ public abstract class TestBase {
       int[] moreLinks = (int[]) objLinks[3];
 
       String referencedFrom = buildReferencesString(indices, kinds, infos, oldIndexToNewIndex, moreLinks[0]);
-      System.out.println(i + ": " + asString(obj) + " <- " + referencedFrom);
+      System.out.printf(
+              "%d: %s %s<- %s\n",
+              i, asString(obj),
+              weakSoftReachable[newIndexToOldIndex[i]] ? "Weak/Soft reachable " : "",
+              referencedFrom
+      );
     }
   }
 
@@ -198,7 +198,7 @@ public abstract class TestBase {
         throw new AssertionError("Expected: null, but actual: " + actual.toString());
       }
     } else if (!expected.equals(actual)) {
-      throw new AssertionError("Expected: " + expected.toString() + ", but actual: " + Objects.toString(actual));
+      throw new AssertionError("Expected: " + expected.toString() + ", but actual: " + actual);
     }
   }
 
@@ -224,6 +224,6 @@ public abstract class TestBase {
     if (obj instanceof Object[]) {
       return Arrays.stream((Object[]) obj).map(x -> asStringImpl(x, visited)).collect(Collectors.joining(", ", "[", "]"));
     }
-    return obj.toString();
+    return obj.toString().replaceFirst("@.*", "");
   }
 }

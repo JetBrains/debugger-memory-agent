@@ -1,0 +1,8 @@
+Agent loaded
+0: java.lang.ref.WeakReference <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 1]
+1: test object Weak/Soft reachable <- [0 :: FIELD :: index = 0]
+0: java.lang.ref.SoftReference <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 2]
+1: test object Weak/Soft reachable <- [0 :: FIELD :: index = 0]
+0: java.lang.ref.PhantomReference <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 3]
+1: java.lang.ref.WeakReference <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 1]
+2: test object Weak/Soft reachable <- [0 :: FIELD :: index = 0], [1 :: FIELD :: index = 0]

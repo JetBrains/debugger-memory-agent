@@ -5,7 +5,7 @@
 
 #include <jni.h>
 
-jobjectArray findGcRoots(JNIEnv *jni, jvmtiEnv *jvmti, jobject object, jint limit);
+jobjectArray findGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint limit);
 
 jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint number);
 

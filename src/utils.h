@@ -12,6 +12,8 @@ typedef void (*tagReleasedCallback)(jlong tag);
 
 const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind);
 
+jbooleanArray toJavaArray(JNIEnv *env, std::vector<jboolean> &items);
+
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects);
 
 jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items);

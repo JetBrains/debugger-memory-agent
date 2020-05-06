@@ -61,6 +61,13 @@ jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items) {
     return result;
 }
 
+jbooleanArray toJavaArray(JNIEnv *env, std::vector<jboolean> &items) {
+    auto count = static_cast<jsize>(items.size());
+    jbooleanArray result = env->NewBooleanArray(count);
+    env->SetBooleanArrayRegion(result, 0, count, items.data());
+    return result;
+}
+
 jintArray toJavaArray(JNIEnv *env, jint value) {
     std::vector<jint> vector = {value};
     return toJavaArray(env, vector);
