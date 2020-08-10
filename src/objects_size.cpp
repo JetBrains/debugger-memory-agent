@@ -132,7 +132,7 @@ public:
         while  (j < referrerArray.size) {
             array[k++] = TagInfo(
                         referrerArray[j].index,
-                        updateState(createState(false, false,  alreadyVisited, true), referrerArray[j].state)
+                        updateState(createState(false, false,  alreadyVisited), referrerArray[j].state)
                     );
             j++;
         }
@@ -140,7 +140,7 @@ public:
         while (i < referreeArray.size) {
             array[k++] = TagInfo(
                         referreeArray[i].index,
-                        updateState(referreeArray[i].state, createState(false, false, true, true))
+                        updateState(referreeArray[i].state, createState(false, false, true))
                     );
             i++;
         }
