@@ -5,8 +5,6 @@
 
 #include <jni.h>
 
-jobjectArray findGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint limit);
-
 jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint number);
 
 #endif //NATIVE_MEMORY_AGENT_GC_ROOTS_H

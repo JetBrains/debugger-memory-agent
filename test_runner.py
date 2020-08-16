@@ -189,7 +189,8 @@ class TestRepository:
         result = list()
         for root, dirs, files in os.walk(src_root):
             for file in files:
-                result.append(os.path.join(root, file))
+                if file != ".DS_Store":
+                    result.append(os.path.join(root, file))
         return result
 
     @staticmethod

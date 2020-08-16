@@ -114,32 +114,10 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canGetRetainedSizeByClasses(
-        JNIEnv *env,
-        jclass thisClass) {
-    return (uint8_t) 1;
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canGetShallowSizeByClasses(
-        JNIEnv *env,
-        jclass thisClass) {
-    return (uint8_t) 1;
-}
-
-extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
         JNIEnv *env,
         jclass thisClass) {
     return (uint8_t) 1;
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindGcRoots(
-        JNIEnv *env,
-        jclass thisClass,
-        jobject object) {
-    return canAddAndRemoveTags();
 }
 
 extern "C"
@@ -155,16 +133,7 @@ JNIEXPORT jlong JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProx
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
-    return estimateObjectSize(gdata->jvmti, object);
-}
-
-extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_gcRoots(
-        JNIEnv *env,
-        jclass thisClass,
-        jobject object,
-        jint limit) {
-    return findGcRoots(env, gdata->jvmti, object, limit);
+    return estimateObjectSize(env, gdata->jvmti, object);
 }
 
 extern "C"
@@ -182,22 +151,6 @@ JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgen
         jclass thisClass,
         jobjectArray classesArray) {
     return getSizes(env, gdata->jvmti, classesArray);
-}
-
-extern "C"
-JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getRetainedSizeByClasses(
-        JNIEnv *env,
-        jclass thisClass,
-        jobjectArray classesArray) {
-    return getRetainedSizeByClasses(env, gdata->jvmti, classesArray);
-}
-
-extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClasses(
-        JNIEnv *env,
-        jclass thisClass,
-        jobjectArray classesArray) {
-    return getShallowAndRetainedSizeByClasses(env, gdata->jvmti, classesArray);
 }
 
 #pragma clang diagnostic pop
