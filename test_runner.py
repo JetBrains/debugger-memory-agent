@@ -146,6 +146,7 @@ class TestRepository:
         assert os.path.isdir(path), "Test repository must be a directory"
         self.__path = path
         self.__ignored_dirs = {'common', 'memory'}
+        self.__exception_messages = {}
 
     def test_count(self) -> int:
         return len(list(self.__iterate_tests_files(self.test_src_dir())))
@@ -154,7 +155,8 @@ class TestRepository:
         try:
             with open(output_file(name, self.__test_out_dir()), mode='r') as file:
                 return file.read()
-        except IOError:
+        except IOError as ex:
+            self.__exception_messages[name] = str(ex)
             return None
 
     def write_output(self, name, output):
@@ -174,6 +176,9 @@ class TestRepository:
                     yield from self.__iterate_tests_files(path, self.__join_with_package(package, file_name))
             else:
                 yield self.__join_with_package(package, str(file_name).split('.java')[0])
+
+    def get_message(self, name: str) -> Optional[str]:
+        return self.__exception_messages.get(name, None)
 
     def test_src_dir(self) -> str:
         return os.path.join(self.__path, 'src')
@@ -236,7 +241,8 @@ def create_test(test: Test, runner: TestRunner, repo: TestRepository):
             self.assertEqual(expected.strip(), actual.strip(), "outputs are mismatched")
         else:
             repo.write_output(test.name(), actual)
-            error_text = "********* EXPECTED OUTPUT NOT FOUND. DO NOT FORGET PUT IT INTO VCS *********"
+            error_text = "********* EXPECTED OUTPUT NOT FOUND. DO NOT FORGET PUT IT INTO VCS *********\n" \
+                         f"{repo.get_message(test.name())}"
             self.fail(error_text)
 
     return do_test
