@@ -3,10 +3,8 @@
 #include <jvmti.h>
 #include <vector>
 #include <queue>
-#include <cstdio>
 #include <iostream>
 #include <memory.h>
-#include <set>
 #include <unordered_map>
 #include <cstring>
 #include "log.h"
@@ -109,6 +107,20 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindPathsToClosestGcRoots(
+        JNIEnv *env,
+        jclass thisClass) {
+    return (uint8_t) 1;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
+        JNIEnv *env,
+        jclass thisClass) {
+    return (uint8_t) 1;
+}
+
+extern "C"
 JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
         JNIEnv *env,
         jclass thisClass,
@@ -125,27 +137,12 @@ JNIEXPORT jlong JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProx
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindGcRoots(
-        JNIEnv *env,
-        jclass thisClass,
-        jobject object) {
-    return canAddAndRemoveTags();
-}
-
-extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_gcRoots(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_findPathsToClosestGcRoots(
         JNIEnv *env,
         jclass thisClass,
         jobject object,
-        jint limit) {
-    return findGcRoots(env, gdata->jvmti, thisClass, object, limit);
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
-        JNIEnv *env,
-        jclass thisClass) {
-    return (uint8_t) 1;
+        jint number) {
+    return findPathsToClosestGcRoots(env, gdata->jvmti, object, number);
 }
 
 extern "C"
@@ -153,7 +150,7 @@ JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgen
         JNIEnv *env,
         jclass thisClass,
         jobjectArray classesArray) {
-    return getSizes(classesArray, gdata->jvmti, env);
+    return getSizes(env, gdata->jvmti, classesArray);
 }
 
 #pragma clang diagnostic pop

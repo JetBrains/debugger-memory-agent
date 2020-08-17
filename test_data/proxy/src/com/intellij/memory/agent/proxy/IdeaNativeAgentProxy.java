@@ -4,15 +4,15 @@ public class IdeaNativeAgentProxy {
   private IdeaNativeAgentProxy() {
   }
 
-  public static native boolean canFindGcRoots();
-
   public static native boolean canEstimateObjectSize();
 
   public static native boolean canEstimateObjectsSizes();
 
+  public static native boolean canFindPathsToClosestGcRoots();
+
   public static native long[] getShallowSizeByClasses(Class<?>[] klass);
 
-  public static native Object gcRoots(Object object, int limit);
+  public static native Object findPathsToClosestGcRoots(Object object, int number);
 
   public static native long size(Object object);
 

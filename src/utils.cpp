@@ -61,6 +61,13 @@ jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items) {
     return result;
 }
 
+jbooleanArray toJavaArray(JNIEnv *env, std::vector<jboolean> &items) {
+    auto count = static_cast<jsize>(items.size());
+    jbooleanArray result = env->NewBooleanArray(count);
+    env->SetBooleanArrayRegion(result, 0, count, items.data());
+    return result;
+}
+
 jintArray toJavaArray(JNIEnv *env, jint value) {
     std::vector<jint> vector = {value};
     return toJavaArray(env, vector);
@@ -127,20 +134,17 @@ jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tag
     return err;
 }
 
-jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
-                                        std::vector<std::pair<jobject, jlong>> &result, tagReleasedCallback callback) {
-    jvmtiError err;
-    std::set<jlong> uniqueTags(tags.begin(), tags.end());
-    removeTagsFromHeap(jvmti, uniqueTags, callback);
-    tags.assign(uniqueTags.begin(), uniqueTags.end());
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, std::vector<std::pair<jobject, jlong>> &result) {
     jint objectsCount = 0;
     jobject *objects;
     jlong *objectsTags;
     auto tagsCount = static_cast<jint>(tags.size());
+
     debug("call GetObjectsWithTags");
-    err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, &objects, &objectsTags);
-    if (!isOk(err))
+    jvmtiError err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, &objects, &objectsTags);
+    if (!isOk(err)) {
         return err;
+    }
     debug("call GetObjectsWithTags finished");
 
     for (int i = 0; i < objectsCount; ++i) {
@@ -155,9 +159,16 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
     return err;
 }
 
+jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
+                                        std::vector<std::pair<jobject, jlong>> &result, tagReleasedCallback callback) {
+    std::set<jlong> uniqueTags(tags.begin(), tags.end());
+    removeTagsFromHeap(jvmti, uniqueTags, callback);
+    tags.assign(uniqueTags.begin(), uniqueTags.end());
+
+    return getObjectsByTags(jvmti, tags, result);
+}
+
 jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) {
     std::set<jlong> ignored;
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
-
-

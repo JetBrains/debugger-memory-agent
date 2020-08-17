@@ -14,6 +14,6 @@ public class Deep extends TestBase {
     }
 
     // should not hang or crash vm
-    IdeaNativeAgentProxy.gcRoots(testObject, Integer.MAX_VALUE);
+    IdeaNativeAgentProxy.findPathsToClosestGcRoots(testObject, Integer.MAX_VALUE);
   }
 }

@@ -4,7 +4,6 @@ import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 
 import java.lang.management.ManagementFactory;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public abstract class TestBase {
@@ -18,7 +17,7 @@ public abstract class TestBase {
   }
 
   private static final int DEFAULT_LIMIT = 5000;
-  private static Map<Integer, String> referenceDescription = new HashMap<>();
+  private static final Map<Integer, String> referenceDescription = new HashMap<>();
 
   static {
     referenceDescription.put(1, "CLASS");
@@ -49,14 +48,17 @@ public abstract class TestBase {
     System.out.println(names + " -> " + Arrays.toString(IdeaNativeAgentProxy.estimateRetainedSize(objects)));
   }
 
-  protected static void printSizeByClasses(Class<?>... classes) {
-    assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
-    long[] sizes = IdeaNativeAgentProxy.getShallowSizeByClasses(classes);
+  private static void printSizeByClasses(Class<?>[] classes, long[] sizes) {
     assertEquals(classes.length, sizes.length);
-    System.out.println("Shallow sizes by class:");
     for (int i = 0; i < sizes.length; i++) {
       System.out.println("\t" + classes[i].getTypeName() + " -> " + sizes[i]);
     }
+  }
+
+  protected static void printSizeByClasses(Class<?>... classes) {
+    assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
+    System.out.println("Shallow sizes by class:");
+    printSizeByClasses(classes, IdeaNativeAgentProxy.getShallowSizeByClasses(classes));
   }
 
   private static int indexOfReference(Object[] array, Object value) {
@@ -78,10 +80,14 @@ public abstract class TestBase {
   }
 
   protected static void printGcRoots(Object object, int limit) {
-    Object result = IdeaNativeAgentProxy.gcRoots(object, limit);
+    doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(object, limit));
+  }
+
+  protected static void doPrintGcRoots(Object result) {
     Object[] arrayResult = (Object[]) result;
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];
+    boolean[] weakSoftReachable = (boolean[]) arrayResult[2];
     Object[] sortedObjects = Arrays.stream(objects).sorted(Comparator.comparing(TestBase::asString)).toArray();
     int[] oldIndexToNewIndex = new int[objects.length];
     int[] newIndexToOldIndex = new int[objects.length];
@@ -100,7 +106,12 @@ public abstract class TestBase {
       int[] moreLinks = (int[]) objLinks[3];
 
       String referencedFrom = buildReferencesString(indices, kinds, infos, oldIndexToNewIndex, moreLinks[0]);
-      System.out.println(i + ": " + asString(obj) + " <- " + referencedFrom);
+      System.out.printf(
+              "%d: %s %s<- %s\n",
+              i, asString(obj),
+              weakSoftReachable[newIndexToOldIndex[i]] ? "Weak/Soft reachable " : "",
+              referencedFrom
+      );
     }
   }
 
@@ -177,7 +188,7 @@ public abstract class TestBase {
         throw new AssertionError("Expected: null, but actual: " + actual.toString());
       }
     } else if (!expected.equals(actual)) {
-      throw new AssertionError("Expected: " + expected.toString() + ", but actual: " + Objects.toString(actual));
+      throw new AssertionError("Expected: " + expected.toString() + ", but actual: " + actual);
     }
   }
 
@@ -203,6 +214,6 @@ public abstract class TestBase {
     if (obj instanceof Object[]) {
       return Arrays.stream((Object[]) obj).map(x -> asStringImpl(x, visited)).collect(Collectors.joining(", ", "[", "]"));
     }
-    return obj.toString();
+    return obj.toString().replaceFirst("@.*", "");
   }
 }

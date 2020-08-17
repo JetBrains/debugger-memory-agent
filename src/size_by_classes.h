@@ -7,6 +7,6 @@
 #include <jni.h>
 #include <jvmti.h>
 
-jlongArray getSizes(jobjectArray classes, jvmtiEnv *jvmti, JNIEnv *env);
+jlongArray getSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray);
 
 #endif //MEMORY_AGENT_SIZE_BY_CLASSES_H
