@@ -4,7 +4,7 @@ import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import common.TestBase;
 import common.TestNode;
 
-public class ShortestPathsToGcRoots extends TestBase {
+public class PathsToThreeRoots extends TestBase {
     public static void main(String[] args) {
         TestNode root1 = new TestNode(10);
         TestNode root2 = new TestNode(7, root1.getLast());
