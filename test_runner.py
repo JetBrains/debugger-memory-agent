@@ -236,7 +236,7 @@ def create_test(test: Test, runner: TestRunner, repo: TestRepository):
             self.assertEqual(expected.strip(), actual.strip(), "outputs are mismatched")
         else:
             repo.write_output(test.name(), actual)
-            error_text = "********* EXPECTED OUTPUT NOT FOUND. DO NOT FORGET PUT IT INTO VCS *********\n"
+            error_text = "********* EXPECTED OUTPUT NOT FOUND. DO NOT FORGET PUT IT INTO VCS *********"
             self.fail(error_text)
 
     return do_test
