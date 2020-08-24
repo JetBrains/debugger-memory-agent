@@ -159,6 +159,10 @@ jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, std::vect
     return err;
 }
 
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags, std::vector<std::pair<jobject, jlong>> &result) {
+    return getObjectsByTags(jvmti, tags, result);
+}
+
 jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
                                         std::vector<std::pair<jobject, jlong>> &result, tagReleasedCallback callback) {
     std::set<jlong> uniqueTags(tags.begin(), tags.end());
