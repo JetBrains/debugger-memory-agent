@@ -4,7 +4,7 @@ import distutils.dir_util
 import time
 import unittest
 from datetime import datetime
-from subprocess import check_output
+from subprocess import check_output, STDOUT
 from typing import Iterable, Optional, List
 from unittest import TestCase
 from teamcity import is_running_under_teamcity
@@ -132,7 +132,7 @@ class TestRunner:
         args.extend(['-classpath', self.__build_dir])
         args.append(test.name())
 
-        out = check_output(args).decode("utf-8").replace('\r\n', '\n')
+        out = check_output(args, stderr=STDOUT).decode("utf-8").replace('\r\n', '\n')
 
         with open(output_file(test.name(), self.__output_directory), mode='w') as out_file:
             out_file.write(out)
