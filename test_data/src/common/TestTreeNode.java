@@ -21,6 +21,7 @@ public abstract class TestTreeNode {
         TOKEN_TO_IMPL.put("1", Impl1::new);
         TOKEN_TO_IMPL.put("2", Impl2::new);
         TOKEN_TO_IMPL.put("3", Impl3::new);
+        TOKEN_TO_IMPL.put("4", Impl4::new);
     }
 
     private TestTreeNode() {
@@ -57,5 +58,9 @@ public abstract class TestTreeNode {
 
     public static class Impl3 extends TestTreeNode {
         public Impl3 () { super(); }
+    }
+
+    public static class Impl4 extends TestTreeNode {
+        public Impl4 () { super(); }
     }
 }

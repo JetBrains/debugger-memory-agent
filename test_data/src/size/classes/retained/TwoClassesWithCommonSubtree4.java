@@ -3,7 +3,7 @@ package size.classes.retained;
 import common.TestBase;
 import common.TestTreeNode;
 
-public class SameInfoFromParents extends TestBase {
+public class TwoClassesWithCommonSubtree4 extends TestBase {
     public static void main(String[] args) {
         /*
                   2 <--- 3
