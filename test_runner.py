@@ -9,6 +9,7 @@ from typing import Iterable, Optional, List
 from unittest import TestCase
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
+from subprocess import CalledProcessError
 
 JAVA_HOME = os.getenv("JAVA_HOME")
 AGENT_NAME = "memory_agent"
@@ -231,8 +232,8 @@ def create_test(test: Test, runner: TestRunner, repo: TestRepository):
     def do_test(self: TestCase):
         try:
             result = runner.run(test)
-        except Exception as ex:
-            self.fail(str(ex))
+        except CalledProcessError as ex:
+            self.fail(ex.output)
 
         actual = result.get_output()
         expected = test.expected_output()
