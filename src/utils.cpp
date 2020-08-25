@@ -125,7 +125,7 @@ static bool isOk(jvmtiError error) {
 jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tagReleasedCallback callback) {
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-    cb.heap_iteration_callback = freeObjectCallback;
+    cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&freeObjectCallback);
     std::set<jlong> ignoredSet(ignoredTags.begin(), ignoredTags.end());
     iterationInfo userData(&ignoredSet, callback);
     debug("remove tags");
