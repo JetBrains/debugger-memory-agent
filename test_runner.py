@@ -132,11 +132,7 @@ class TestRunner:
         args.extend(['-classpath', self.__build_dir])
         args.append(test.name())
 
-        try:
-            out = check_output(args, stderr=STDOUT).decode("utf-8").replace('\r\n', '\n')
-        except Exception as ex:
-            print(ex)
-
+        out = check_output(args, stderr=STDOUT).decode("utf-8").replace('\r\n', '\n')
 
         with open(output_file(test.name(), self.__output_directory), mode='w') as out_file:
             out_file.write(out)
@@ -233,7 +229,11 @@ def to_test_name(value: str) -> str:
 
 def create_test(test: Test, runner: TestRunner, repo: TestRepository):
     def do_test(self: TestCase):
-        result = runner.run(test)
+        try:
+            result = runner.run(test)
+        except Exception as ex:
+            self.fail(str(ex))
+
         actual = result.get_output()
         expected = test.expected_output()
         if expected is not None:
