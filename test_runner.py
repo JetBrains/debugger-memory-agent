@@ -137,6 +137,7 @@ class TestRunner:
         except Exception as ex:
             print(ex)
 
+
         with open(output_file(test.name(), self.__output_directory), mode='w') as out_file:
             out_file.write(out)
 
