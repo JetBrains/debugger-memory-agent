@@ -40,7 +40,11 @@ def dynamic_library_name(lib_name) -> str:
     def dynamic_lib_format() -> str:
         os_type = platform.system()
         if os_type == "Windows":
-            return '{}.dll'
+            architecture = platform.architecture()[0]
+            if architecture == "32bit":
+                return '{}32.dll'
+            else:
+                return '{}.dll'
         if os_type == "Darwin":
             return 'lib{}.dylib'
         if os_type == "Linux":
