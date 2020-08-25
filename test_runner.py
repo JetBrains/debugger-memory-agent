@@ -132,7 +132,10 @@ class TestRunner:
         args.extend(['-classpath', self.__build_dir])
         args.append(test.name())
 
-        out = check_output(args, stderr=STDOUT).decode("utf-8").replace('\r\n', '\n')
+        try:
+            out = check_output(args, stderr=STDOUT).decode("utf-8").replace('\r\n', '\n')
+        except Exception as ex:
+            print(ex)
 
         with open(output_file(test.name(), self.__output_directory), mode='w') as out_file:
             out_file.write(out)
