@@ -283,12 +283,10 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
     std::vector<jint> refKinds;
     std::vector<jobject> refInfos;
 
-    jint exceedLimitCount = 0;
     for (referenceInfo *info : infos) {
         jlong prevTag = info->tag();
         auto it = tagToIndex.find(prevTag);
         if (prevTag != -1 && it == tagToIndex.end()) {
-            ++exceedLimitCount;
             continue;
         }
         prevIndices.push_back(prevTag == -1 ? -1 : it->second);
@@ -300,7 +298,6 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
     env->SetObjectArrayElement(result, 0, toJavaArray(env, prevIndices));
     env->SetObjectArrayElement(result, 1, toJavaArray(env, refKinds));
     env->SetObjectArrayElement(result, 2, toJavaArray(env, refInfos));
-    env->SetObjectArrayElement(result, 3, toJavaArray(env, exceedLimitCount));
 
     return result;
 }
@@ -454,27 +451,61 @@ static bool insertInfos(jlong referee, jlong referrer,
     return true;
 }
 
-static jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti,
-                                                      const std::vector<jlong> &roots,
-                                                      const std::unordered_map<jlong, jlong> &prevNode) {
-    std::vector<std::pair<jlong, jint>> nodes;
+static bool insertTruncatedReferenceInfo(jlong start, jlong referrer, jint lengthToStart,
+                                         std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {
+    referenceInfo *info = new infoWithIndex(referrer, static_cast<jvmtiHeapReferenceKind>(MEMORY_AGENT_TRUNCATE_REFERENCE), lengthToStart);
+    auto it = tagToInfos.find(start);
+    if (it == tagToInfos.end()) {
+        tagToInfos[start] = std::vector<referenceInfo *>{info};
+        return false;
+    }
+    it->second.push_back(info);
+    return true;
+}
+
+static void truncatePath(jlong start, jlong tag,  const std::unordered_map<jlong, jlong> &prevNode,
+                         std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {
+    jint lengthToStart = 0;
+    jlong oldTag = tag;
+    jlong prevTag = prevNode.find(tag)->second;
+    while (prevTag != tag) {
+        tag = prevTag;
+        prevTag = prevNode.find(tag)->second;
+        lengthToStart++;
+    }
+    insertTruncatedReferenceInfo(start, oldTag, lengthToStart, tagToInfos);
+}
+
+static jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti, const std::vector<jlong> &roots,
+                                                      const std::unordered_map<jlong, jlong> &prevNode, jlong start, jint objectsNumber) {
+    std::vector<std::pair<jlong, jint>> nodesToPathNum;
     std::unordered_map<jlong, std::vector<referenceInfo *>> tagToInfos;
     jint cnt = 0;
-    for (jlong tag : roots) {
-        nodes.emplace_back(tag, cnt++);
+    for (auto it = roots.begin(); it != roots.end() && nodesToPathNum.size() < objectsNumber; ++it) {
+        jlong tag = *it;
+        nodesToPathNum.emplace_back(tag, cnt++);
         insertRootInfos(tag, tagToInfos);
         while (true) {
+            if (nodesToPathNum.size() >= objectsNumber - roots.size()) {
+                if (cnt == 1) {
+                    nodesToPathNum.emplace_back(start, 1);
+                }
+
+                truncatePath(start, tag, prevNode, tagToInfos);
+                break;
+            }
+
             jlong prevTag = prevNode.find(tag)->second;
             if (prevTag == tag || insertInfos(prevTag, tag, tagToInfos)) {
                 break;
             }
 
-            nodes.emplace_back(prevTag, cnt);
+            nodesToPathNum.emplace_back(prevTag, cnt);
             tag = prevTag;
         }
     }
 
-    std::vector<std::pair<jobject, jlong>> objectToTag = getSortedObjectToTag(jvmti, nodes);
+    std::vector<std::pair<jobject, jlong>> objectToTag = getSortedObjectToTag(jvmti, nodesToPathNum);
     return createResultObject(env, jvmti, objectToTag, &tagToInfos);
 }
 
@@ -484,8 +515,8 @@ static bool isValidGcRoot(jlong tag, jint kind) {
            kind != JVMTI_HEAP_REFERENCE_JNI_LOCAL;
 }
 
-static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti,
-                                                 jlong start, jint number) {
+static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jlong start,
+                                                 jint number, jint objectsNumber) {
     std::queue<jlong> queue;
     std::unordered_map<jlong, jlong> prevTag;
     std::unordered_set<jlong> foundRootsSet;
@@ -516,15 +547,15 @@ static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti,
 
     return foundRoots.empty() ?
             createResultObject(env, jvmti, std::vector<jlong>{start}) :
-            createResultObjectForGcRootsPaths(env, jvmti, foundRoots, prevTag);
+            createResultObjectForGcRootsPaths(env, jvmti, foundRoots, prevTag, start, objectsNumber);
 }
 
-jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint number) {
+jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint pathsNumber, jint objectsNumber) {
     info("Looking for shortest path to gc root started");
     GcTag *tag = createTags(env, jvmti, object);
 
     info("create resulting java objects");
-    jobjectArray result = collectPathsToClosestGcRoots(env, jvmti, pointerToTag(tag), number);
+    jobjectArray result = collectPathsToClosestGcRoots(env, jvmti, pointerToTag(tag), pathsNumber, objectsNumber);
 
     info("remove all tags from objects in heap");
     jvmtiError err = removeAllTagsFromHeap(jvmti, GcTag::cleanTag);

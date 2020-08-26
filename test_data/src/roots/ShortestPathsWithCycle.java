@@ -15,6 +15,6 @@ public class ShortestPathsWithCycle extends TestBase {
         last1 = null;
         last2 = null;
 
-        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(root2.getChild(4), 10));
+        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(root2.getChild(4), 10, 1000));
     }
 }
