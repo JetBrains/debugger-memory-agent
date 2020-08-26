@@ -32,6 +32,6 @@ public class ReachableFromStrongReference extends TestBase {
         );
         SoftReference<Object> ref3 = new SoftReference<>(testClass.object);
 
-        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(testClass.object, 4));
+        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(testClass.object, 4, 1000));
     }
 }
