@@ -11,12 +11,12 @@ import java.lang.ref.WeakReference;
 public class ReachableFromDifferentReferenceTypes extends TestBase {
     public static void main(String[] args) {
         WeakReference<Object> ref1 = new WeakReference<>(createTestObject());
-        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(ref1.get(), 1));
+        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(ref1.get(), 1, 1000));
 
         SoftReference<Object> ref2 = new SoftReference<>(createTestObject());
-        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(ref2.get(), 1));
+        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(ref2.get(), 1, 1000));
 
         PhantomReference<Object> ref3 = new PhantomReference<>(ref1.get(), new ReferenceQueue<>());
-        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(ref1.get(), 2));
+        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(ref1.get(), 2, 1000));
     }
 }

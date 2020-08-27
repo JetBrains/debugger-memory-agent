@@ -16,7 +16,8 @@ public abstract class TestBase {
     }
   }
 
-  private static final int DEFAULT_LIMIT = 5000;
+  private static final int DEFAULT_PATHS_LIMIT = 10;
+  private static final int DEFAULT_OBJECTS_LIMIT = 5000;
   private static final Map<Integer, String> referenceDescription = new HashMap<>();
 
   static {
@@ -37,6 +38,7 @@ public abstract class TestBase {
     referenceDescription.put(25, "JNI_LOCAL");
     referenceDescription.put(26, "THREAD");
     referenceDescription.put(27, "OTHER");
+    referenceDescription.put(42, "TRUNCATE");
   }
 
   protected static void printSize(Object object) {
@@ -76,11 +78,11 @@ public abstract class TestBase {
   }
 
   protected static void printGcRoots(Object object) {
-    printGcRoots(object, DEFAULT_LIMIT);
+    printGcRoots(object, DEFAULT_PATHS_LIMIT, DEFAULT_OBJECTS_LIMIT);
   }
 
-  protected static void printGcRoots(Object object, int limit) {
-    doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(object, limit));
+  protected static void printGcRoots(Object object, int pathsLimit, int objectsLimit) {
+    doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(object, pathsLimit, objectsLimit));
   }
 
   protected static void doPrintGcRoots(Object result) {
@@ -103,9 +105,8 @@ public abstract class TestBase {
       int[] indices = (int[]) objLinks[0];
       int[] kinds = (int[]) objLinks[1];
       Object[] infos = (Object[]) objLinks[2];
-      int[] moreLinks = (int[]) objLinks[3];
 
-      String referencedFrom = buildReferencesString(indices, kinds, infos, oldIndexToNewIndex, moreLinks[0]);
+      String referencedFrom = buildReferencesString(indices, kinds, infos, oldIndexToNewIndex);
       System.out.printf(
               "%d: %s %s<- %s\n",
               i, asString(obj),
@@ -120,9 +121,9 @@ public abstract class TestBase {
         || kind == 3 // array element
         || kind == 9) { // constant pool element
       return "index = " + ((int[]) info)[0];
-    }
-
-    if (kind == 24 || kind == 25) { // stack local (jni)
+    } else if (kind == 42) { // other
+      return ((int[]) info)[0] + " more";
+    } else if (kind == 24 || kind == 25) { // stack local (jni)
       Object[] infos = (Object[]) info;
       assertEquals(2, infos.length);
       long[] stackInfo = (long[]) infos[0];
@@ -132,7 +133,7 @@ public abstract class TestBase {
     return "no details";
   }
 
-  private static String buildReferencesString(int[] indices, int[] kinds, Object[] infos, int[] indicesMap, int moreLinks) {
+  private static String buildReferencesString(int[] indices, int[] kinds, Object[] infos, int[] indicesMap) {
     assertEquals(indices.length, kinds.length);
     assertEquals(kinds.length, infos.length);
 
@@ -146,13 +147,7 @@ public abstract class TestBase {
 
     references.sort(String::compareTo);
 
-    String refs = String.join(", ", references);
-    assertTrue(moreLinks >= 0);
-    if (moreLinks != 0) {
-      refs += "(more " + moreLinks + " found)";
-    }
-
-    return refs;
+    return String.join(", ", references);
   }
 
   protected static Object createTestObject(String name) {

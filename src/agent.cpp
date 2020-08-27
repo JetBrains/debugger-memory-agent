@@ -141,8 +141,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         JNIEnv *env,
         jclass thisClass,
         jobject object,
-        jint number) {
-    return findPathsToClosestGcRoots(env, gdata->jvmti, object, number);
+        jint pathsNumber,
+        jint objectsNumber) {
+    return findPathsToClosestGcRoots(env, gdata->jvmti, object, pathsNumber, objectsNumber);
 }
 
 extern "C"
