@@ -37,6 +37,9 @@ def get_java_architecture() -> str:
     return '32bit'
 
 
+OUTS_DIR = 'outs' if get_java_architecture() == '64bit' else 'outs32'
+
+
 def output_file(name: str, directory: Optional[str] = None) -> str:
     result = '{}.out'.format(name)
     if directory is not None:
@@ -48,8 +51,7 @@ def dynamic_library_name(lib_name) -> str:
     def dynamic_lib_format() -> str:
         os_type = platform.system()
         if os_type == "Windows":
-            architecture = get_java_architecture()
-            if architecture == "32bit":
+            if get_java_architecture() == "32bit":
                 return '{}32.dll'
             else:
                 return '{}.dll'
@@ -211,7 +213,7 @@ class TestRepository:
         return child if parent == '' else '{}.{}'.format(parent, child)
 
     def __test_out_dir(self) -> str:
-        return os.path.join(self.__path, 'outs')
+        return os.path.join(self.__path, OUTS_DIR)
 
     def __is_ignored_dir(self, dir_name: str) -> bool:
         return dir_name in self.__ignored_dirs
