@@ -249,8 +249,7 @@ referenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const
     return new referenceInfo(tag, kind);
 }
 
-extern "C"
-JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
+jint JNICALL cbGcPaths(jvmtiHeapReferenceKind referenceKind,
                          const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
                          jlong referrerClassTag, jlong size, jlong *tagPtr,
                          const jlong *referrerTagPtr, jint length, void *userData) {

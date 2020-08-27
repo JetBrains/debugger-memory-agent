@@ -1,0 +1,11 @@
+Agent loaded
+Empty array:
+24
+One link (referenced outside)
+24
+One link (not referenced outside)
+32
+Two links (referenced outside)
+24
+Two links (not referenced outside)
+32
