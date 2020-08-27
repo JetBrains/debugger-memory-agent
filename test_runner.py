@@ -31,7 +31,8 @@ def get_java_compiler() -> str:
 
 def get_java_architecture() -> str:
     out = check_output([get_java_executable(), '-version'], stderr=STDOUT).decode('utf-8')
-    if out.find('64-Bit'):
+
+    if out.find('64-Bit') != -1:
         return '64bit'
     return '32bit'
 
@@ -46,6 +47,7 @@ def output_file(name: str, directory: Optional[str] = None) -> str:
 def dynamic_library_name(lib_name) -> str:
     def dynamic_lib_format() -> str:
         os_type = platform.system()
+        architecture = get_java_architecture()
         if os_type == "Windows":
             architecture = get_java_architecture()
             if architecture == "32bit":
