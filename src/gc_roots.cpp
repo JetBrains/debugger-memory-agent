@@ -1,7 +1,6 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 #include <unordered_map>
-#include <set>
 #include <vector>
 #include <jvmti.h>
 #include <cstring>
@@ -13,6 +12,8 @@
 #include "utils.h"
 #include "log.h"
 
+static jlong tagBalance = 0;
+
 class referenceInfo {
 public:
     referenceInfo(jlong tag, jvmtiHeapReferenceKind kind) : tag_(tag), kind_(kind) {}
@@ -23,7 +24,7 @@ public:
         return nullptr;
     }
 
-    jlong tag() {
+    jlong tag() const {
         return tag_;
     }
 
@@ -118,10 +119,15 @@ public:
     }
 
     void updateWeakSoftReachableValue(const State &referrerState) {
-        setWeakSoftReachable(
-                referrerState.isWeakSoftReachable() &&
-                (!isAlreadyVisited() || isWeakSoftReachable())
-        );
+        if (isWeakSoftReachable()) {
+            if (!referrerState.isWeakSoftReachable()) {
+                setWeakSoftReachable(false);
+            }
+        } else {
+            if (referrerState.isWeakSoftReachable() && !isAlreadyVisited()) {
+                setWeakSoftReachable(true);
+            }
+        }
     }
 
 private:
@@ -137,20 +143,41 @@ private:
     uint8_t state;
 };
 
-typedef struct PathNodeTag {
-    PathNodeTag() : state() {
-
+struct GcTag {
+    GcTag() : state() {
     }
 
-    explicit PathNodeTag(bool isWeakSoftReachable) :
+    explicit GcTag(bool isWeakSoftReachable) :
         state(false, isWeakSoftReachable) {
 
     }
 
-    ~PathNodeTag() {
+    ~GcTag() {
+        --tagBalance;
         for (auto info : backRefs) {
             delete info;
         }
+    }
+
+    static GcTag *create(jlong classTag) {
+        ++tagBalance;
+        return new GcTag(classTag != 0 && pointerToGcTag(classTag)->isWeakSoftReachable());
+    }
+
+    static GcTag *create() {
+        ++tagBalance;
+        return new GcTag();
+    }
+
+    static GcTag *pointerToGcTag(jlong tagPtr) {
+        if (tagPtr == 0) {
+            return new GcTag();
+        }
+        return (GcTag *) (ptrdiff_t) (void *) tagPtr;
+    }
+
+    static void cleanTag(jlong tag) {
+        delete pointerToGcTag(tag);
     }
 
     bool isWeakSoftReachable() const {
@@ -161,7 +188,7 @@ typedef struct PathNodeTag {
         state.setAlreadyVisited(true);
     }
 
-    virtual void updateState(const PathNodeTag  *const referrer) {
+    virtual void updateState(const GcTag  *const referrer) {
         state.updateWeakSoftReachableValue(referrer->state);
     }
 
@@ -170,40 +197,22 @@ public:
 
 private:
     State state;
-} GcTag;
-
-struct WeakSoftReferenceClassTag : public PathNodeTag {
-    WeakSoftReferenceClassTag() : PathNodeTag(true) {
-
-    }
-
-    void updateState(const PathNodeTag  *const referrer) override {
-
-    }
 };
 
-GcTag *pointerToGcTag(jlong tagPtr) {
-    if (tagPtr == 0) {
-        return new GcTag();
+struct WeakSoftReferenceClassTag : public GcTag {
+    WeakSoftReferenceClassTag() : GcTag(true) {
+
     }
-    return (GcTag *) (ptrdiff_t) (void *) tagPtr;
-}
 
-GcTag *createWeakSoftReferenceClassTag() {
-    return new WeakSoftReferenceClassTag();
-}
+    void updateState(const GcTag  *const referrer) override {
 
-GcTag *createGcTag(jlong classTag) {
-    return new GcTag(classTag != 0 && pointerToGcTag(classTag)->isWeakSoftReachable());
-}
+    }
 
-GcTag *createGcTag() {
-    return new GcTag();
-}
-
-void cleanTag(jlong tag) {
-    delete pointerToGcTag(tag);
-}
+    static GcTag *create() {
+        ++tagBalance;
+        return new WeakSoftReferenceClassTag();
+    }
+};
 
 referenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const jvmtiHeapReferenceInfo *info) {
     switch (kind) {
@@ -240,21 +249,20 @@ referenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const
     return new referenceInfo(tag, kind);
 }
 
-extern "C"
-JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
+jint JNICALL cbGcPaths(jvmtiHeapReferenceKind referenceKind,
                          const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
                          jlong referrerClassTag, jlong size, jlong *tagPtr,
-                         jlong *referrerTagPtr, jint length, void *userData) {
+                         const jlong *referrerTagPtr, jint length, void *userData) {
     if (*tagPtr == 0) {
-        *tagPtr = pointerToTag(createGcTag(referrerClassTag));
+        *tagPtr = pointerToTag(GcTag::create(referrerClassTag));
     }
 
-    PathNodeTag *tag = pointerToGcTag(*tagPtr);
+    GcTag *tag = GcTag::pointerToGcTag(*tagPtr);
     if (referrerTagPtr != nullptr) {
-        if (referrerClassTag != 0 && pointerToGcTag(referrerClassTag)->isWeakSoftReachable()) {
-            tag->updateState(pointerToGcTag(referrerClassTag));
+        if (referrerClassTag != 0 && GcTag::pointerToGcTag(referrerClassTag)->isWeakSoftReachable()) {
+            tag->updateState(GcTag::pointerToGcTag(referrerClassTag));
         } else {
-            tag->updateState(pointerToGcTag(*referrerTagPtr));
+            tag->updateState(GcTag::pointerToGcTag(*referrerTagPtr));
         }
 
         tag->backRefs.push_back(createReferenceInfo(*referrerTagPtr, referenceKind, referenceInfo));
@@ -267,23 +275,6 @@ JNIEXPORT jint cbGcPaths(jvmtiHeapReferenceKind referenceKind,
     return JVMTI_VISIT_OBJECTS;
 }
 
-static void walk(jlong start, std::set<jlong> &visited, jint limit) {
-    std::queue<jlong> queue;
-    queue.push(start);
-    jlong tag;
-    while (!queue.empty() && visited.size() <= limit) {
-        tag = queue.front();
-        queue.pop();
-        visited.insert(tag);
-        for (referenceInfo *info: pointerToGcTag(tag)->backRefs) {
-            jlong parentTag = info->tag();
-            if (parentTag != -1 && visited.find(parentTag) == visited.end()) {
-                queue.push(parentTag);
-            }
-        }
-    }
-}
-
 static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
                                      const std::unordered_map<jlong, jint> &tagToIndex,
                                      const std::vector<referenceInfo *> &infos) {
@@ -291,12 +282,10 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
     std::vector<jint> refKinds;
     std::vector<jobject> refInfos;
 
-    jint exceedLimitCount = 0;
     for (referenceInfo *info : infos) {
         jlong prevTag = info->tag();
         auto it = tagToIndex.find(prevTag);
         if (prevTag != -1 && it == tagToIndex.end()) {
-            ++exceedLimitCount;
             continue;
         }
         prevIndices.push_back(prevTag == -1 ? -1 : it->second);
@@ -308,14 +297,13 @@ static jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
     env->SetObjectArrayElement(result, 0, toJavaArray(env, prevIndices));
     env->SetObjectArrayElement(result, 1, toJavaArray(env, refKinds));
     env->SetObjectArrayElement(result, 2, toJavaArray(env, refInfos));
-    env->SetObjectArrayElement(result, 3, toJavaArray(env, exceedLimitCount));
 
     return result;
 }
 
 static std::vector<std::pair<jobject, jlong>> getObjectToTag(jvmtiEnv *jvmti, std::vector<jlong> &tags) {
     std::vector<std::pair<jobject, jlong>> objectToTag;
-    jvmtiError err = cleanHeapAndGetObjectsByTags(jvmti, tags, objectToTag, cleanTag);
+    jvmtiError err = cleanHeapAndGetObjectsByTags(jvmti, tags, objectToTag, GcTag::cleanTag);
     handleError(jvmti, err, "Could not receive objects by their tags");
 
     return objectToTag;
@@ -344,10 +332,10 @@ static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti,
         env->SetObjectArrayElement(resultObjects, i, objectToTag[i].first);
         jlong tag = objectToTag[i].second;
         auto infos = tagToInfos == nullptr ?
-                createLinksInfos(env, jvmti, tagToIndex, pointerToGcTag(tag)->backRefs) :
+                createLinksInfos(env, jvmti, tagToIndex, GcTag::pointerToGcTag(tag)->backRefs) :
                 createLinksInfos(env, jvmti, tagToIndex, (*tagToInfos).find(tag)->second);
         env->SetObjectArrayElement(links, i, infos);
-        weakSoftReachable[i] = pointerToGcTag(tag)->isWeakSoftReachable();
+        weakSoftReachable[i] = GcTag::pointerToGcTag(tag)->isWeakSoftReachable();
     }
 
     jobjectArray result = env->NewObjectArray(3, langObject, nullptr);
@@ -372,7 +360,7 @@ static void setTagsForReferences(JNIEnv *env, jvmtiEnv *jvmti) {
     for (const std::string &klass : classes) {
         jvmtiError err = jvmti->SetTag(
                 env->FindClass(klass.data()),
-                pointerToTag(createWeakSoftReferenceClassTag())
+                pointerToTag(WeakSoftReferenceClassTag::create())
         );
         handleError(jvmti, err, ("Could not set tag for " + klass + " class").data());
     }
@@ -387,7 +375,7 @@ static GcTag *createTags(JNIEnv *env, jvmtiEnv *jvmti, jobject target) {
 
     setTagsForReferences(env, jvmti);
 
-    GcTag *tag = createGcTag();
+    GcTag *tag = GcTag::create();
     err = jvmti->SetTag(target, pointerToTag(tag));
     handleError(jvmti, err, "Could not set tag for target object");
 
@@ -399,29 +387,8 @@ static GcTag *createTags(JNIEnv *env, jvmtiEnv *jvmti, jobject target) {
     return tag;
 }
 
-jobjectArray findGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint limit) {
-    info("Looking for paths to gc roots started");
-    GcTag *tag = createTags(env, jvmti, object);
-
-    info("heap tagged");
-    std::set<jlong> uniqueTags;
-    info("start walking through collected tags");
-    walk(pointerToTag(tag), uniqueTags, limit);
-
-    info("create resulting java objects");
-    std::unordered_map<jlong, jint> tag_to_index;
-    jobjectArray result = createResultObject(env, jvmti,
-                                             std::vector<jlong>(uniqueTags.begin(), uniqueTags.end()));
-
-    info("remove all tags from objects in heap");
-    jvmtiError err = removeAllTagsFromHeap(jvmti, cleanTag);
-    handleError(jvmti, err, "Count not remove all tags");
-
-    return result;
-}
-
 static referenceInfo *getReferrerInfo(jlong referee, jlong referrer) {
-    GcTag *tag = pointerToGcTag(referee);
+    GcTag *tag = GcTag::pointerToGcTag(referee);
     for (referenceInfo *info : tag->backRefs) {
         if (info->tag() == referrer) {
             return info;
@@ -452,6 +419,24 @@ static std::vector<std::pair<jobject, jlong>> getSortedObjectToTag(jvmtiEnv *jvm
     return objectToTag;
 }
 
+static void insertRootInfos(jlong referee, std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {;
+    std::vector<referenceInfo *> *pInfos;
+    auto it = tagToInfos.find(referee);
+    if (it == tagToInfos.end()) {
+        tagToInfos[referee] = std::vector<referenceInfo *>();
+        pInfos = &tagToInfos[referee];
+    } else {
+        pInfos = &it->second;
+    }
+
+    GcTag *tag = GcTag::pointerToGcTag(referee);
+    for (referenceInfo *info : tag->backRefs) {
+        if (info->tag() == -1) {
+            pInfos->push_back(info);
+        }
+    }
+}
+
 static bool insertInfos(jlong referee, jlong referrer,
                         std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {
     referenceInfo *info = getReferrerInfo(referee, referrer);
@@ -465,27 +450,61 @@ static bool insertInfos(jlong referee, jlong referrer,
     return true;
 }
 
-static jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti,
-                                                      const std::vector<jlong> &roots,
-                                                      const std::unordered_map<jlong, jlong> &prevNode) {
-    std::vector<std::pair<jlong, jint>> nodes;
+static bool insertTruncatedReferenceInfo(jlong start, jlong referrer, jint lengthToStart,
+                                         std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {
+    referenceInfo *info = new infoWithIndex(referrer, static_cast<jvmtiHeapReferenceKind>(MEMORY_AGENT_TRUNCATE_REFERENCE), lengthToStart);
+    auto it = tagToInfos.find(start);
+    if (it == tagToInfos.end()) {
+        tagToInfos[start] = std::vector<referenceInfo *>{info};
+        return false;
+    }
+    it->second.push_back(info);
+    return true;
+}
+
+static void truncatePath(jlong start, jlong tag,  const std::unordered_map<jlong, jlong> &prevNode,
+                         std::unordered_map<jlong, std::vector<referenceInfo *>> &tagToInfos) {
+    jint lengthToStart = 0;
+    jlong oldTag = tag;
+    jlong prevTag = prevNode.find(tag)->second;
+    while (prevTag != tag) {
+        tag = prevTag;
+        prevTag = prevNode.find(tag)->second;
+        lengthToStart++;
+    }
+    insertTruncatedReferenceInfo(start, oldTag, lengthToStart, tagToInfos);
+}
+
+static jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti, const std::vector<jlong> &roots,
+                                                      const std::unordered_map<jlong, jlong> &prevNode, jlong start, jint objectsNumber) {
+    std::vector<std::pair<jlong, jint>> nodesToPathNum;
     std::unordered_map<jlong, std::vector<referenceInfo *>> tagToInfos;
     jint cnt = 0;
-    for (jlong tag : roots) {
-        nodes.emplace_back(tag, cnt++);
-        insertInfos(tag, -1, tagToInfos);
+    for (auto it = roots.begin(); it != roots.end() && nodesToPathNum.size() < objectsNumber; ++it) {
+        jlong tag = *it;
+        nodesToPathNum.emplace_back(tag, cnt++);
+        insertRootInfos(tag, tagToInfos);
         while (true) {
+            if (nodesToPathNum.size() >= objectsNumber - roots.size()) {
+                if (cnt == 1) {
+                    nodesToPathNum.emplace_back(start, 1);
+                }
+
+                truncatePath(start, tag, prevNode, tagToInfos);
+                break;
+            }
+
             jlong prevTag = prevNode.find(tag)->second;
             if (prevTag == tag || insertInfos(prevTag, tag, tagToInfos)) {
                 break;
             }
 
-            nodes.emplace_back(prevTag, cnt);
+            nodesToPathNum.emplace_back(prevTag, cnt);
             tag = prevTag;
         }
     }
 
-    std::vector<std::pair<jobject, jlong>> objectToTag = getSortedObjectToTag(jvmti, nodes);
+    std::vector<std::pair<jobject, jlong>> objectToTag = getSortedObjectToTag(jvmti, nodesToPathNum);
     return createResultObject(env, jvmti, objectToTag, &tagToInfos);
 }
 
@@ -495,8 +514,8 @@ static bool isValidGcRoot(jlong tag, jint kind) {
            kind != JVMTI_HEAP_REFERENCE_JNI_LOCAL;
 }
 
-static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti,
-                                                 jlong start, jint number) {
+static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jlong start,
+                                                 jint number, jint objectsNumber) {
     std::queue<jlong> queue;
     std::unordered_map<jlong, jlong> prevTag;
     std::unordered_set<jlong> foundRootsSet;
@@ -508,7 +527,7 @@ static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti,
     while (!queue.empty() && number > foundRoots.size()) {
         tag = queue.front();
         queue.pop();
-        for (referenceInfo *info : pointerToGcTag(tag)->backRefs) {
+        for (referenceInfo *info : GcTag::pointerToGcTag(tag)->backRefs) {
             jlong parentTag = info->tag();
             if (isValidGcRoot(parentTag, info->kind()) &&
                 foundRootsSet.insert(tag).second) {
@@ -527,19 +546,23 @@ static jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti,
 
     return foundRoots.empty() ?
             createResultObject(env, jvmti, std::vector<jlong>{start}) :
-            createResultObjectForGcRootsPaths(env, jvmti, foundRoots, prevTag);
+            createResultObjectForGcRootsPaths(env, jvmti, foundRoots, prevTag, start, objectsNumber);
 }
 
-jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint number) {
+jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint pathsNumber, jint objectsNumber) {
     info("Looking for shortest path to gc root started");
     GcTag *tag = createTags(env, jvmti, object);
 
     info("create resulting java objects");
-    jobjectArray result = collectPathsToClosestGcRoots(env, jvmti, pointerToTag(tag), number);
+    jobjectArray result = collectPathsToClosestGcRoots(env, jvmti, pointerToTag(tag), pathsNumber, objectsNumber);
 
     info("remove all tags from objects in heap");
-    jvmtiError err = removeAllTagsFromHeap(jvmti, cleanTag);
+    jvmtiError err = removeAllTagsFromHeap(jvmti, GcTag::cleanTag);
     handleError(jvmti, err, "Count not remove all tags");
+
+    if (tagBalance != 0) {
+        fatal("MEMORY LEAK FOUND!");
+    }
 
     return result;
 }

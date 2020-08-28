@@ -1,0 +1,7 @@
+Agent loaded
+One instance created
+Shallow sizes by class:
+	size.classes.OneClass -> 8
+One more instance created
+Shallow sizes by class:
+	size.classes.OneClass -> 16

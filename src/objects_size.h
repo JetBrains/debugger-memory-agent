@@ -7,7 +7,7 @@
 #include <jvmti.h>
 #include <unordered_map>
 
-jlong estimateObjectSize(jvmtiEnv *jvmti, jobject object);
+jobjectArray estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
 jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objects);
 

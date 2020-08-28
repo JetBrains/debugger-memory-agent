@@ -73,6 +73,11 @@ jintArray toJavaArray(JNIEnv *env, jint value) {
     return toJavaArray(env, vector);
 }
 
+jlongArray toJavaArray(JNIEnv *env, jlong value) {
+    std::vector<jlong> vector = {value};
+    return toJavaArray(env, vector);
+}
+
 jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second) {
     jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(res, 0, first);
@@ -112,7 +117,10 @@ static jint JNICALL freeObjectCallback(jlong classTag, jlong size, jlong *tagPtr
     jlong tagValue = *tagPtr;
     if (info->first->find(tagValue) == info->first->end()) {
         *tagPtr = 0;
-        info->second(tagValue);
+
+        if (info->second != nullptr) {
+            info->second(tagValue);
+        }
     }
 
     return JVMTI_ITERATION_CONTINUE;
@@ -134,29 +142,57 @@ jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tag
     return err;
 }
 
-jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, std::vector<std::pair<jobject, jlong>> &result) {
-    jint objectsCount = 0;
-    jobject *objects;
-    jlong *objectsTags;
+static jvmtiError collectObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, jint &objectsCount, jobject **objects, jlong **objectsTags) {
     auto tagsCount = static_cast<jint>(tags.size());
 
     debug("call GetObjectsWithTags");
-    jvmtiError err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, &objects, &objectsTags);
-    if (!isOk(err)) {
-        return err;
-    }
+    jvmtiError err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, objects, objectsTags);
     debug("call GetObjectsWithTags finished");
 
-    for (int i = 0; i < objectsCount; ++i) {
-        result.emplace_back(objects[i], objectsTags[i]);
-    }
+    return err;
+}
 
-    err = jvmti->Deallocate(reinterpret_cast<unsigned char *>(objects));
+static jvmtiError deallocateArrays(jvmtiEnv *jvmti, jobject *objects, jlong *objectsTags) {
+    jvmtiError err = jvmti->Deallocate(reinterpret_cast<unsigned char *>(objects));
     if (isOk(err)) {
         err = jvmti->Deallocate(reinterpret_cast<unsigned char *>(objectsTags));
     }
 
     return err;
+}
+
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, std::vector<jobject> &result) {
+    jint objectsCount;
+    jobject *objects;
+    jlong *objectsTags;
+
+    jvmtiError err = collectObjectsByTags(jvmti, tags, objectsCount, &objects, &objectsTags);
+    if (!isOk(err)) return err;
+
+    for (int i = 0; i < objectsCount; ++i) {
+        result.emplace_back(objects[i]);
+    }
+
+    return deallocateArrays(jvmti, objects, objectsTags);
+}
+
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags, std::vector<jobject> &result) {
+    return getObjectsByTags(jvmti, tags, result);
+}
+
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, std::vector<std::pair<jobject, jlong>> &result) {
+    jint objectsCount = 0;
+    jobject *objects;
+    jlong *objectsTags;
+
+    jvmtiError err = collectObjectsByTags(jvmti, tags, objectsCount, &objects, &objectsTags);
+    if (!isOk(err)) return err;
+
+    for (int i = 0; i < objectsCount; ++i) {
+        result.emplace_back(objects[i], objectsTags[i]);
+    }
+
+    return deallocateArrays(jvmti, objects, objectsTags);
 }
 
 jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags, std::vector<std::pair<jobject, jlong>> &result) {

@@ -12,11 +12,11 @@ public class ObjectsWithCommonSubtree extends TestBase {
                 /   \
                1     1
         */
-        TestTreeNode root1 = TestTreeNode.createTreeFromString("2 1 0 0 0");
-        TestTreeNode root2 = TestTreeNode.createTreeFromString("3 0 1 0 0");
-        root1.right = TestTreeNode.createTreeFromString("1 1 0 0 1 0 0");;
-        root2.left = root1.right;
-        printSizes(root1, root2, root1.right);
+        TestTreeNode root2 = TestTreeNode.createTreeFromString("2 1 0 0 0");
+        TestTreeNode root3 = TestTreeNode.createTreeFromString("3 0 1 0 0");
+        root2.right = TestTreeNode.createTreeFromString("1 1 0 0 1 0 0");;
+        root3.left = root2.right;
+        printSizes(root2, root3, root2.right);
     }
 }
 

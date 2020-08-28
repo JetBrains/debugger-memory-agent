@@ -135,14 +135,6 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindGcRoots(
-        JNIEnv *env,
-        jclass thisClass,
-        jobject object) {
-    return canAddAndRemoveTags();
-}
-
-extern "C"
 JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
         JNIEnv *env,
         jclass thisClass,
@@ -151,20 +143,11 @@ JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgen
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
         JNIEnv *env,
         jclass thisClass,
         jobject object) {
-    return estimateObjectSize(gdata->jvmti, object);
-}
-
-extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_gcRoots(
-        JNIEnv *env,
-        jclass thisClass,
-        jobject object,
-        jint limit) {
-    return findGcRoots(env, gdata->jvmti, object, limit);
+    return estimateObjectSize(env, gdata->jvmti, object);
 }
 
 extern "C"
@@ -172,8 +155,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         JNIEnv *env,
         jclass thisClass,
         jobject object,
-        jint number) {
-    return findPathsToClosestGcRoots(env, gdata->jvmti, object, number);
+        jint pathsNumber,
+        jint objectsNumber) {
+    return findPathsToClosestGcRoots(env, gdata->jvmti, object, pathsNumber, objectsNumber);
 }
 
 extern "C"

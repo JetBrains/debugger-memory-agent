@@ -212,7 +212,7 @@ class Tag {
 public:
     const static Tag EmptyTag;
     const static Tag TagWithNewInfo;
-
+    const static Tag HeldObjectTag;
 protected:
     Tag(query_size_t index, uint8_t state) :
         array(index, state), isStartTag(true),
@@ -284,6 +284,10 @@ public:
     }
 
     inline void unref() {
+        if (this == &EmptyTag || this == &HeldObjectTag || this == &TagWithNewInfo) {
+            return;
+        }
+
         if (--refCount == 0) {
             delete this;
         }
@@ -354,9 +358,7 @@ static bool isTagWithNewInfo(jlong tag) {
 
 static Tag *merge(jlong referreeTag, jlong referrerTag) {
     Tag *result = Tag::create(*tagToPointer(referreeTag), *tagToPointer(referrerTag));
-    if (!isEmptyTag(referreeTag)) {
-        tagToPointer(referreeTag)->unref();
-    }
+    tagToPointer(referreeTag)->unref();
 
     return result;
 }
@@ -417,6 +419,7 @@ static bool tagsAreValidForMerge(jlong referree, jlong referrer) {
 
 const Tag Tag::EmptyTag;
 const Tag Tag::TagWithNewInfo;
+const Tag Tag::HeldObjectTag;
 static std::unordered_set<jlong> tagsWithNewInfo;
 
 jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
@@ -622,19 +625,22 @@ jint JNICALL visitObject(jlong classTag, jlong size, const jlong *tagPtr, jint l
     return JVMTI_ITERATION_CONTINUE;
 }
 
-jint JNICALL countSizeAndRetagHeldObjects(jlong classTag, jlong size, const jlong *tagPtr, jint length, void *userData) {
+jint JNICALL countSizeAndRetagHeldObjects(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     if (*tagPtr == 0) {
         return JVMTI_ITERATION_CONTINUE;
     }
 
     Tag *tag = tagToPointer(*tagPtr);
+    *tagPtr = 0;
     for (query_size_t i = 0; i < tag->array.getSize(); i++) {
         const TagInfo &info = tag->array[i];
         if (isRetained(info.state)) {
+            *tagPtr = pointerToTag(&Tag::HeldObjectTag);
             *reinterpret_cast<jlong *>(userData) += size;
         }
     }
 
+    tag->unref();
     return JVMTI_ITERATION_CONTINUE;
 }
 
@@ -643,9 +649,7 @@ jint JNICALL clearTag(jlong classTag, jlong size, jlong *tagPtr, jint length, vo
         return JVMTI_ITERATION_CONTINUE;
     }
 
-    if (!isEmptyTag(*tagPtr)) {
-        tagToPointer(*tagPtr)->unref();
-    }
+    tagToPointer(*tagPtr)->unref();
     *tagPtr = 0;
 
     return JVMTI_ITERATION_CONTINUE;
@@ -729,31 +733,33 @@ static jvmtiError clearTags(jvmtiEnv *jvmti) {
     return jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
 }
 
-static jvmtiError estimateObjectsSizes(jvmtiEnv *jvmti, std::vector<jobject> &objects, std::vector<jlong> &result) {
-    jvmtiError err;
+static jvmtiError calculateRetainedSizes(jvmtiEnv *jvmti, const std::vector<jobject> &objects, std::vector<jlong> &result) {
     std::set<jobject> unique(objects.begin(), objects.end());
     size_t count = objects.size();
     if (count != unique.size()) {
         fatal("Invalid argument: objects should be unique");
     }
 
-    tagBalance = 0;
+    result.resize(static_cast<unsigned long>(count));
+    jvmtiHeapCallbacks cb;
+    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+    cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&visitObject);
+    debug("calculate retained sizes");
+    return jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, result.data());
+}
+
+static jvmtiError estimateObjectsSizes(jvmtiEnv *jvmti, const std::vector<jobject> &objects, std::vector<jlong> &result) {
+    jvmtiError err;
     err = createTagsForObjects(jvmti, objects);
     if (err != JVMTI_ERROR_NONE) return err;
 
     err = tagHeap(jvmti, objects);
     if (err != JVMTI_ERROR_NONE) return err;
-    result.resize(static_cast<unsigned long>(count));
 
-    jvmtiHeapCallbacks cb;
-    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-    cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&visitObject);
-    debug("calculate retained sizes");
-    err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, result.data());
+    err = calculateRetainedSizes(jvmti, objects, result);
     if (err != JVMTI_ERROR_NONE) return err;
 
     err = clearTags(jvmti);
-
     if (tagBalance != 0) {
         fatal("MEMORY LEAK FOUND!");
     }
@@ -761,24 +767,13 @@ static jvmtiError estimateObjectsSizes(jvmtiEnv *jvmti, std::vector<jobject> &ob
     return err;
 }
 
-static jvmtiError estimateObjectSize(jvmtiEnv *jvmti, jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects) {
-    jvmtiError err;
-
-    err = createTagsForObjects(jvmti, std::vector<jobject>{object});
-    if (err != JVMTI_ERROR_NONE) return err;
-
-    err = tagHeap(jvmti, object);
-    if (err != JVMTI_ERROR_NONE) return err;
-
+static jvmtiError calculateRetainedSize(jvmtiEnv *jvmti, jlong &retainedSize) {
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&countSizeAndRetagHeldObjects);
     debug("calculate retained size");
     retainedSize = 0;
-    err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, &retainedSize);
-    if (err != JVMTI_ERROR_NONE) return err;
-
-    err = clearTags(jvmti);
+    jvmtiError err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, &retainedSize);
 
     if (tagBalance != 0) {
         fatal("MEMORY LEAK FOUND!");
@@ -787,18 +782,55 @@ static jvmtiError estimateObjectSize(jvmtiEnv *jvmti, jobject &object, jlong &re
     return err;
 }
 
-jlong estimateObjectSize(jvmtiEnv *jvmti, jobject object) {
+static jvmtiError collectHeldObjects(jvmtiEnv *jvmti, std::vector<jobject> &heldObjects) {
+    debug("collect held objects");
+    return getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::HeldObjectTag)},heldObjects);
+}
+
+static jvmtiError estimateObjectSize(jvmtiEnv *jvmti, jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects) {
+    jvmtiError err = createTagsForObjects(jvmti, std::vector<jobject>{object});
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    err = tagHeap(jvmti, object);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    err = calculateRetainedSize(jvmti, retainedSize);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    err = collectHeldObjects(jvmti, heldObjects);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    return removeAllTagsFromHeap(jvmti, nullptr);
+}
+
+static jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, jlong retainedSize, const std::vector<jobject> &heldObjects) {
+    jint objectsCount = static_cast<jint>(heldObjects.size());
+    jclass langObject = env->FindClass("java/lang/Object");
+    jobjectArray resultObjects = env->NewObjectArray(objectsCount, langObject, nullptr);
+
+    for (jsize i = 0; i < objectsCount; ++i) {
+        env->SetObjectArrayElement(resultObjects, i, heldObjects[i]);
+    }
+
+    jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
+    env->SetObjectArrayElement(result, 0, toJavaArray(env, retainedSize));
+    env->SetObjectArrayElement(result, 1, resultObjects);
+
+    return result;
+}
+
+jobjectArray estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object) {
     std::vector<jobject> objects;
     objects.push_back(object);
     std::vector<jobject> heldObjects;
     jlong retainedSize;
     jvmtiError err = estimateObjectSize(jvmti, object, retainedSize, heldObjects);
+
     if (err != JVMTI_ERROR_NONE) {
         handleError(jvmti, err, "Could not estimate object size");
-        return -1;
     }
 
-    return retainedSize;
+    return createResultObject(env, jvmti, retainedSize, heldObjects);
 }
 
 jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objects) {

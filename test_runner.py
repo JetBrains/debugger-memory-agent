@@ -1,12 +1,13 @@
+import distutils.dir_util
 import os
 import platform
-import distutils.dir_util
 import time
 import unittest
 from datetime import datetime
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError, STDOUT
 from typing import Iterable, Optional, List
 from unittest import TestCase
+
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
@@ -28,6 +29,17 @@ def get_java_compiler() -> str:
     return os.path.join(JAVA_HOME, 'bin', 'javac')
 
 
+def get_java_architecture() -> str:
+    out = check_output([get_java_executable(), '-version'], stderr=STDOUT).decode('utf-8')
+
+    if out.find('64-Bit') != -1:
+        return '64bit'
+    return '32bit'
+
+
+OUTS_DIR = 'outs' if get_java_architecture() == '64bit' else 'outs32'
+
+
 def output_file(name: str, directory: Optional[str] = None) -> str:
     result = '{}.out'.format(name)
     if directory is not None:
@@ -39,7 +51,10 @@ def dynamic_library_name(lib_name) -> str:
     def dynamic_lib_format() -> str:
         os_type = platform.system()
         if os_type == "Windows":
-            return '{}.dll'
+            if get_java_architecture() == "32bit":
+                return '{}32.dll'
+            else:
+                return '{}.dll'
         if os_type == "Darwin":
             return 'lib{}.dylib'
         if os_type == "Linux":
@@ -198,7 +213,7 @@ class TestRepository:
         return child if parent == '' else '{}.{}'.format(parent, child)
 
     def __test_out_dir(self) -> str:
-        return os.path.join(self.__path, 'outs')
+        return os.path.join(self.__path, OUTS_DIR)
 
     def __is_ignored_dir(self, dir_name: str) -> bool:
         return dir_name in self.__ignored_dirs
@@ -229,7 +244,11 @@ def to_test_name(value: str) -> str:
 
 def create_test(test: Test, runner: TestRunner, repo: TestRepository):
     def do_test(self: TestCase):
-        result = runner.run(test)
+        try:
+            result = runner.run(test)
+        except CalledProcessError as ex:
+            self.fail(ex.output)
+
         actual = result.get_output()
         expected = test.expected_output()
         if expected is not None:

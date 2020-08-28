@@ -5,7 +5,7 @@
 #include <cstring>
 #include "utils.h"
 
-static jint cbHeapObjectIterationCallback(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+static jint JNICALL cbHeapObjectIterationCallback(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     if (classTag != 0) {
         reinterpret_cast<jlong *>(userData)[classTag - 1] += size;
     }

@@ -22,6 +22,8 @@ jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items);
 
 jintArray toJavaArray(JNIEnv *env, jint value);
 
+jlongArray toJavaArray(JNIEnv *env, jlong value);
+
 void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result);
 
 jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second);
@@ -37,6 +39,12 @@ jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
 
 jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags,
                             std::vector<std::pair<jobject, jlong>> &result);
+
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
+                            std::vector<jobject> &result);
+
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags,
+                            std::vector<jobject> &result);
 
 jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
                                         std::vector<std::pair<jobject, jlong>> &result,

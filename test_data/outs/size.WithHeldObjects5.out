@@ -1,0 +1,19 @@
+Agent loaded
+Size: 120
+Held objects:
+[common.TestTreeNode$Impl1: node 2]
+[common.TestTreeNode$Impl1: node 3]
+[common.TestTreeNode$Impl1: node 4]
+[common.TestTreeNode$Impl1: node 5]
+[common.TestTreeNode$Impl2: node 1]
+Size: 24
+Held objects:
+[common.TestTreeNode$Impl2: node 1]
+Size: 144
+Held objects:
+[common.TestTreeNode$Impl1: node 2]
+[common.TestTreeNode$Impl1: node 3]
+[common.TestTreeNode$Impl1: node 4]
+[common.TestTreeNode$Impl1: node 5]
+[common.TestTreeNode$Impl2: node 1]
+[common.TestTreeNode$Impl3: node 6]
