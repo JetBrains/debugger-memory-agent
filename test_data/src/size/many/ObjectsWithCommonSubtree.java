@@ -1,4 +1,4 @@
-package size;
+package size.many;
 
 import common.TestBase;
 import common.TestTreeNode;
