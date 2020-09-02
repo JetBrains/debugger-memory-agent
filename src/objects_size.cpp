@@ -449,7 +449,8 @@ jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapR
 jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                             jlong referrerClassTag, jlong size, jlong *tagPtr,
                             const jlong *referrerTagPtr, jint length, void *_) {
-    if (handleReferrersWithNoInfo(referrerTagPtr, tagPtr)) {
+    if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL ||
+        handleReferrersWithNoInfo(referrerTagPtr, tagPtr)) {
         return JVMTI_VISIT_OBJECTS;
     } else if (*tagPtr == 0) {
         *tagPtr = pointerToTag(tagToPointer(*referrerTagPtr)->share());
