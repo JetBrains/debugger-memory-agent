@@ -5,7 +5,6 @@
 
 #include <jni.h>
 #include <jvmti.h>
-#include <unordered_map>
 
 jobjectArray estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 

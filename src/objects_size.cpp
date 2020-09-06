@@ -1,10 +1,10 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 #include <cstring>
 #include <unordered_set>
+#include <memory>
 #include "objects_size.h"
 #include "utils.h"
 #include "log.h"
-#include "size_by_classes.h"
 
 using query_size_t = uint16_t;
 
@@ -789,7 +789,7 @@ namespace {
         return removeAllTagsFromHeap(jvmti, nullptr);
     }
 
-    jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti, jlong retainedSize, const std::vector<jobject> &heldObjects) {
+    jobjectArray createResultObject(JNIEnv *env, jlong retainedSize, const std::vector<jobject> &heldObjects) {
         jint objectsCount = static_cast<jint>(heldObjects.size());
         jclass langObject = env->FindClass("java/lang/Object");
         jobjectArray resultObjects = env->NewObjectArray(objectsCount, langObject, nullptr);
@@ -879,7 +879,7 @@ jobjectArray estimateObjectSize(JNIEnv *env, jvmtiEnv *jvmti, jobject object) {
         handleError(jvmti, err, "Could not estimate object size");
     }
 
-    return createResultObject(env, jvmti, retainedSize, heldObjects);
+    return createResultObject(env, retainedSize, heldObjects);
 }
 
 jlongArray estimateObjectsSizes(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objects) {
