@@ -283,10 +283,14 @@ namespace {
     jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
                                          const std::unordered_map<jlong, jint> &tagToIndex,
                                          const std::vector<ReferenceInfo *> &infos) {
-        std::vector<jint> prevIndices(infos.size());
-        std::vector<jint> refKinds(infos.size());
-        std::vector<jobject> refInfos(infos.size());
+        std::vector<jint> prevIndices;
+        std::vector<jint> refKinds;
+        std::vector<jobject> refInfos;
 
+        size_t size = infos.size();
+        prevIndices.reserve(size);
+        refInfos.reserve(size);
+        refKinds.reserve(size);
         for (ReferenceInfo *info : infos) {
             jlong prevTag = info->tag();
             auto it = tagToIndex.find(prevTag);
