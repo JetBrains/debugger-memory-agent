@@ -379,12 +379,18 @@ namespace {
         return shouldMerge(*tagToPointer(referree), *tagToPointer(referrer));
     }
 
-    bool handleReferrersWithNoInfo(const jlong *referrerTagPtr, jlong *tagPtr) {
+    bool handleReferrersWithNoInfo(const jlong *referrerTagPtr, jlong *tagPtr, bool setTagsWithNewInfo=false) {
         if (referrerTagPtr == nullptr || isEmptyTag(*referrerTagPtr)) {
             if (*tagPtr == 0) {
                 *tagPtr = pointerToTag(&Tag::EmptyTag);
-            } else {
-                tagToPointer(*tagPtr)->visitFromUntaggedReferrer();
+            } else if (!isEmptyTag(*tagPtr)) {
+                Tag *referree = tagToPointer(*tagPtr);
+                if (setTagsWithNewInfo && referree->alreadyReferred) {
+                    referree->unref();
+                    *tagPtr = pointerToTag(&Tag::TagWithNewInfo);
+                } else {
+                    referree->visitFromUntaggedReferrer();
+                }
             }
 
             return true;
@@ -409,7 +415,8 @@ namespace {
     jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                        jlong referrerClassTag, jlong size, jlong *tagPtr,
                        const jlong *referrerTagPtr, jint length, void *_) {
-        if (isTagWithNewInfo(*tagPtr) || handleReferrersWithNoInfo(referrerTagPtr, tagPtr)) {
+        if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL ||
+            isTagWithNewInfo(*tagPtr) || handleReferrersWithNoInfo(referrerTagPtr, tagPtr, true)) {
             return JVMTI_VISIT_OBJECTS;
         }
 
@@ -508,17 +515,36 @@ namespace {
         return jvmti->FollowReferences(0, nullptr, nullptr, &cb, nullptr);
     }
 
+    jvmtiError createTagForObject(jvmtiEnv *jvmti, jobject object, size_t index) {
+        jlong oldTag;
+        jvmtiError err = jvmti->GetTag(object, &oldTag);
+        if (err != JVMTI_ERROR_NONE) return err;
+        Tag *tag = Tag::create(index, createState(true, true, false, false));
+        if (oldTag != 0 && !isTagWithNewInfo(oldTag)) {
+            tagToPointer(oldTag)->array.extend(tag->array);
+            delete tag;
+        } else {
+            err = jvmti->SetTag(object, pointerToTag(tag));
+        }
+
+        return err;
+    }
+
     jvmtiError retagStartObjects(jvmtiEnv *jvmti, const std::vector<jobject> &objects) {
+        std::vector<std::pair<jobject, size_t>> objectsWithNewInfo;
         for (size_t i = 0; i < objects.size(); i++) {
             jlong oldTag;
             jvmtiError err = jvmti->GetTag(objects[i], &oldTag);
             if (err != JVMTI_ERROR_NONE) return err;
 
             if (isTagWithNewInfo(oldTag)) {
-                Tag *tag = Tag::create(i, createState(true, true, false, false));
-                err = jvmti->SetTag(objects[i], pointerToTag(tag));
-                if (err != JVMTI_ERROR_NONE) return err;
+                objectsWithNewInfo.emplace_back(objects[i], i);
             }
+        }
+
+        for (auto objectToIndex : objectsWithNewInfo) {
+            jvmtiError err = createTagForObject(jvmti, objectToIndex.first, objectToIndex.second);
+            if (err != JVMTI_ERROR_NONE) return err;
         }
 
         return JVMTI_ERROR_NONE;
@@ -582,16 +608,6 @@ namespace {
         if (err != JVMTI_ERROR_NONE) return err;
 
         return walkHeapFromObjects(jvmti, objectsAndTags);
-    }
-
-    jvmtiError tagHeap(jvmtiEnv *jvmti, jobject object) {
-        jvmtiError err = updateTagsWithNewInfo(jvmti);
-        if (err != JVMTI_ERROR_NONE) return err;
-
-        err = updateTagsWithNewInfo(jvmti);
-        if (err != JVMTI_ERROR_NONE) return err;
-
-        return err;
     }
 
     jint JNICALL visitObject(jlong classTag, jlong size, const jlong *tagPtr, jint length, void *userData) {
@@ -679,24 +695,11 @@ namespace {
 
     jvmtiError createTagsForObjects(jvmtiEnv *jvmti, const std::vector<jobject> &objects) {
         for (size_t i = 0; i < objects.size(); i++) {
-            jlong oldTag;
-            jvmtiError err = jvmti->GetTag(objects[i], &oldTag);
-            if (err != JVMTI_ERROR_NONE) return err;
-            Tag *tag = Tag::create(i, createState(true, true, false, false));
-            if (oldTag != 0) {
-                tagToPointer(oldTag)->array.extend(tag->array);
-                delete tag;
-            } else {
-                err = jvmti->SetTag(objects[i], pointerToTag(tag));
-            }
+            jvmtiError err = createTagForObject(jvmti, objects[i], i);
             if (err != JVMTI_ERROR_NONE) return err;
         }
 
         return JVMTI_ERROR_NONE;
-    }
-
-    jvmtiError createTagsForObjects(jvmtiEnv *jvmti, const std::vector<jobject> &&objects) {
-        return createTagsForObjects(jvmti, objects);
     }
 
     jvmtiError createTagsForClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
@@ -774,10 +777,11 @@ namespace {
     }
 
     jvmtiError estimateObjectSize(jvmtiEnv *jvmti, jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects) {
-        jvmtiError err = createTagsForObjects(jvmti, std::vector<jobject>{object});
+        std::vector<jobject> objectVec{object};
+        jvmtiError err = createTagsForObjects(jvmti, objectVec);
         if (err != JVMTI_ERROR_NONE) return err;
 
-        err = tagHeap(jvmti, object);
+        err = tagHeap(jvmti, objectVec);
         if (err != JVMTI_ERROR_NONE) return err;
 
         err = calculateRetainedSize(jvmti, retainedSize);

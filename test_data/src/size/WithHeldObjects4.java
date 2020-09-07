@@ -23,6 +23,7 @@ public class WithHeldObjects4 extends TestBase {
         printSizeAndHeldObjects(root2);
         root3.left = root2.right;
         root4.left = root2.right.right;
+        printSizeAndHeldObjects(root2);
         printSizeAndHeldObjects(root3);
         printSizeAndHeldObjects(root4);
         root2 = null;
