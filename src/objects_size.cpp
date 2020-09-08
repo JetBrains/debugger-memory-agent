@@ -460,7 +460,8 @@ namespace {
     jint JNICALL spreadInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                             jlong referrerClassTag, jlong size, jlong *tagPtr, const jlong *referrerTagPtr,
                             jint length, void *user_data) {
-        if (*tagPtr != 0 && *referrerTagPtr != 0) {
+        if (refKind != JVMTI_HEAP_REFERENCE_JNI_LOCAL && refKind != JVMTI_HEAP_REFERENCE_JNI_GLOBAL &&
+            *tagPtr != 0 && *referrerTagPtr != 0) {
             auto it = tagsWithNewInfo.find(*tagPtr);
             if (it != tagsWithNewInfo.end()) {
                 tagsWithNewInfo.erase(it);
