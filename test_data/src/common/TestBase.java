@@ -42,7 +42,23 @@ public abstract class TestBase {
   }
 
   protected static void printSize(Object object) {
-    System.out.println(IdeaNativeAgentProxy.size(object));
+    Object result = IdeaNativeAgentProxy.size(object);
+    Object[] arrayResult = (Object[]) result;
+    System.out.println(((long[]) arrayResult[0])[0]);
+  }
+
+  protected static void printSizeAndHeldObjects(Object object) {
+    Object result = IdeaNativeAgentProxy.size(object);
+    Object[] arrayResult = (Object[]) result;
+    System.out.printf("Size: %d\n", ((long[]) arrayResult[0])[0]);
+    System.out.println("Held objects:");
+    List<String> objectsNames = new ArrayList<>();
+    for (Object obj : (Object[]) arrayResult[1]) {
+      objectsNames.add(obj.toString());
+    }
+
+    objectsNames.sort(String::compareTo);
+    objectsNames.forEach(System.out::println);
   }
 
   protected static void printSizes(Object... objects) {
@@ -55,6 +71,16 @@ public abstract class TestBase {
     for (int i = 0; i < sizes.length; i++) {
       System.out.println("\t" + classes[i].getTypeName() + " -> " + sizes[i]);
     }
+  }
+
+  protected static void printShallowAndRetainedSizeByClasses(Class<?>... classes) {
+    assertTrue(IdeaNativeAgentProxy.canGetRetainedSizeByClasses());
+    assertTrue(IdeaNativeAgentProxy.canGetShallowSizeByClasses());
+    Object[] arrayResult = (Object[]) IdeaNativeAgentProxy.getShallowAndRetainedSizeByClasses(classes);
+    System.out.println("Shallow sizes by class:");
+    printSizeByClasses(classes, (long[])arrayResult[0]);
+    System.out.println("Retained sizes by class:");
+    printSizeByClasses(classes, (long[])arrayResult[1]);
   }
 
   protected static void printSizeByClasses(Class<?>... classes) {

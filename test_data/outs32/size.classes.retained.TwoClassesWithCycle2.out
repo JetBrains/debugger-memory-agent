@@ -1,0 +1,7 @@
+Agent loaded
+Shallow sizes by class:
+	common.TestTreeNode$Impl2 -> 24
+	common.TestTreeNode$Impl3 -> 24
+Retained sizes by class:
+	common.TestTreeNode$Impl2 -> 48
+	common.TestTreeNode$Impl3 -> 24

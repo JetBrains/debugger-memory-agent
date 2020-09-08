@@ -9,6 +9,8 @@ import java.util.Arrays;
 public abstract class TestTreeNode {
     public TestTreeNode left;
     public TestTreeNode right;
+    private static int num = 0;
+    private final int number = ++num;
 
     @FunctionalInterface
     private interface ImplCreator {
@@ -21,7 +23,8 @@ public abstract class TestTreeNode {
         TOKEN_TO_IMPL.put("1", Impl1::new);
         TOKEN_TO_IMPL.put("2", Impl2::new);
         TOKEN_TO_IMPL.put("3", Impl3::new);
-    };
+        TOKEN_TO_IMPL.put("4", Impl4::new);
+    }
 
     private TestTreeNode() {
     }
@@ -44,20 +47,27 @@ public abstract class TestTreeNode {
     }
 
     public static class Impl1 extends TestTreeNode {
-        private Impl1 () {
+        public Impl1 () {
             super();
         }
     }
 
     public static class Impl2 extends TestTreeNode {
-        private Impl2 () {
+        public Impl2 () {
             super();
         }
     }
 
     public static class Impl3 extends TestTreeNode {
-        private Impl3 () {
-            super();
-        }
+        public Impl3 () { super(); }
+    }
+
+    public static class Impl4 extends TestTreeNode {
+        public Impl4 () { super(); }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[%s: node %d]", this.getClass().getName(), number);
     }
 }
