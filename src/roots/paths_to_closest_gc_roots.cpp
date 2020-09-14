@@ -1,263 +1,16 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-#include <unordered_map>
-#include <vector>
-#include <jvmti.h>
-#include <cstring>
-#include <queue>
 #include <unordered_set>
-#include <algorithm>
-#include <functional>
-#include "gc_roots.h"
-#include "utils.h"
-#include "log.h"
+#include <unordered_map>
+#include <queue>
+#include "paths_to_closest_gc_roots.h"
+#include "roots_tags.h"
 
 namespace {
-    jlong tagBalance = 0;
-
-    class ReferenceInfo {
-    public:
-        ReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind) : tag_(tag), kind_(kind) {}
-
-        virtual ~ReferenceInfo() = default;
-
-        virtual jobject getReferenceInfo(JNIEnv *env, jvmtiEnv *jvmti) {
-            return nullptr;
-        }
-
-        jlong tag() const {
-            return tag_;
-        }
-
-        jvmtiHeapReferenceKind kind() {
-            return kind_;
-        }
-
-    private:
-        jlong tag_;
-        jvmtiHeapReferenceKind kind_;
-    };
-
-    class InfoWithIndex : public ReferenceInfo {
-    public:
-        InfoWithIndex(jlong tag, jvmtiHeapReferenceKind kind, jint index) : ReferenceInfo(tag, kind), index_(index) {}
-
-        jobject getReferenceInfo(JNIEnv *env, jvmtiEnv *jvmti) override {
-            return toJavaArray(env, index_);
-        }
-
-    private:
-        jint index_;
-    };
-
-    jlongArray buildStackInfo(JNIEnv *env, jlong threadId, jint depth, jint slot) {
-        std::vector<jlong> vector = {threadId, depth, slot};
-        return toJavaArray(env, vector);
-    }
-
-    jobjectArray buildMethodInfo(JNIEnv *env, jvmtiEnv *jvmti, jmethodID id) {
-        if (id == nullptr) {
-            return nullptr;
-        }
-        char *name, *signature, *genericSignature;
-        jvmtiError err = jvmti->GetMethodName(id, &name, &signature, &genericSignature);
-        handleError(jvmti, err, "Could not receive method info");
-        if (err != JVMTI_ERROR_NONE)
-            return nullptr;
-        jobjectArray result = env->NewObjectArray(3, env->FindClass("java/lang/String"), nullptr);
-        env->SetObjectArrayElement(result, 0, env->NewStringUTF(name));
-        env->SetObjectArrayElement(result, 1, env->NewStringUTF(signature));
-        env->SetObjectArrayElement(result, 2, env->NewStringUTF(genericSignature));
-        jvmti->Deallocate(reinterpret_cast<unsigned char *>(name));
-        jvmti->Deallocate(reinterpret_cast<unsigned char *>(signature));
-        jvmti->Deallocate(reinterpret_cast<unsigned char *>(genericSignature));
-        return result;
-    }
-
-    class StackInfo : public ReferenceInfo {
-    public:
-        StackInfo(jlong tag, jvmtiHeapReferenceKind kind, jlong threadId, jint slot, jint depth, jmethodID methodId)
-                : ReferenceInfo(tag, kind), threadId_(threadId), slot_(slot), depth_(depth), methodId_(methodId) {}
-
-    public:
-        jobject getReferenceInfo(JNIEnv *env, jvmtiEnv *jvmti) override {
-            return wrapWithArray(env,
-                                 buildStackInfo(env, threadId_, depth_, slot_),
-                                 buildMethodInfo(env, jvmti, methodId_)
-            );
-        }
-
-    private:
-        jlong threadId_;
-        jint slot_;
-        jint depth_;
-        jmethodID methodId_;
-    };
-
-    class State {
-    public:
-        State() : state(0) {
-
-        }
-
-        State(bool isAlreadyVisited, bool isWeakSoftReachable) : state(0) {
-            setAlreadyVisited(isAlreadyVisited);
-            setWeakSoftReachable(isWeakSoftReachable);
-        }
-
-        void setAlreadyVisited(bool value) {
-            setAttribute(value, 0);
-        }
-
-        void setWeakSoftReachable(bool value) {
-            setAttribute(value, 1u);
-        }
-
-        bool isAlreadyVisited() const {
-            return checkAttribute(0u);
-        }
-
-        bool isWeakSoftReachable() const {
-            return checkAttribute(1u);
-        }
-
-        void updateWeakSoftReachableValue(const State &referrerState) {
-            if (isWeakSoftReachable()) {
-                if (!referrerState.isWeakSoftReachable()) {
-                    setWeakSoftReachable(false);
-                }
-            } else {
-                if (referrerState.isWeakSoftReachable() && !isAlreadyVisited()) {
-                    setWeakSoftReachable(true);
-                }
-            }
-        }
-
-    private:
-        void setAttribute(bool value, uint8_t offset) {
-            state = value ? state | (1u << offset) : state & ~(1u << offset);
-        }
-
-        bool checkAttribute(uint8_t offset) const {
-            return (state & (1u << offset)) != 0u;
-        }
-
-    private:
-        uint8_t state;
-    };
-
-    class GcTag {
-    public:
-        GcTag() : state() {
-        }
-
-        explicit GcTag(bool isWeakSoftReachable) :
-                state(false, isWeakSoftReachable) {
-
-        }
-
-        ~GcTag() {
-            --tagBalance;
-            for (auto info : backRefs) {
-                delete info;
-            }
-        }
-
-        static GcTag *create(jlong classTag) {
-            ++tagBalance;
-            return new GcTag(classTag != 0 && pointerToGcTag(classTag)->isWeakSoftReachable());
-        }
-
-        static GcTag *create() {
-            ++tagBalance;
-            return new GcTag();
-        }
-
-        static GcTag *pointerToGcTag(jlong tagPtr) {
-            if (tagPtr == 0) {
-                return new GcTag();
-            }
-            return (GcTag *) (ptrdiff_t) (void *) tagPtr;
-        }
-
-        static void cleanTag(jlong tag) {
-            delete pointerToGcTag(tag);
-        }
-
-        bool isWeakSoftReachable() const {
-            return state.isWeakSoftReachable();
-        }
-
-        void setVisited() {
-            state.setAlreadyVisited(true);
-        }
-
-        virtual void updateState(const GcTag *const referrer) {
-            state.updateWeakSoftReachableValue(referrer->state);
-        }
-
-    public:
-        std::vector<ReferenceInfo *> backRefs;
-
-    private:
-        State state;
-    };
-
-    struct WeakSoftReferenceClassTag : public GcTag {
-        WeakSoftReferenceClassTag() : GcTag(true) {
-
-        }
-
-        void updateState(const GcTag *const referrer) override {
-
-        }
-
-        static GcTag *create() {
-            ++tagBalance;
-            return new WeakSoftReferenceClassTag();
-        }
-    };
-
-    ReferenceInfo *createReferenceInfo(jlong tag, jvmtiHeapReferenceKind kind, const jvmtiHeapReferenceInfo *info) {
-        switch (kind) {
-            case JVMTI_HEAP_REFERENCE_STATIC_FIELD:
-            case JVMTI_HEAP_REFERENCE_FIELD:
-                return new InfoWithIndex(tag, kind, info->field.index);
-            case JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT:
-                return new InfoWithIndex(tag, kind, info->array.index);
-            case JVMTI_HEAP_REFERENCE_CONSTANT_POOL:
-                return new InfoWithIndex(tag, kind, info->constant_pool.index);
-            case JVMTI_HEAP_REFERENCE_STACK_LOCAL: {
-                jvmtiHeapReferenceInfoStackLocal const &stackLocal = info->stack_local;
-                return new StackInfo(tag, kind, stackLocal.thread_id, stackLocal.slot, stackLocal.depth,
-                                     stackLocal.method);
-            }
-            case JVMTI_HEAP_REFERENCE_JNI_LOCAL: {
-                jvmtiHeapReferenceInfoJniLocal const &jniLocal = info->jni_local;
-                return new StackInfo(tag, kind, jniLocal.thread_id, -1, jniLocal.depth, jniLocal.method);
-            }
-                // no information provided
-            case JVMTI_HEAP_REFERENCE_CLASS:
-            case JVMTI_HEAP_REFERENCE_CLASS_LOADER:
-            case JVMTI_HEAP_REFERENCE_SIGNERS:
-            case JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN:
-            case JVMTI_HEAP_REFERENCE_INTERFACE:
-            case JVMTI_HEAP_REFERENCE_SUPERCLASS:
-            case JVMTI_HEAP_REFERENCE_JNI_GLOBAL:
-            case JVMTI_HEAP_REFERENCE_SYSTEM_CLASS:
-            case JVMTI_HEAP_REFERENCE_MONITOR:
-            case JVMTI_HEAP_REFERENCE_THREAD:
-            case JVMTI_HEAP_REFERENCE_OTHER:
-                break;
-        }
-
-        return new ReferenceInfo(tag, kind);
-    }
-
-    jint JNICALL cbGcPaths(jvmtiHeapReferenceKind referenceKind,
-                           const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
-                           jlong referrerClassTag, jlong size, jlong *tagPtr,
-                           const jlong *referrerTagPtr, jint length, void *userData) {
+    jint JNICALL collectPaths(jvmtiHeapReferenceKind referenceKind,
+                              const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
+                              jlong referrerClassTag, jlong size, jlong *tagPtr,
+                              const jlong *referrerTagPtr, jint length, void *userData) {
         if (*tagPtr == 0) {
             *tagPtr = pointerToTag(GcTag::create(referrerClassTag));
         }
@@ -281,8 +34,8 @@ namespace {
     }
 
     jobjectArray createLinksInfos(JNIEnv *env, jvmtiEnv *jvmti,
-                                         const std::unordered_map<jlong, jint> &tagToIndex,
-                                         const std::vector<ReferenceInfo *> &infos) {
+                                  const std::unordered_map<jlong, jint> &tagToIndex,
+                                  const std::vector<ReferenceInfo *> &infos) {
         std::vector<jint> prevIndices;
         std::vector<jint> refKinds;
         std::vector<jobject> refInfos;
@@ -292,13 +45,13 @@ namespace {
         refInfos.reserve(size);
         refKinds.reserve(size);
         for (ReferenceInfo *info : infos) {
-            jlong prevTag = info->tag();
+            jlong prevTag = info->getTag();
             auto it = tagToIndex.find(prevTag);
             if (prevTag != -1 && it == tagToIndex.end()) {
                 continue;
             }
             prevIndices.push_back(prevTag == -1 ? -1 : it->second);
-            refKinds.push_back(static_cast<jint>(info->kind()));
+            refKinds.push_back(static_cast<jint>(info->getKind()));
             refInfos.push_back(info->getReferenceInfo(env, jvmti));
         }
 
@@ -328,8 +81,8 @@ namespace {
     }
 
     jobjectArray createResultObject(JNIEnv *env, jvmtiEnv *jvmti,
-                                           const std::vector<std::pair<jobject, jlong>> &objectToTag,
-                                           const std::unordered_map<jlong, std::vector<ReferenceInfo *>> *tagToInfos = nullptr) {
+                                    const std::vector<std::pair<jobject, jlong>> &objectToTag,
+                                    const std::unordered_map<jlong, std::vector<ReferenceInfo *>> *tagToInfos = nullptr) {
         std::unordered_map<jlong, jint> tagToIndex = getTagToIndex(objectToTag);
         jclass langObject = env->FindClass("java/lang/Object");
         jint objectsCount = static_cast<jint>(objectToTag.size());
@@ -371,7 +124,7 @@ namespace {
                     env->FindClass(klass),
                     pointerToTag(WeakSoftReferenceClassTag::create())
             );
-            handleError(jvmti, err, "Couldn't set tag for reference class");
+            handleError(jvmti, err, "Couldn't set getTag for reference class");
         }
     }
 
@@ -380,13 +133,13 @@ namespace {
         jvmtiHeapCallbacks cb;
 
         std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-        cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&cbGcPaths);
+        cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&collectPaths);
 
         setTagsForReferences(env, jvmti);
 
         GcTag *tag = GcTag::create();
         err = jvmti->SetTag(target, pointerToTag(tag));
-        handleError(jvmti, err, "Could not set tag for target object");
+        handleError(jvmti, err, "Could not set getTag for target object");
 
         info("start following through references");
         err = jvmti->FollowReferences(0, nullptr, nullptr, &cb, nullptr);
@@ -399,7 +152,7 @@ namespace {
     ReferenceInfo *getReferrerInfo(jlong referee, jlong referrer) {
         GcTag *tag = GcTag::pointerToGcTag(referee);
         for (ReferenceInfo *info : tag->backRefs) {
-            if (info->tag() == referrer) {
+            if (info->getTag() == referrer) {
                 return info;
             }
         }
@@ -408,7 +161,7 @@ namespace {
     }
 
     std::vector<std::pair<jobject, jlong>> getSortedObjectToTag(jvmtiEnv *jvmti,
-                                                                       const std::vector<std::pair<jlong, jint>> &nodes) {
+                                                                const std::vector<std::pair<jlong, jint>> &nodes) {
         std::unordered_map<jlong, jint> tagToPathNumber;
         std::vector<jlong> tags(nodes.size());
         for (auto node : nodes) {
@@ -440,14 +193,14 @@ namespace {
 
         GcTag *tag = GcTag::pointerToGcTag(referee);
         for (ReferenceInfo *info : tag->backRefs) {
-            if (info->tag() == -1) {
+            if (info->getTag() == -1) {
                 pInfos->push_back(info);
             }
         }
     }
 
     bool insertInfos(jlong referee, jlong referrer,
-                            std::unordered_map<jlong, std::vector<ReferenceInfo *>> &tagToInfos) {
+                     std::unordered_map<jlong, std::vector<ReferenceInfo *>> &tagToInfos) {
         ReferenceInfo *info = getReferrerInfo(referee, referrer);
         auto it = tagToInfos.find(referee);
         if (it == tagToInfos.end()) {
@@ -460,7 +213,7 @@ namespace {
     }
 
     bool insertTruncatedReferenceInfo(jlong start, jlong referrer, jint lengthToStart,
-                                             std::unordered_map<jlong, std::vector<ReferenceInfo *>> &tagToInfos) {
+                                      std::unordered_map<jlong, std::vector<ReferenceInfo *>> &tagToInfos) {
         ReferenceInfo *info = new InfoWithIndex(referrer,
                                                 static_cast<jvmtiHeapReferenceKind>(MEMORY_AGENT_TRUNCATE_REFERENCE),
                                                 lengthToStart);
@@ -474,7 +227,7 @@ namespace {
     }
 
     void truncatePath(jlong start, jlong tag, const std::unordered_map<jlong, jlong> &prevNode,
-                             std::unordered_map<jlong, std::vector<ReferenceInfo *>> &tagToInfos) {
+                      std::unordered_map<jlong, std::vector<ReferenceInfo *>> &tagToInfos) {
         jint lengthToStart = 0;
         jlong oldTag = tag;
         jlong prevTag = prevNode.find(tag)->second;
@@ -487,8 +240,8 @@ namespace {
     }
 
     jobjectArray createResultObjectForGcRootsPaths(JNIEnv *env, jvmtiEnv *jvmti, const std::vector<jlong> &roots,
-                                                          const std::unordered_map<jlong, jlong> &prevNode, jlong start,
-                                                          jint objectsNumber) {
+                                                   const std::unordered_map<jlong, jlong> &prevNode, jlong start,
+                                                   jint objectsNumber) {
         std::vector<std::pair<jlong, jint>> nodesToPathNum;
         std::unordered_map<jlong, std::vector<ReferenceInfo *>> tagToInfos;
         jint cnt = 0;
@@ -527,7 +280,7 @@ namespace {
     }
 
     jobjectArray collectPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jlong start,
-                                                     jint number, jint objectsNumber) {
+                                              jint number, jint objectsNumber) {
         std::queue<jlong> queue;
         std::unordered_map<jlong, jlong> prevTag;
         std::unordered_set<jlong> foundRootsSet;
@@ -540,8 +293,8 @@ namespace {
             tag = queue.front();
             queue.pop();
             for (ReferenceInfo *info : GcTag::pointerToGcTag(tag)->backRefs) {
-                jlong parentTag = info->tag();
-                if (isValidGcRoot(parentTag, info->kind()) &&
+                jlong parentTag = info->getTag();
+                if (isValidGcRoot(parentTag, info->getKind()) &&
                     foundRootsSet.insert(tag).second) {
                     foundRoots.push_back(tag);
                 } else if (parentTag != -1 && prevTag.insert(std::make_pair(parentTag, tag)).second) {
@@ -561,20 +314,27 @@ namespace {
     }
 }
 
-jobjectArray findPathsToClosestGcRoots(JNIEnv *env, jvmtiEnv *jvmti, jobject object, jint pathsNumber, jint objectsNumber) {
-    info("Looking for shortest path to gc root started");
+PathsToClosestGcRootsAction::PathsToClosestGcRootsAction(JNIEnv *env, jvmtiEnv *jvmti) : MemoryAgentTimedAction(env, jvmti) {
+
+}
+
+jobjectArray PathsToClosestGcRootsAction::executeOperation(jobject object, jint pathsNumber, jint objectsNumber) {
+    debug("Looking for shortest path to gc root started");
     GcTag *tag = createTags(env, jvmti, object);
 
-    info("create resulting java objects");
+    debug("create resulting java objects");
     jobjectArray result = collectPathsToClosestGcRoots(env, jvmti, pointerToTag(tag), pathsNumber, objectsNumber);
 
-    info("remove all tags from objects in heap");
+    return result;
+}
+
+jvmtiError PathsToClosestGcRootsAction::cleanHeap() {
+    debug("remove all tags from objects in heap");
     jvmtiError err = removeAllTagsFromHeap(jvmti, GcTag::cleanTag);
-    handleError(jvmti, err, "Count not remove all tags");
 
     if (tagBalance != 0) {
         fatal("MEMORY LEAK FOUND!");
     }
 
-    return result;
+    return err;
 }
