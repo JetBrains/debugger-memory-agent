@@ -82,12 +82,10 @@ jobjectArray RetainedAndShallowSizeByClassesAction::executeOperation(jobjectArra
 
     jclass langObject = env->FindClass("java/lang/Object");
     jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
-    if (!isOk(err)) {
-        handleError(jvmti, err, "Could not estimate retained size by classes");
-        return result;
-    }
-
     env->SetObjectArrayElement(result, 0, toJavaArray(env, shallowSizes));
     env->SetObjectArrayElement(result, 1, toJavaArray(env, retainedSizes));
+    if (!isOk(err)) {
+        handleError(jvmti, err, "Could not estimate retained size by classes");
+    }
     return result;
 }
