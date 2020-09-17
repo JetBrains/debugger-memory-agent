@@ -4,8 +4,9 @@
 #define MEMORY_AGENT_PATHS_TO_CLOSEST_GC_ROOTS_H
 
 #include "../timed_action.h"
+#include "roots_tags.h"
 
-#define MEMORY_AGENT_TRUNCATE_REFERENCE 42
+#define MEMORY_AGENT_TRUNCATE_REFERENCE static_cast<jvmtiHeapReferenceKind>(42)
 
 class PathsToClosestGcRootsAction : public MemoryAgentTimedAction<jobjectArray, jobject, jint, jint> {
 public:
@@ -14,6 +15,10 @@ public:
 private:
     jobjectArray executeOperation(jobject object, jint pathsNumber, jint objectsNumber) override;
     jvmtiError cleanHeap() override;
+
+    GcTag *createTags(jobject target);
+
+    jobjectArray collectPathsToClosestGcRoots(jlong start, jint number, jint objectsNumber);
 };
 
 

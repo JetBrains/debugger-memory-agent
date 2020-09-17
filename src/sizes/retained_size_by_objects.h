@@ -14,7 +14,7 @@ private:
     jlongArray executeOperation(jobjectArray objects) override;
     jvmtiError cleanHeap() override;
 
-    jvmtiError estimateObjectsSizes(const std::__1::vector<jobject> &objects, std::__1::vector<jlong> &result);
+    jvmtiError estimateObjectsSizes(const std::vector<jobject> &objects, std::vector<jlong> &result);
 
     jvmtiError tagHeap(const std::vector<jobject> &objects);
 

@@ -14,17 +14,17 @@ public class IdeaNativeAgentProxy {
 
   public static native boolean canFindPathsToClosestGcRoots();
 
-  public static native long[] getShallowSizeByClasses(Object[] classes);
+  public static native Object getShallowSizeByClasses(Object[] classes, long timeoutInMillis);
 
-  public static native long[] getRetainedSizeByClasses(Object[] classes);
+  public static native Object getRetainedSizeByClasses(Object[] classes, long timeoutInMillis);
 
-  public static native Object getShallowAndRetainedSizeByClasses(Object[] classes);
+  public static native Object getShallowAndRetainedSizeByClasses(Object[] classes, long timeoutInMillis);
 
-  public static native Object findPathsToClosestGcRoots(Object object, int pathsNumber, int objectsNumber);
+  public static native Object findPathsToClosestGcRoots(Object object, int pathsNumber, int objectsNumber, long timeoutInMillis);
 
-  public static native Object size(Object object);
+  public static native Object size(Object object, long timeoutInMillis);
 
-  public static native long[] estimateRetainedSize(Object[] objects);
+  public static native Object estimateRetainedSize(Object[] objects, long timeoutInMillis);
 
   public static boolean isLoaded() {
     try {

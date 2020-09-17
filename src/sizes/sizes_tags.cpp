@@ -36,16 +36,16 @@ Tag::Tag() : array(), refCount(1), isStartTag(false), alreadyReferred(false) {
 }
 
 Tag::~Tag() {
-    --tagBalance;
+    --sizesTagBalance;
 }
 
 Tag *Tag::create(query_size_t index, uint8_t state) {
-    ++tagBalance;
+    ++sizesTagBalance;
     return new Tag(index, state);
 }
 
 Tag *Tag::create(const Tag &referree, const Tag &referrer) {
-    ++tagBalance;
+    ++sizesTagBalance;
     return new Tag(referree, referrer);
 }
 
@@ -57,7 +57,7 @@ Tag *Tag::copyWithoutStartMarks(const Tag &tag) {
         result[i] = TagInfoArray::TagInfo(info.index, state);
     }
 
-    ++tagBalance;
+    ++sizesTagBalance;
     return new Tag(std::move(result));
 }
 
@@ -98,12 +98,12 @@ ClassTag::ClassTag(query_size_t index, uint8_t state, query_size_t id) : Tag(ind
 }
 
 Tag *ClassTag::create(query_size_t index) {
-    ++tagBalance;
+    ++sizesTagBalance;
     return new ClassTag(index);
 }
 
 Tag *ClassTag::create(query_size_t index, uint8_t state, query_size_t id) {
-    ++tagBalance;
+    ++sizesTagBalance;
     return new ClassTag(index, state, id);
 }
 

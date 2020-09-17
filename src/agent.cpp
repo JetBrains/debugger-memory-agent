@@ -135,19 +135,21 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
 }
 
 extern "C"
-JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
         JNIEnv *env,
         jclass thisClass,
-        jobjectArray objects) {
-    return RetainedSizeByObjectsAction(env, gdata->jvmti).runWithTimeout(std::chrono::seconds(100), objects);
+        jobjectArray objects,
+        jlong timeoutInMillis) {
+    return RetainedSizeByObjectsAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), objects);
 }
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
         JNIEnv *env,
         jclass thisClass,
-        jobject object) {
-    return RetainedSizeAndHeldObjectsAction(env, gdata->jvmti).runWithTimeout(std::chrono::seconds(100), object);
+        jobject object,
+        jlong timeoutInMillis) {
+    return RetainedSizeAndHeldObjectsAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), object);
 }
 
 extern "C"
@@ -156,32 +158,36 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobject object,
         jint pathsNumber,
-        jint objectsNumber) {
-    return PathsToClosestGcRootsAction(env, gdata->jvmti).runWithTimeout(std::chrono::seconds(100), object, pathsNumber, objectsNumber);
+        jint objectsNumber,
+        jlong timeoutInMillis) {
+    return PathsToClosestGcRootsAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), object, pathsNumber, objectsNumber);
 }
 
 extern "C"
-JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowSizeByClasses(
         JNIEnv *env,
         jclass thisClass,
-        jobjectArray classesArray) {
-    return ShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::seconds(100), classesArray);
+        jobjectArray classesArray,
+        jlong timeoutInMillis) {
+    return ShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), classesArray);
 }
 
 extern "C"
-JNIEXPORT jlongArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getRetainedSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getRetainedSizeByClasses(
         JNIEnv *env,
         jclass thisClass,
-        jobjectArray classesArray) {
-    return RetainedSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::seconds(100), classesArray);
+        jobjectArray classesArray,
+        jlong timeoutInMillis) {
+    return RetainedSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), classesArray);
 }
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClasses(
         JNIEnv *env,
         jclass thisClass,
-        jobjectArray classesArray) {
-    return RetainedAndShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::seconds(100), classesArray);
+        jobjectArray classesArray,
+        jlong timeoutInMillis) {
+    return RetainedAndShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), classesArray);
 }
 
 #pragma clang diagnostic pop

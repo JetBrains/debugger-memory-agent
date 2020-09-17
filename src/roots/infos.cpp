@@ -27,8 +27,7 @@ static jobjectArray buildMethodInfo(JNIEnv *env, jvmtiEnv *jvmti, jmethodID id) 
     char *name, *signature, *genericSignature;
     jvmtiError err = jvmti->GetMethodName(id, &name, &signature, &genericSignature);
     handleError(jvmti, err, "Could not receive method info");
-    if (err != JVMTI_ERROR_NONE)
-        return nullptr;
+    if (err != JVMTI_ERROR_NONE) return nullptr;
     jobjectArray result = env->NewObjectArray(3, env->FindClass("java/lang/String"), nullptr);
     env->SetObjectArrayElement(result, 0, env->NewStringUTF(name));
     env->SetObjectArrayElement(result, 1, env->NewStringUTF(signature));

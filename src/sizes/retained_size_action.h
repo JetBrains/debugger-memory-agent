@@ -22,7 +22,7 @@ protected:
     jvmtiError cleanHeap() final {
         jvmtiError err = this->IterateThroughHeap(0, nullptr, clearTag, nullptr, "clear tags");
 
-        if (tagBalance != 0) {
+        if (sizesTagBalance != 0) {
             fatal("MEMORY LEAK FOUND!");
         }
 
@@ -41,33 +41,33 @@ protected:
     }
 
     jvmtiError tagObjectsOfClasses(jobjectArray classesArray) {
-        jvmtiHeapCallbacks cb;
-        std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-        cb.heap_iteration_callback = reinterpret_cast<jvmtiHeapIterationCallback>(&tagObjectOfTaggedClass);
-
         debug("getTag objects of classes");
         jvmtiError err = createTagsForClasses(classesArray);
         if (err != JVMTI_ERROR_NONE) return err;
 
-        return this->jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
+        return this->IterateThroughHeap(0, nullptr, tagObjectOfTaggedClass, nullptr);
     }
 
     jvmtiError tagHeap() {
-        jvmtiError err = this->FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
+        jvmtiError err = this->FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, &this->finishTime, "find objects with new info");
         if (err != JVMTI_ERROR_NONE) return err;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
         std::vector<std::pair<jobject, jlong>> objectsAndTags;
         debug("collect objects with new info");
         err = getObjectsByTags(this->jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objectsAndTags);
         if (err != JVMTI_ERROR_NONE) return err;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
         err = this->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, retagStartObjects, nullptr, "retag start objects");
         if (err != JVMTI_ERROR_NONE) return err;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-        err = this->FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
+        err = this->FollowReferences(0, nullptr, nullptr, visitReference, &this->finishTime, "getTag heap");
         if (err != JVMTI_ERROR_NONE) return err;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-        return walkHeapFromObjects(this->jvmti, objectsAndTags);
+        return walkHeapFromObjects(this->jvmti, objectsAndTags, this->finishTime);
     }
 };
 

@@ -7,6 +7,21 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public abstract class TestBase {
+  protected enum MemoryAgentErrorCode {
+    OK(0),
+    TIMEOUT(1);
+
+    public final int id;
+
+    public static MemoryAgentErrorCode valueOf(int value) {
+      return value == 0 ? OK : TIMEOUT;
+    }
+
+    MemoryAgentErrorCode(int id) {
+      this.id = id;
+    }
+  }
+
   static {
     if(IdeaNativeAgentProxy.isLoaded()) {
       System.out.println("Agent loaded");
@@ -18,6 +33,7 @@ public abstract class TestBase {
 
   private static final int DEFAULT_PATHS_LIMIT = 10;
   private static final int DEFAULT_OBJECTS_LIMIT = 5000;
+  public static final long DEFAULT_TIMEOUT = 100000;
   private static final Map<Integer, String> referenceDescription = new HashMap<>();
 
   static {
@@ -41,15 +57,23 @@ public abstract class TestBase {
     referenceDescription.put(42, "TRUNCATE");
   }
 
+  protected static long[] getResultAsLong(Object result) {
+    return (long[])((Object[])result)[1];
+  }
+
+  protected static MemoryAgentErrorCode getErrorCode(Object result) {
+    return MemoryAgentErrorCode.valueOf(((int[])((Object[])result)[0])[0]);
+  }
+
   protected static void printSize(Object object) {
-    Object result = IdeaNativeAgentProxy.size(object);
-    Object[] arrayResult = (Object[]) result;
-    System.out.println(((long[]) arrayResult[0])[0]);
+    Object result = IdeaNativeAgentProxy.size(object, DEFAULT_TIMEOUT);
+    Object[] arrayResult = (Object[]) ((Object[]) result)[1];
+    System.out.println(((long[])arrayResult[0])[0]);
   }
 
   protected static void printSizeAndHeldObjects(Object object) {
-    Object result = IdeaNativeAgentProxy.size(object);
-    Object[] arrayResult = (Object[]) result;
+    Object result = IdeaNativeAgentProxy.size(object, DEFAULT_TIMEOUT);
+    Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     System.out.printf("Size: %d\n", ((long[]) arrayResult[0])[0]);
     System.out.println("Held objects:");
     List<String> objectsNames = new ArrayList<>();
@@ -63,7 +87,7 @@ public abstract class TestBase {
 
   protected static void printSizes(Object... objects) {
     String names = Arrays.toString(Arrays.stream(objects).map(TestBase::asString).toArray());
-    System.out.println(names + " -> " + Arrays.toString(IdeaNativeAgentProxy.estimateRetainedSize(objects)));
+    System.out.println(names + " -> " + Arrays.toString(getResultAsLong(IdeaNativeAgentProxy.estimateRetainedSize(objects, DEFAULT_TIMEOUT))));
   }
 
   private static void printSizeByClasses(Class<?>[] classes, long[] sizes) {
@@ -76,7 +100,8 @@ public abstract class TestBase {
   protected static void printShallowAndRetainedSizeByClasses(Class<?>... classes) {
     assertTrue(IdeaNativeAgentProxy.canGetRetainedSizeByClasses());
     assertTrue(IdeaNativeAgentProxy.canGetShallowSizeByClasses());
-    Object[] arrayResult = (Object[]) IdeaNativeAgentProxy.getShallowAndRetainedSizeByClasses(classes);
+    Object result = IdeaNativeAgentProxy.getShallowAndRetainedSizeByClasses(classes, DEFAULT_TIMEOUT);
+    Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     System.out.println("Shallow sizes by class:");
     printSizeByClasses(classes, (long[])arrayResult[0]);
     System.out.println("Retained sizes by class:");
@@ -86,7 +111,7 @@ public abstract class TestBase {
   protected static void printSizeByClasses(Class<?>... classes) {
     assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
     System.out.println("Shallow sizes by class:");
-    printSizeByClasses(classes, IdeaNativeAgentProxy.getShallowSizeByClasses(classes));
+    printSizeByClasses(classes, getResultAsLong(IdeaNativeAgentProxy.getShallowSizeByClasses(classes, DEFAULT_TIMEOUT)));
   }
 
   private static int indexOfReference(Object[] array, Object value) {
@@ -108,11 +133,11 @@ public abstract class TestBase {
   }
 
   protected static void printGcRoots(Object object, int pathsLimit, int objectsLimit) {
-    doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(object, pathsLimit, objectsLimit));
+    doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(object, pathsLimit, objectsLimit, DEFAULT_TIMEOUT));
   }
 
   protected static void doPrintGcRoots(Object result) {
-    Object[] arrayResult = (Object[]) result;
+    Object[] arrayResult = (Object[]) ((Object[])result)[1];
     Object[] objects = (Object[]) arrayResult[0];
     Object[] links = (Object[]) arrayResult[1];
     boolean[] weakSoftReachable = (boolean[]) arrayResult[2];

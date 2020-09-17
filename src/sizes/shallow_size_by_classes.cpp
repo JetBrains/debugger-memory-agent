@@ -29,6 +29,9 @@ jlongArray ShallowSizeByClassesAction::executeOperation(jobjectArray classesArra
     auto sizes = new jlong[classesCount];
     std::memset(sizes, 0, sizeof(jlong) * classesCount);
     tagClasses(classesArray);
+
+    if (shouldStopExecution()) return result;
+
     IterateThroughHeap(JVMTI_HEAP_FILTER_CLASS_UNTAGGED, nullptr, calculateShallowSize, sizes);
     env->SetLongArrayRegion(result, 0, classesCount, sizes);
     return result;

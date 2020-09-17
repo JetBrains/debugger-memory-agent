@@ -32,7 +32,7 @@ RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, 
 jvmtiError RetainedSizeAndHeldObjectsAction::retagStartObject(jobject object) {
     jlong oldTag;
     jvmtiError err = jvmti->GetTag(object, &oldTag);
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
 
     if (isTagWithNewInfo(oldTag)) {
         Tag *tag = Tag::create(0, createState(true, true, false, false));
@@ -43,37 +43,44 @@ jvmtiError RetainedSizeAndHeldObjectsAction::retagStartObject(jobject object) {
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::tagHeap(jobject object) {
-    jvmtiError err = FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
-    if (err != JVMTI_ERROR_NONE) return err;
+    jvmtiError err = FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, &finishTime, "find objects with new info");
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     std::vector<std::pair<jobject, jlong>> objectsAndTags;
     debug("collect objects with new info");
     err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objectsAndTags);
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     err = retagStartObject(object);
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    err = FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
-    if (err != JVMTI_ERROR_NONE) return err;
+    err = FollowReferences(0, nullptr, nullptr, visitReference, &finishTime, "getTag heap");
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    return walkHeapFromObjects(jvmti, objectsAndTags);
+    return walkHeapFromObjects(jvmti, objectsAndTags, finishTime);
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects) {
     Tag *tag = Tag::create(0, createState(true, true, false, false));
     jvmtiError err = jvmti->SetTag(object, pointerToTag(tag));
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     err = tagHeap(object);
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     retainedSize = 0;
     err = IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, countSizeAndRetagHeldObjects,
                              &retainedSize, "calculate retained size");
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    if (tagBalance != 0) {
+    if (sizesTagBalance != 0) {
         fatal("MEMORY LEAK FOUND!");
     }
 
@@ -104,7 +111,7 @@ jobjectArray RetainedSizeAndHeldObjectsAction::executeOperation(jobject object) 
     jlong retainedSize;
     jvmtiError err = estimateObjectSize(object, retainedSize, heldObjects);
 
-    if (err != JVMTI_ERROR_NONE) {
+    if (!isOk(err)) {
         handleError(jvmti, err, "Could not estimate object size");
     }
 

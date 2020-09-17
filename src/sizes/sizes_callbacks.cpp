@@ -2,8 +2,8 @@
 
 #include "sizes_tags.h"
 #include "sizes_callbacks.h"
+#include "../timed_action.h"
 #include "../utils.h"
-#include "../log.h"
 
 std::unordered_set<jlong> tagsWithNewInfo;
 
@@ -38,6 +38,10 @@ static bool tagsAreValidForMerge(jlong referree, jlong referrer) {
 jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                                 jlong referrerClassTag, jlong size, jlong *tagPtr,
                                 jlong *referrerTagPtr, jint length, void *userData) {
+    if (shouldStopIteration(userData)) {
+        return JVMTI_VISIT_ABORT;
+    }
+
     if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL ||
         isTagWithNewInfo(*tagPtr) || handleReferrersWithNoInfo(referrerTagPtr, tagPtr, true)) {
         return JVMTI_VISIT_OBJECTS;
@@ -63,6 +67,10 @@ jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapR
 jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                             jlong referrerClassTag, jlong size, jlong *tagPtr,
                             jlong *referrerTagPtr, jint length, void *userData) {
+    if (shouldStopIteration(userData)) {
+        return JVMTI_VISIT_ABORT;
+    }
+
     if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL ||
         handleReferrersWithNoInfo(referrerTagPtr, tagPtr)) {
         return JVMTI_VISIT_OBJECTS;
@@ -83,6 +91,10 @@ jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
 jint JNICALL spreadInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                         jlong referrerClassTag, jlong size, jlong *tagPtr,
                         jlong *referrerTagPtr, jint length, void *userData) {
+    if (shouldStopIteration(userData)) {
+        return JVMTI_VISIT_ABORT;
+    }
+
     if (refKind != JVMTI_HEAP_REFERENCE_JNI_LOCAL && refKind != JVMTI_HEAP_REFERENCE_JNI_GLOBAL &&
         *tagPtr != 0 && *referrerTagPtr != 0) {
         auto it = tagsWithNewInfo.find(*tagPtr);
@@ -151,7 +163,9 @@ jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length,
     return JVMTI_ITERATION_CONTINUE;
 }
 
-jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti, const std::vector<std::pair<jobject, jlong>> &objectsAndTags) {
+jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti,
+                               const std::vector<std::pair<jobject, jlong>> &objectsAndTags,
+                               const std::chrono::steady_clock::time_point &finishTime) {
     jvmtiError err = JVMTI_ERROR_NONE;
     if (!objectsAndTags.empty()) {
         jvmtiHeapCallbacks cb;
@@ -159,6 +173,10 @@ jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti, const std::vector<std::pair<jobj
         cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&spreadInfo);
         int heapWalksCnt = 0;
         for (auto &objectAndTag : objectsAndTags) {
+            if (finishTime < std::chrono::steady_clock::now()) {
+                return MEMORY_AGENT_TIMEOUT_ERROR;
+            }
+
             jlong tag;
             err = jvmti->GetTag(objectAndTag.first, &tag);
             if (err != JVMTI_ERROR_NONE) return err;

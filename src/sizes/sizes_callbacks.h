@@ -4,6 +4,7 @@
 #define MEMORY_AGENT_SIZES_CALLBACKS_H
 
 #include <unordered_set>
+#include <chrono>
 #include "jni.h"
 #include "jvmti.h"
 
@@ -29,6 +30,8 @@ jint JNICALL retagStartObjects      (jlong classTag, jlong size, jlong *tagPtr, 
 
 jint JNICALL tagObjectOfTaggedClass (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
 
-jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti, const std::vector<std::pair<jobject, jlong>> &objectsAndTags);
+jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti,
+                                     const std::vector<std::pair<jobject, jlong>> &objectsAndTags,
+                                     const std::chrono::steady_clock::time_point &finishTime);
 
 #endif //MEMORY_AGENT_SIZES_CALLBACKS_H

@@ -32,10 +32,12 @@ RetainedSizeByClassesAction::RetainedSizeByClassesAction(JNIEnv *env, jvmtiEnv *
 
 jvmtiError RetainedSizeByClassesAction::getRetainedSizeByClasses(jobjectArray classesArray, std::vector<jlong> &result) {
     jvmtiError err = tagObjectsOfClasses(classesArray);
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     err = tagHeap();
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     result.resize(env->GetArrayLength(classesArray));
     return IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, visitObject, result.data(), "calculate retained sizes");
@@ -44,7 +46,7 @@ jvmtiError RetainedSizeByClassesAction::getRetainedSizeByClasses(jobjectArray cl
 jlongArray RetainedSizeByClassesAction::executeOperation(jobjectArray classesArray) {
     std::vector<jlong> result;
     jvmtiError err = getRetainedSizeByClasses(classesArray, result);
-    if (err != JVMTI_ERROR_NONE) {
+    if (!isOk(err)) {
         handleError(jvmti, err, "Could not estimate retained size by classes");
         return env->NewLongArray(0);
     }
@@ -60,10 +62,12 @@ jvmtiError RetainedAndShallowSizeByClassesAction::getShallowAndRetainedSizeByCla
                                                                                      std::vector<jlong> &shallowSizes,
                                                                                      std::vector<jlong> &retainedSizes) {
     jvmtiError err = tagObjectsOfClasses(classesArray);
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     err = tagHeap();
-    if (err != JVMTI_ERROR_NONE) return err;
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
     retainedSizes.resize(env->GetArrayLength(classesArray));
     shallowSizes.resize(env->GetArrayLength(classesArray));
@@ -78,7 +82,7 @@ jobjectArray RetainedAndShallowSizeByClassesAction::executeOperation(jobjectArra
 
     jclass langObject = env->FindClass("java/lang/Object");
     jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
-    if (err != JVMTI_ERROR_NONE) {
+    if (!isOk(err)) {
         handleError(jvmti, err, "Could not estimate retained size by classes");
         return result;
     }

@@ -10,19 +10,19 @@ GcTag::GcTag(bool isWeakSoftReachable) : state(false, isWeakSoftReachable) {
 }
 
 GcTag::~GcTag() {
-    --tagBalance;
+    --rootsTagBalance;
     for (auto info : backRefs) {
         delete info;
     }
 }
 
 GcTag * GcTag::create(jlong classTag) {
-    ++tagBalance;
+    ++rootsTagBalance;
     return new GcTag(classTag != 0 && pointerToGcTag(classTag)->isWeakSoftReachable());
 }
 
 GcTag * GcTag::create() {
-    ++tagBalance;
+    ++rootsTagBalance;
     return new GcTag();
 }
 
@@ -58,6 +58,6 @@ void WeakSoftReferenceClassTag::updateState(const GcTag *const referrer) {
 }
 
 GcTag *WeakSoftReferenceClassTag::create() {
-    ++tagBalance;
+    ++rootsTagBalance;
     return new WeakSoftReferenceClassTag();
 }
