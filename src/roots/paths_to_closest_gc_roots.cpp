@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <unordered_map>
+#include <algorithm>
 #include <queue>
 #include "paths_to_closest_gc_roots.h"
 #include "roots_tags.h"
