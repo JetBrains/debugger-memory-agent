@@ -4,7 +4,7 @@
 #define MEMORY_AGENT_TIMED_ACTION_H
 
 #include <chrono>
-#include <memory>
+#include <cstring>
 #include "jni.h"
 #include "jvmti.h"
 #include "log.h"
