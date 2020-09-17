@@ -4,6 +4,7 @@
 #define MEMORY_AGENT_SIZES_CALLBACKS_H
 
 #include <unordered_set>
+#include <vector>
 #include <chrono>
 #include "jni.h"
 #include "jvmti.h"
