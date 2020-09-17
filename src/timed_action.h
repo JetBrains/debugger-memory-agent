@@ -4,10 +4,11 @@
 #define MEMORY_AGENT_TIMED_ACTION_H
 
 #include <chrono>
-
+#include <memory>
 #include "jni.h"
 #include "jvmti.h"
 #include "log.h"
+#include "utils.h"
 
 #define MEMORY_AGENT_TIMEOUT_ERROR static_cast<jvmtiError>(999)
 
