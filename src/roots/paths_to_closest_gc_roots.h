@@ -21,5 +21,6 @@ private:
     jobjectArray collectPathsToClosestGcRoots(jlong start, jint number, jint objectsNumber);
 };
 
+void setTagsForReferences(JNIEnv *env, jvmtiEnv *jvmti, jlong tag);
 
 #endif //MEMORY_AGENT_PATHS_TO_CLOSEST_GC_ROOTS_H

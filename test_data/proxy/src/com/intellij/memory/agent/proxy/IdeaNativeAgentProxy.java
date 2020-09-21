@@ -26,6 +26,10 @@ public class IdeaNativeAgentProxy {
 
   public static native Object[] estimateRetainedSize(Object[] objects, long timeoutInMillis);
 
+  public static native Object[] getFirstReachableObject(Object startObject, Object suspectClass, long timeoutInMillis);
+
+  public static native Object[] getAllReachableObjects(Object startObject, Object suspectClass, long timeoutInMillis);
+
   public static boolean isLoaded() {
     try {
       return isLoadedImpl();

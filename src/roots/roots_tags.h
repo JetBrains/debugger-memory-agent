@@ -11,6 +11,9 @@ static jlong rootsTagBalance = 0;
 
 class GcTag {
 public:
+    const static GcTag WeakSoftReferenceTag;
+
+public:
     GcTag();
     explicit GcTag(bool isWeakSoftReachable);
 
@@ -27,22 +30,13 @@ public:
 
     void setVisited();
 
-    virtual void updateState(const GcTag *referrer);
+    void updateState(const GcTag *referrer);
 
 public:
     std::vector<ReferenceInfo *> backRefs;
 
 private:
     State state;
-};
-
-class WeakSoftReferenceClassTag : public GcTag {
-public:
-    WeakSoftReferenceClassTag();
-
-    void updateState(const GcTag *referrer) override;
-
-    static GcTag *create();
 };
 
 #endif //MEMORY_AGENT_ROOTS_TAGS_H

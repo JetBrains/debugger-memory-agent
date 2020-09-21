@@ -33,7 +33,7 @@ public abstract class TestBase {
 
   private static final int DEFAULT_PATHS_LIMIT = 10;
   private static final int DEFAULT_OBJECTS_LIMIT = 5000;
-  public static final long DEFAULT_TIMEOUT = 100000;
+  public static final long DEFAULT_TIMEOUT = -1;
   private static final Map<Integer, String> referenceDescription = new HashMap<>();
 
   static {
@@ -65,6 +65,28 @@ public abstract class TestBase {
     return MemoryAgentErrorCode.valueOf(((int[])((Object[])result)[0])[0]);
   }
 
+  protected static void printClassReachability(Class<?> suspectClass) {
+    Object result = IdeaNativeAgentProxy.getFirstReachableObject(null, suspectClass, TestBase.DEFAULT_TIMEOUT);
+    System.out.println((((Object[]) result)[1]) != null);
+  }
+
+  protected static void printReachableObjects(Class<?> suspectClass) {
+    Object result = IdeaNativeAgentProxy.getAllReachableObjects(null, suspectClass, TestBase.DEFAULT_TIMEOUT);
+    Object[] objects  = (Object[]) ((Object[]) result)[1];
+    printReachableObjects(objects, suspectClass);
+  }
+
+  protected static void printReachableObjects(Object startObject, Class<?> suspectClass) {
+    Object result = IdeaNativeAgentProxy.getAllReachableObjects(startObject, suspectClass, TestBase.DEFAULT_TIMEOUT);
+    Object[] objects  = (Object[]) ((Object[]) result)[1];
+    printReachableObjects(objects, suspectClass);
+  }
+
+  private static void printReachableObjects(Object[] objects, Class<?> suspectClass) {
+    System.out.println("Reachable objects of " + suspectClass + ":");
+    printObjectsSortedByName(objects);
+  }
+
   protected static void printSize(Object object) {
     Object result = IdeaNativeAgentProxy.size(object, DEFAULT_TIMEOUT);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
@@ -77,8 +99,12 @@ public abstract class TestBase {
     long[] sizes = ((long[]) arrayResult[0]);
     System.out.printf("Shallow size: %d, Retained size: %d\n", sizes[0], sizes[1]);
     System.out.println("Held objects:");
+    printObjectsSortedByName((Object[])arrayResult[1]);
+  }
+
+  protected static void printObjectsSortedByName(Object[] objects) {
     List<String> objectsNames = new ArrayList<>();
-    for (Object obj : (Object[]) arrayResult[1]) {
+    for (Object obj : objects) {
       objectsNames.add(obj.toString());
     }
 

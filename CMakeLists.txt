@@ -42,6 +42,8 @@ add_library(memory_agent SHARED
         src/roots/roots_state.cpp
         src/roots/paths_to_closest_gc_roots.cpp
         src/roots/paths_to_closest_gc_roots.h
+        src/reachability/objects_of_class_in_heap.cpp
+        src/reachability/objects_of_class_in_heap.h
         src/sizes/retained_size_action.cpp)
 
 if ((UNIX OR MINGW) AND NOT APPLE)

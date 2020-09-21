@@ -113,22 +113,6 @@ namespace {
         return createResultObject(env, jvmti, getObjectToTag(jvmti, tags));
     }
 
-    void setTagsForReferences(JNIEnv *env, jvmtiEnv *jvmti) {
-        const char *classes[3] = {
-                "java/lang/ref/SoftReference",
-                "java/lang/ref/WeakReference",
-                "java/lang/ref/PhantomReference"
-        };
-
-        for (const char *klass : classes) {
-            jvmtiError err = jvmti->SetTag(
-                    env->FindClass(klass),
-                    pointerToTag(WeakSoftReferenceClassTag::create())
-            );
-            handleError(jvmti, err, "Couldn't set getTag for reference class");
-        }
-    }
-
     ReferenceInfo *getReferrerInfo(jlong referee, jlong referrer) {
         GcTag *tag = GcTag::pointerToGcTag(referee);
         for (ReferenceInfo *info : tag->backRefs) {
@@ -302,8 +286,37 @@ jobjectArray PathsToClosestGcRootsAction::collectPathsToClosestGcRoots(jlong sta
            createResultObjectForGcRootsPaths(env, jvmti, foundRoots, prevTag, start, objectsNumber);
 }
 
+void setTagsForReferences(JNIEnv *env, jvmtiEnv *jvmti, jlong tag) {
+    const char *refClassesNames[3] = {
+            "java/lang/ref/SoftReference",
+            "java/lang/ref/WeakReference",
+            "java/lang/ref/PhantomReference"
+    };
+    jclass refClasses[3];
+    for (int i = 0; i < 3; i++) {
+        refClasses[i] = env->FindClass(refClassesNames[i]);
+    }
+
+    jclass *classes;
+    jint cnt;
+    jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
+    handleError(jvmti, err, "Couldn't get loaded classes");
+    jclass langClass = env->FindClass("java/lang/Class");
+    jmethodID isAssignableFrom = env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
+
+    for (int i = 0; i < cnt; i++) {
+        for (auto & refClass : refClasses) {
+            if (env->CallBooleanMethod(refClass, isAssignableFrom, classes[i])) {
+                err = jvmti->SetTag(classes[i], tag);
+                handleError(jvmti, err, "Couldn't set tag for reference class");
+                break;
+            }
+        }
+    }
+}
+
 GcTag *PathsToClosestGcRootsAction::createTags(jobject target) {
-    setTagsForReferences(env, jvmti);
+    setTagsForReferences(env, jvmti, pointerToTag(&GcTag::WeakSoftReferenceTag));
 
     GcTag *tag = GcTag::create();
     jvmtiError err = jvmti->SetTag(target, pointerToTag(tag));
@@ -328,7 +341,8 @@ jobjectArray PathsToClosestGcRootsAction::executeOperation(jobject object, jint 
 
 jvmtiError PathsToClosestGcRootsAction::cleanHeap() {
     debug("remove all tags from objects in heap");
-    jvmtiError err = removeAllTagsFromHeap(jvmti, GcTag::cleanTag);
+    std::set<jlong> ignoredTag {pointerToTag(&GcTag::WeakSoftReferenceTag)};
+    jvmtiError err = removeTagsFromHeap(jvmti, ignoredTag, GcTag::cleanTag);
 
     if (rootsTagBalance != 0) {
         fatal("MEMORY LEAK FOUND!");
