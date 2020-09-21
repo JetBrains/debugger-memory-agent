@@ -3,7 +3,6 @@
 #include "retained_size_by_objects.h"
 #include "sizes_tags.h"
 #include "sizes_callbacks.h"
-#include "../utils.h"
 
 RetainedSizeByObjectsAction::RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti) : MemoryAgentTimedAction(env, jvmti) {
 

@@ -4,7 +4,6 @@
 #include "retained_size_and_held_objects.h"
 #include "sizes_callbacks.h"
 #include "sizes_tags.h"
-#include "../utils.h"
 
 jint JNICALL countSizeAndRetagHeldObjects(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     if (*tagPtr == 0) {

@@ -5,7 +5,6 @@
 
 #include "../timed_action.h"
 
-
 class RetainedSizeAndHeldObjectsAction : public MemoryAgentTimedAction<jobjectArray, jobject> {
 public:
     RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti);

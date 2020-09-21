@@ -8,7 +8,6 @@
 #include "../timed_action.h"
 #include "sizes_callbacks.h"
 #include "sizes_tags.h"
-#include "../utils.h"
 
 template<typename RESULT_TYPE>
 class RetainedSizeAction : public MemoryAgentTimedAction<RESULT_TYPE, jobjectArray> {

@@ -2,7 +2,6 @@
 
 #include <memory>
 #include "shallow_size_by_classes.h"
-#include "../utils.h"
 
 static jint JNICALL calculateShallowSize(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     if (classTag != 0) {

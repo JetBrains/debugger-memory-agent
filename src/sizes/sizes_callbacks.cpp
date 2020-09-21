@@ -3,7 +3,6 @@
 #include "sizes_tags.h"
 #include "sizes_callbacks.h"
 #include "../timed_action.h"
-#include "../utils.h"
 
 std::unordered_set<jlong> tagsWithNewInfo;
 
