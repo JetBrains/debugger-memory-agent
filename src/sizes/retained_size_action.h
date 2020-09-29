@@ -5,9 +5,33 @@
 
 #include <vector>
 #include <string>
+#include <unordered_set>
 #include "../timed_action.h"
-#include "sizes_callbacks.h"
 #include "sizes_tags.h"
+
+extern std::unordered_set<jlong> tagsWithNewInfo;
+
+jint JNICALL getTagsWithNewInfo     (jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                     jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                     jlong *referrerTagPtr, jint length, void *userData);
+
+jint JNICALL visitReference         (jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                     jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                     jlong *referrerTagPtr, jint length, void *userData);
+
+jint JNICALL spreadInfo             (jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                     jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                     jlong *referrerTagPtr, jint length, void *userData);
+
+jint JNICALL clearTag               (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
+
+jint JNICALL retagStartObjects      (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
+
+jint JNICALL tagObjectOfTaggedClass (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
+
+jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti,
+                                     const std::vector<jobject> &objects,
+                                     const std::chrono::steady_clock::time_point &finishTime);
 
 template<typename RESULT_TYPE>
 class RetainedSizeAction : public MemoryAgentTimedAction<RESULT_TYPE, jobjectArray> {
@@ -48,13 +72,13 @@ protected:
     }
 
     jvmtiError tagHeap() {
-        jvmtiError err = this->FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, &this->finishTime, "find objects with new info");
+        jvmtiError err = this->FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-        std::vector<std::pair<jobject, jlong>> objectsAndTags;
+        std::vector<jobject> objects;
         debug("collect objects with new info");
-        err = getObjectsByTags(this->jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objectsAndTags);
+        err = getObjectsByTags(this->jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objects);
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
@@ -62,11 +86,11 @@ protected:
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-        err = this->FollowReferences(0, nullptr, nullptr, visitReference, &this->finishTime, "getTag heap");
+        err = this->FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-        return walkHeapFromObjects(this->jvmti, objectsAndTags, this->finishTime);
+        return walkHeapFromObjects(this->jvmti, objects, this->finishTime);
     }
 };
 

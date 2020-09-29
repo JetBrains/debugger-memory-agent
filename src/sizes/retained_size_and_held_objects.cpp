@@ -2,7 +2,7 @@
 
 #include <vector>
 #include "retained_size_and_held_objects.h"
-#include "sizes_callbacks.h"
+#include "retained_size_action.h"
 #include "sizes_tags.h"
 
 jint JNICALL countSizeAndRetagHeldObjects(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
@@ -42,13 +42,13 @@ jvmtiError RetainedSizeAndHeldObjectsAction::retagStartObject(jobject object) {
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::tagHeap(jobject object) {
-    jvmtiError err = FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, &finishTime, "find objects with new info");
+    jvmtiError err = FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    std::vector<std::pair<jobject, jlong>> objectsAndTags;
+    std::vector<jobject> objects;
     debug("collect objects with new info");
-    err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objectsAndTags);
+    err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objects);
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
@@ -56,11 +56,11 @@ jvmtiError RetainedSizeAndHeldObjectsAction::tagHeap(jobject object) {
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    err = FollowReferences(0, nullptr, nullptr, visitReference, &finishTime, "getTag heap");
+    err = FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    return walkHeapFromObjects(jvmti, objectsAndTags, finishTime);
+    return walkHeapFromObjects(jvmti, objects, finishTime);
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects) {

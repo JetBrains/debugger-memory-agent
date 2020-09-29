@@ -12,6 +12,17 @@
 
 #define MEMORY_AGENT_TIMEOUT_ERROR static_cast<jvmtiError>(999)
 
+struct CallbackWrapperData {
+    CallbackWrapperData(const std::chrono::steady_clock::time_point &finishTime, void *callback, void *userData) :
+            finishTime(finishTime), callback(callback), userData(userData) {
+
+    }
+
+    std::chrono::steady_clock::time_point finishTime;
+    void *callback;
+    void *userData;
+};
+
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 class MemoryAgentTimedAction {
 public:
@@ -51,35 +62,51 @@ protected:
 
     bool shouldStopExecution() const { return finishTime < std::chrono::steady_clock::now(); }
 
+    static jint JNICALL followReferencesCallbackWrapper(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                                        jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                                        jlong *referrerTagPtr, jint length, void *userData) {
+        CallbackWrapperData *wrapperData = reinterpret_cast<CallbackWrapperData *>(userData);
+        if (wrapperData->finishTime < std::chrono::steady_clock::now()) return JVMTI_VISIT_ABORT;
+        return reinterpret_cast<jvmtiHeapReferenceCallback>(wrapperData->callback)(refKind, refInfo, classTag, referrerClassTag, size, tagPtr, referrerTagPtr, length, wrapperData->userData);
+    }
+
+    static jint JNICALL iterateThroughHeapCallbackWrapper(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+        CallbackWrapperData *wrapperData = reinterpret_cast<CallbackWrapperData *>(userData);
+        if (wrapperData->finishTime < std::chrono::steady_clock::now()) return JVMTI_VISIT_ABORT;
+        return reinterpret_cast<jvmtiHeapIterationCallback>(wrapperData->callback)(classTag, size, tagPtr, length, wrapperData->userData);
+    }
+
     jvmtiError FollowReferences(jint heapFilter, jclass klass, jobject initialObject,
-                                jvmtiHeapReferenceCallback callback, const void *userData,
+                                jvmtiHeapReferenceCallback callback, void *userData,
                                 const char *debugMessage=nullptr) {
         if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-        jvmtiHeapCallbacks cb;
-        std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-        cb.heap_reference_callback = callback;
-
         if (debugMessage != nullptr) {
             debug(debugMessage);
         }
 
-        return jvmti->FollowReferences(heapFilter, klass, initialObject, &cb, userData);
+        jvmtiHeapCallbacks cb;
+        std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+        cb.heap_reference_callback = followReferencesCallbackWrapper;
+
+        CallbackWrapperData wrapperData(finishTime, reinterpret_cast<void *>(callback), userData);
+        return jvmti->FollowReferences(heapFilter, klass, initialObject, &cb, &wrapperData);
     }
 
     jvmtiError IterateThroughHeap(jint heapFilter, jclass klass, jvmtiHeapIterationCallback callback,
-                                  const void *userData, const char *debugMessage=nullptr) {
+                                  void *userData, const char *debugMessage=nullptr) {
         if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
-
-        jvmtiHeapCallbacks cb;
-        std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-        cb.heap_iteration_callback = callback;
 
         if (debugMessage != nullptr) {
             debug(debugMessage);
         }
 
-        return jvmti->IterateThroughHeap(heapFilter, klass, &cb, userData);
+        jvmtiHeapCallbacks cb;
+        std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+        cb.heap_iteration_callback = iterateThroughHeapCallbackWrapper;
+
+        CallbackWrapperData wrapperData(finishTime, reinterpret_cast<void *>(callback), userData);
+        return jvmti->IterateThroughHeap(heapFilter, klass, &cb, &wrapperData);
     }
 
 protected:

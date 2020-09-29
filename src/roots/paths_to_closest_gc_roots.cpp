@@ -12,10 +12,6 @@ namespace {
                               const jvmtiHeapReferenceInfo *referenceInfo, jlong classTag,
                               jlong referrerClassTag, jlong size, jlong *tagPtr,
                               jlong *referrerTagPtr, jint length, void *userData) {
-        if (shouldStopIteration(userData)) {
-            return JVMTI_VISIT_ABORT;
-        }
-
         if (*tagPtr == 0) {
             *tagPtr = pointerToTag(GcTag::create(referrerClassTag));
         }
@@ -313,7 +309,7 @@ GcTag *PathsToClosestGcRootsAction::createTags(jobject target) {
     jvmtiError err = jvmti->SetTag(target, pointerToTag(tag));
     handleError(jvmti, err, "Could not set getTag for target object");
 
-    err = FollowReferences(0, nullptr, nullptr, collectPaths, &finishTime, "collecting objects paths");
+    err = FollowReferences(0, nullptr, nullptr, collectPaths, nullptr, "collecting objects paths");
     handleError(jvmti, err, "FollowReference call failed");
 
     return tag;

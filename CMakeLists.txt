@@ -22,8 +22,6 @@ add_library(memory_agent SHARED
         src/timed_action.h
         src/sizes/retained_size_and_held_objects.h
         src/sizes/retained_size_and_held_objects.cpp
-        src/sizes/sizes_callbacks.h
-        src/sizes/sizes_callbacks.cpp
         src/sizes/sizes_tags.h
         src/sizes/sizes_tags.cpp
         src/sizes/sizes_state.h
@@ -43,7 +41,8 @@ add_library(memory_agent SHARED
         src/roots/roots_state.h
         src/roots/roots_state.cpp
         src/roots/paths_to_closest_gc_roots.cpp
-        src/roots/paths_to_closest_gc_roots.h)
+        src/roots/paths_to_closest_gc_roots.h
+        src/sizes/retained_size_action.cpp)
 
 if ((UNIX OR MINGW) AND NOT APPLE)
     target_link_libraries(memory_agent PRIVATE -static-libstdc++ -static-libgcc)

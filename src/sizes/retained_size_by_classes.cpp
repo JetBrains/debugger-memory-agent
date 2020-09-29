@@ -3,7 +3,24 @@
 #include <vector>
 #include "retained_size_by_classes.h"
 #include "sizes_tags.h"
-#include "sizes_callbacks.h"
+#include "retained_size_action.h"
+
+jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+    if (*tagPtr == 0) {
+        return JVMTI_ITERATION_CONTINUE;
+    }
+
+    Tag *tag = tagToPointer(*tagPtr);
+    for (query_size_t i = 0; i < tag->array.getSize(); i++) {
+        const TagInfoArray::TagInfo &info = tag->array[i];
+        if (isRetained(info.state)) {
+            reinterpret_cast<jlong *>(userData)[info.index] += size;
+        }
+    }
+
+    return JVMTI_ITERATION_CONTINUE;
+}
+
 
 jint JNICALL visitObjectForShallowAndRetainedSize(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     if (*tagPtr == 0) {

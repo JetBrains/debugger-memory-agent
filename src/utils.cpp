@@ -86,10 +86,6 @@ jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second) {
     return res;
 }
 
-bool shouldStopIteration(void *userData) {
-    return userData != nullptr && *reinterpret_cast<std::chrono::steady_clock::time_point *>(userData) < std::chrono::steady_clock::now();
-}
-
 bool isOk(jvmtiError error) {
     return error == JVMTI_ERROR_NONE;
 }

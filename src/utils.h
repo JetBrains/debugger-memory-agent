@@ -52,8 +52,6 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
 
 bool isOk(jvmtiError error);
 
-bool shouldStopIteration(void *userData);
-
 template<typename T>
 jlong pointerToTag(T tag) {
     return reinterpret_cast<jlong>(tag);

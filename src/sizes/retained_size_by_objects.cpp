@@ -2,7 +2,7 @@
 
 #include "retained_size_by_objects.h"
 #include "sizes_tags.h"
-#include "sizes_callbacks.h"
+#include "retained_size_by_classes.h"
 
 RetainedSizeByObjectsAction::RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti) : MemoryAgentTimedAction(env, jvmti) {
 
@@ -67,13 +67,13 @@ jvmtiError  RetainedSizeByObjectsAction::retagStartObjects(const std::vector<job
 }
 
 jvmtiError RetainedSizeByObjectsAction::tagHeap(const std::vector<jobject> &objects) {
-    jvmtiError err = this->FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, &finishTime, "find objects with new info");
+    jvmtiError err = FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    std::vector<std::pair<jobject, jlong>> objectsAndTags;
+    std::vector<jobject> taggedObjects;
     debug("collect objects with new info");
-    err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objectsAndTags);
+    err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, taggedObjects);
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
@@ -81,11 +81,11 @@ jvmtiError RetainedSizeByObjectsAction::tagHeap(const std::vector<jobject> &obje
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    err = FollowReferences(0, nullptr, nullptr, visitReference, &finishTime, "getTag heap");
+    err = FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    return walkHeapFromObjects(jvmti, objectsAndTags, finishTime);
+    return walkHeapFromObjects(jvmti, taggedObjects, finishTime);
 }
 
 jvmtiError RetainedSizeByObjectsAction::estimateObjectsSizes(const std::vector<jobject> &objects, std::vector<jlong> &result) {

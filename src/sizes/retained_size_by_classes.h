@@ -25,4 +25,6 @@ private:
                                                   std::vector<jlong> &retainedSizes);
 };
 
+jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
+
 #endif //MEMORY_AGENT_RETAINED_SIZE_BY_CLASSES_H

@@ -1,8 +1,6 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-#include "sizes_tags.h"
-#include "sizes_callbacks.h"
-#include "../timed_action.h"
+#include "retained_size_action.h"
 
 std::unordered_set<jlong> tagsWithNewInfo;
 
@@ -37,10 +35,6 @@ static bool tagsAreValidForMerge(jlong referree, jlong referrer) {
 jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                                 jlong referrerClassTag, jlong size, jlong *tagPtr,
                                 jlong *referrerTagPtr, jint length, void *userData) {
-    if (shouldStopIteration(userData)) {
-        return JVMTI_VISIT_ABORT;
-    }
-
     if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL ||
         isTagWithNewInfo(*tagPtr) || handleReferrersWithNoInfo(referrerTagPtr, tagPtr, true)) {
         return JVMTI_VISIT_OBJECTS;
@@ -66,10 +60,6 @@ jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapR
 jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                             jlong referrerClassTag, jlong size, jlong *tagPtr,
                             jlong *referrerTagPtr, jint length, void *userData) {
-    if (shouldStopIteration(userData)) {
-        return JVMTI_VISIT_ABORT;
-    }
-
     if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL ||
         handleReferrersWithNoInfo(referrerTagPtr, tagPtr)) {
         return JVMTI_VISIT_OBJECTS;
@@ -90,10 +80,6 @@ jint JNICALL visitReference(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
 jint JNICALL spreadInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                         jlong referrerClassTag, jlong size, jlong *tagPtr,
                         jlong *referrerTagPtr, jint length, void *userData) {
-    if (shouldStopIteration(userData)) {
-        return JVMTI_VISIT_ABORT;
-    }
-
     if (refKind != JVMTI_HEAP_REFERENCE_JNI_LOCAL && refKind != JVMTI_HEAP_REFERENCE_JNI_GLOBAL &&
         *tagPtr != 0 && *referrerTagPtr != 0) {
         auto it = tagsWithNewInfo.find(*tagPtr);
@@ -146,43 +132,27 @@ jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr, j
     return JVMTI_ITERATION_CONTINUE;
 }
 
-jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
-    if (*tagPtr == 0) {
-        return JVMTI_ITERATION_CONTINUE;
-    }
-
-    Tag *tag = tagToPointer(*tagPtr);
-    for (query_size_t i = 0; i < tag->array.getSize(); i++) {
-        const TagInfoArray::TagInfo &info = tag->array[i];
-        if (isRetained(info.state)) {
-            reinterpret_cast<jlong *>(userData)[info.index] += size;
-        }
-    }
-
-    return JVMTI_ITERATION_CONTINUE;
-}
-
 jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti,
-                               const std::vector<std::pair<jobject, jlong>> &objectsAndTags,
+                               const std::vector<jobject> &objects,
                                const std::chrono::steady_clock::time_point &finishTime) {
     jvmtiError err = JVMTI_ERROR_NONE;
-    if (!objectsAndTags.empty()) {
+    if (!objects.empty()) {
         jvmtiHeapCallbacks cb;
         std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
         cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&spreadInfo);
         int heapWalksCnt = 0;
-        for (auto &objectAndTag : objectsAndTags) {
+        for (auto &object : objects) {
             if (finishTime < std::chrono::steady_clock::now()) {
                 return MEMORY_AGENT_TIMEOUT_ERROR;
             }
 
             jlong tag;
-            err = jvmti->GetTag(objectAndTag.first, &tag);
+            err = jvmti->GetTag(object, &tag);
             if (err != JVMTI_ERROR_NONE) return err;
 
             if (tagsWithNewInfo.find(tag) != tagsWithNewInfo.end()) {
                 tagsWithNewInfo.erase(tag);
-                err = jvmti->FollowReferences(0, nullptr, objectAndTag.first, &cb, nullptr);
+                err = jvmti->FollowReferences(0, nullptr, object, &cb, nullptr);
                 if (err != JVMTI_ERROR_NONE) return err;
                 debug(std::to_string(tagsWithNewInfo.size()).c_str());
                 heapWalksCnt++;
