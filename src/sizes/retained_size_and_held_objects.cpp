@@ -87,7 +87,7 @@ jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object,
     return getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::HeldObjectTag)}, heldObjects);
 }
 
-jobjectArray RetainedSizeAndHeldObjectsAction::createResultObject(jlong retainedSize, const std::vector<jobject> &heldObjects) {
+jobjectArray RetainedSizeAndHeldObjectsAction::createResultObject(jlong retainedSize, jlong shallowSize, const std::vector<jobject> &heldObjects) {
     jint objectsCount = static_cast<jint>(heldObjects.size());
     jclass langObject = env->FindClass("java/lang/Object");
     jobjectArray resultObjects = env->NewObjectArray(objectsCount, langObject, nullptr);
@@ -97,7 +97,8 @@ jobjectArray RetainedSizeAndHeldObjectsAction::createResultObject(jlong retained
     }
 
     jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
-    env->SetObjectArrayElement(result, 0, toJavaArray(env, retainedSize));
+    std::vector<jlong> sizes{shallowSize, retainedSize};
+    env->SetObjectArrayElement(result, 0, toJavaArray(env, sizes));
     env->SetObjectArrayElement(result, 1, resultObjects);
 
     return result;
@@ -108,13 +109,18 @@ jobjectArray RetainedSizeAndHeldObjectsAction::executeOperation(jobject object) 
     objects.push_back(object);
     std::vector<jobject> heldObjects;
     jlong retainedSize;
+    jlong shallowSize;
     jvmtiError err = estimateObjectSize(object, retainedSize, heldObjects);
-
     if (!isOk(err)) {
         handleError(jvmti, err, "Could not estimate object size");
     }
 
-    return createResultObject(retainedSize, heldObjects);
+    err = jvmti->GetObjectSize(object, &shallowSize);
+    if (!isOk(err)) {
+        handleError(jvmti, err, "Could not estimate object's shallow size");
+    }
+
+    return createResultObject(retainedSize, shallowSize, heldObjects);
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::cleanHeap() {

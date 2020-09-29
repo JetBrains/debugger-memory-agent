@@ -68,13 +68,14 @@ public abstract class TestBase {
   protected static void printSize(Object object) {
     Object result = IdeaNativeAgentProxy.size(object, DEFAULT_TIMEOUT);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
-    System.out.println(((long[])arrayResult[0])[0]);
+    System.out.println(((long[])arrayResult[0])[1]);
   }
 
   protected static void printSizeAndHeldObjects(Object object) {
     Object result = IdeaNativeAgentProxy.size(object, DEFAULT_TIMEOUT);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
-    System.out.printf("Size: %d\n", ((long[]) arrayResult[0])[0]);
+    long[] sizes = ((long[]) arrayResult[0]);
+    System.out.printf("Shallow size: %d, Retained size: %d\n", sizes[0], sizes[1]);
     System.out.println("Held objects:");
     List<String> objectsNames = new ArrayList<>();
     for (Object obj : (Object[]) arrayResult[1]) {

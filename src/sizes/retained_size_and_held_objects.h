@@ -13,13 +13,13 @@ private:
     jobjectArray executeOperation(jobject object) override;
     jvmtiError cleanHeap() override;
 
-    jobjectArray createResultObject(jlong retainedSize, const std::vector<jobject> &heldObjects);
-
     jvmtiError estimateObjectSize(jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects);
 
     jvmtiError tagHeap(jobject object);
 
     jvmtiError retagStartObject(jobject object);
+
+    jobjectArray createResultObject(jlong retainedSize, jlong shallowSize, const std::vector<jobject> &heldObjects);
 };
 
 #endif //MEMORY_AGENT_RETAINED_SIZE_AND_HELD_OBJECTS_H
