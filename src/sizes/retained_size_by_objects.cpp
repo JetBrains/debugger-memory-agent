@@ -81,7 +81,7 @@ jvmtiError RetainedSizeByObjectsAction::tagHeap(const std::vector<jobject> &obje
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    err = FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
+    err = FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "tag heap");
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 

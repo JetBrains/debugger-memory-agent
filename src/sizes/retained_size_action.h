@@ -64,7 +64,7 @@ protected:
     }
 
     jvmtiError tagObjectsOfClasses(jobjectArray classesArray) {
-        debug("getTag objects of classes");
+        debug("tag objects of classes");
         jvmtiError err = createTagsForClasses(classesArray);
         if (err != JVMTI_ERROR_NONE) return err;
 
@@ -86,7 +86,7 @@ protected:
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-        err = this->FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
+        err = this->FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "tag heap");
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 

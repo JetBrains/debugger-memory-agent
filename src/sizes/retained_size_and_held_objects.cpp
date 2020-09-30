@@ -24,6 +24,16 @@ jint JNICALL countSizeAndRetagHeldObjects(jlong classTag, jlong size, jlong *tag
     return JVMTI_ITERATION_CONTINUE;
 }
 
+jint JNICALL walkHeapAndSkipStartObject(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                        jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                        jlong *referrerTagPtr, jint length, void *userData) {
+    if (*tagPtr != 0 && tagToPointer(*tagPtr)->isStartTag) {
+        return 0;
+    }
+
+    return visitReference(refKind, refInfo, classTag, referrerClassTag, size, tagPtr, referrerTagPtr, length, userData);
+}
+
 RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti) : MemoryAgentTimedAction(env, jvmti) {
 
 }
@@ -41,35 +51,17 @@ jvmtiError RetainedSizeAndHeldObjectsAction::retagStartObject(jobject object) {
     return err;
 }
 
-jvmtiError RetainedSizeAndHeldObjectsAction::tagHeap(jobject object) {
-    jvmtiError err = FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
-
-    std::vector<jobject> objects;
-    debug("collect objects with new info");
-    err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objects);
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
-
-    err = retagStartObject(object);
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
-
-    err = FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "getTag heap");
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
-
-    return walkHeapFromObjects(jvmti, objects, finishTime);
-}
-
 jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects) {
     Tag *tag = Tag::create(0, createState(true, true, false, false));
     jvmtiError err = jvmti->SetTag(object, pointerToTag(tag));
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
-    err = tagHeap(object);
+    err = FollowReferences(0, nullptr, nullptr, walkHeapAndSkipStartObject, nullptr, "tag heap");
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+
+    err = FollowReferences(0, nullptr, object, visitReference, nullptr, "tag heap");
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
 
