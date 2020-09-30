@@ -15,8 +15,6 @@ private:
 
     jvmtiError estimateObjectSize(jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects);
 
-    jvmtiError tagHeap(jobject object);
-
     jvmtiError retagStartObject(jobject object);
 
     jobjectArray createResultObject(jlong retainedSize, jlong shallowSize, const std::vector<jobject> &heldObjects);
