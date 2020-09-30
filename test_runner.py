@@ -1,6 +1,7 @@
 import distutils.dir_util
 import os
 import platform
+import sys
 import time
 import unittest
 from datetime import datetime
@@ -11,7 +12,7 @@ from unittest import TestCase
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
-JAVA_HOME = os.getenv("JAVA_HOME")
+JAVA_HOME = os.getenv(sys.argv[1]) if len(sys.argv) > 1 else os.getenv("JAVA_HOME")
 AGENT_NAME = "memory_agent"
 IS_UNDER_TEAMCITY = is_running_under_teamcity()
 PROXY_COMPILED_PATH = os.path.join('test_data', 'proxy', 'build') if IS_UNDER_TEAMCITY else None
@@ -274,4 +275,5 @@ if __name__ == '__main__':
         runner = TeamcityTestRunner()
     else:
         runner = unittest.TextTestRunner()
-    unittest.main(testRunner=runner)
+
+    unittest.main(testRunner=runner, argv=None if len(sys.argv) == 1 else [sys.argv[0]] + sys.argv[2:])
