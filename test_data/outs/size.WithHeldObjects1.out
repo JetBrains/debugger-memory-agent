@@ -1,12 +1,12 @@
 Agent loaded
-Size: 120
+Shallow size: 24, Retained size: 120
 Held objects:
 [common.TestTreeNode$Impl1: node 2]
 [common.TestTreeNode$Impl1: node 5]
 [common.TestTreeNode$Impl1: node 6]
 [common.TestTreeNode$Impl1: node 7]
 [common.TestTreeNode$Impl2: node 1]
-Size: 48
+Shallow size: 24, Retained size: 48
 Held objects:
 [common.TestTreeNode$Impl1: node 2]
 [common.TestTreeNode$Impl2: node 1]

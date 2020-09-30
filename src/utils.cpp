@@ -5,6 +5,7 @@
 #include <cstring>
 #include <vector>
 #include "utils.h"
+#include "timed_action.h"
 #include "log.h"
 
 const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind) {
@@ -85,6 +86,10 @@ jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second) {
     return res;
 }
 
+bool isOk(jvmtiError error) {
+    return error == JVMTI_ERROR_NONE;
+}
+
 void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result) {
     auto arrayLength = static_cast<size_t>(env->GetArrayLength(javaArray));
     result.resize(arrayLength);
@@ -94,7 +99,7 @@ void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &re
 }
 
 void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
-    if (err != JVMTI_ERROR_NONE) {
+    if (!isOk(err) && err != MEMORY_AGENT_TIMEOUT_ERROR) {
         char *errorName = nullptr;
         const char *name;
         if (jvmti->GetErrorName(err, &errorName) != JVMTI_ERROR_NONE) {
@@ -124,10 +129,6 @@ static jint JNICALL freeObjectCallback(jlong classTag, jlong size, jlong *tagPtr
     }
 
     return JVMTI_ITERATION_CONTINUE;
-}
-
-static bool isOk(jvmtiError error) {
-    return error == JVMTI_ERROR_NONE;
 }
 
 jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tagReleasedCallback callback) {

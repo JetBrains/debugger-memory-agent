@@ -1,3 +1,3 @@
 Agent loaded
 0: Field instance <- [root :: STACK_LOCAL :: thread id = 1 depth = 3 slot = 2]
-1: test object <- [0 :: FIELD :: index = 3], [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 3 slot = 1]
+1: test object <- [0 :: FIELD :: index = 4], [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 2 slot = 0], [root :: STACK_LOCAL :: thread id = 1 depth = 3 slot = 1]
