@@ -2,10 +2,15 @@
 
 #include <memory>
 #include "shallow_size_by_classes.h"
+#include "sizes_tags.h"
+#include "retained_size_action.h"
 
 static jint JNICALL calculateShallowSize(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
-    if (classTag != 0) {
-        reinterpret_cast<jlong *>(userData)[classTag - 1] += size;
+    ClassTag *pClassTag = tagToClassTagPointer(classTag);
+    if (pClassTag) {
+        for (query_size_t id : pClassTag->ids) {
+            reinterpret_cast<jlong *>(userData)[id] += size;
+        }
     }
     return JVMTI_VISIT_OBJECTS;
 }
@@ -14,10 +19,19 @@ ShallowSizeByClassesAction::ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jv
 
 }
 
-void  ShallowSizeByClassesAction::tagClasses(jobjectArray classesArray) {
+void ShallowSizeByClassesAction::tagClasses(jobjectArray classesArray) {
     for (jsize i = 0; i < env->GetArrayLength(classesArray); i++) {
         jobject classObject = env->GetObjectArrayElement(classesArray, i);
-        jvmtiError err = jvmti->SetTag(classObject, i + 1);
+        jvmtiError err = tagClassAndItsInheritors(env, jvmti, classObject,  [i](jlong oldTag) -> jlong {
+            ClassTag *classTag = tagToClassTagPointer(oldTag);
+            if (classTag != nullptr) {
+                classTag->ids.push_back(i);
+            } else {
+                return pointerToTag(ClassTag::create(static_cast<query_size_t>(i)));
+            }
+
+            return 0;
+        });
         handleError(jvmti, err, "could not set getTag for class object");
     }
 }
@@ -37,5 +51,11 @@ jlongArray ShallowSizeByClassesAction::executeOperation(jobjectArray classesArra
 }
 
 jvmtiError ShallowSizeByClassesAction::cleanHeap() {
-    return removeAllTagsFromHeap(jvmti, nullptr);
+    jvmtiError err = IterateThroughHeap(0, nullptr, clearTag, nullptr, "clear tags");
+
+    if (sizesTagBalance != 0) {
+        fatal("MEMORY LEAK FOUND!");
+    }
+
+    return err;
 }

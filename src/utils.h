@@ -50,6 +50,8 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
                                         std::vector<std::pair<jobject, jlong>> &result,
                                         tagReleasedCallback callback);
 
+jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, const std::function<jlong (jlong)> &createTag);
+
 bool isOk(jvmtiError error);
 
 template<typename T>

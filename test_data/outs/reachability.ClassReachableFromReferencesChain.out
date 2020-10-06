@@ -1,5 +1,5 @@
 Agent loaded
-true
+common.TestTreeNode$Impl1 is reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 [common.TestTreeNode$Impl1: node 2]
 [common.TestTreeNode$Impl1: node 3]
@@ -10,6 +10,6 @@ Reachable objects of class common.TestTreeNode:
 [common.TestTreeNode$Impl1: node 2]
 [common.TestTreeNode$Impl1: node 3]
 [common.TestTreeNode$Impl2: node 1]
-false
+common.TestTreeNode$Impl1 is not reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 Reachable objects of class common.TestTreeNode:

@@ -20,7 +20,7 @@ static bool handleReferrersWithNoInfo(const jlong *referrerTagPtr, jlong *tagPtr
 
         return true;
     } else if (isTagWithNewInfo(*referrerTagPtr) || *referrerTagPtr == 0 ||
-               tagToPointer(*referrerTagPtr)->getId() > 0) {
+               tagToClassTagPointer(*referrerTagPtr)) {
         return true;
     }
 
@@ -28,8 +28,7 @@ static bool handleReferrersWithNoInfo(const jlong *referrerTagPtr, jlong *tagPtr
 }
 
 static bool tagsAreValidForMerge(jlong referree, jlong referrer) {
-    return referree != referrer && shouldMerge(referree, referrer) &&
-           tagToPointer(referree)->getId() == 0;
+    return !tagToClassTagPointer(referree) && referree != referrer && shouldMerge(referree, referrer);
 }
 
 jint JNICALL getTagsWithNewInfo(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
@@ -107,9 +106,9 @@ jint JNICALL clearTag(jlong classTag, jlong size, jlong *tagPtr, jint length, vo
 }
 
 jint JNICALL retagStartObjects(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
-    Tag *pClassTag = tagToPointer(classTag);
-    if (classTag != 0 && pClassTag->getId() > 0 && isTagWithNewInfo(*tagPtr)) {
-        *tagPtr = pointerToTag(Tag::create(pClassTag->getId() - 1, createState(true, true, false, false)));
+    ClassTag *pClassTag = tagToClassTagPointer(classTag);
+    if (pClassTag && isTagWithNewInfo(*tagPtr)) {
+        *tagPtr = pointerToTag(pClassTag->createStartTag());
         tagsWithNewInfo.insert(*tagPtr);
     }
 
@@ -117,16 +116,9 @@ jint JNICALL retagStartObjects(jlong classTag, jlong size, jlong *tagPtr, jint l
 }
 
 jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
-    Tag *pClassTag = tagToPointer(classTag);
-    if (classTag != 0 && pClassTag->getId() > 0) {
-        if (*tagPtr == 0) {
-            *tagPtr = pointerToTag(Tag::create(pClassTag->getId() - 1, createState(true, true, false, false)));
-        } else {
-            Tag *oldTag = tagToPointer(*tagPtr);
-            *tagPtr = pointerToTag(ClassTag::create(pClassTag->getId() - 1, createState(true, true, false, false),
-                                                    oldTag->getId()));
-            delete oldTag;
-        }
+    ClassTag *pClassTag = tagToClassTagPointer(classTag);
+    if (pClassTag && *tagPtr == 0) {
+        *tagPtr = pointerToTag(pClassTag->createStartTag());
     }
 
     return JVMTI_ITERATION_CONTINUE;

@@ -21,19 +21,19 @@ protected:
 
     Tag(const Tag &referree, const Tag &referrer);
 
-    explicit Tag(TagInfoArray &&array);
-
     Tag();
 
+    explicit Tag(TagInfoArray &&array, bool isStartTag);
+
+    static Tag *create(TagInfoArray &&array, bool isStartTag);
+
 public:
-    ~Tag();
+    virtual ~Tag() { --sizesTagBalance; }
 
     static Tag *create(query_size_t index, uint8_t state);
     static Tag *create(const Tag &referree, const Tag &referrer);
 
-    virtual Tag *share();
-
-    virtual query_size_t getId() const { return 0; }
+    Tag *share();
 
     void ref();
     void unref();
@@ -55,20 +55,19 @@ class ClassTag : public Tag {
 private:
     explicit ClassTag(query_size_t id);
 
-    explicit ClassTag(query_size_t index, uint8_t state, query_size_t id);
+public:
+    static Tag *create(query_size_t index);
+
+    Tag *createStartTag();
 
 public:
-    query_size_t getId() const override { return id; }
-
-    static Tag *create(query_size_t index);
-    static Tag *create(query_size_t index, uint8_t state, query_size_t id);
-
-private:
-    query_size_t id;
+    std::vector<query_size_t> ids;
 };
 
 
 Tag *tagToPointer(jlong tag);
+
+ClassTag *tagToClassTagPointer(jlong tag);
 
 bool isEmptyTag(jlong tag);
 

@@ -41,20 +41,8 @@ jint JNICALL findReachableObjectsOfClass(jvmtiHeapReferenceKind refKind, const j
 static jvmtiError getReachableObjectsOfClass(JNIEnv *env, jvmtiEnv *jvmti, jobject startObject, jobject classObject, std::vector<jobject> &result, bool findFirst) {
     setTagsForReferences(env, jvmti, REFERENCE_CLASS_TAG);
 
-    jclass *classes;
-    jint cnt;
-    jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
+    jvmtiError err = tagClassAndItsInheritors(env, jvmti, classObject, [](jlong oldTag) -> jlong { return CLASS_TAG; });
     if (err != JVMTI_ERROR_NONE) return err;
-
-    jclass langClass = env->FindClass("java/lang/Class");
-    jmethodID isAssignableFrom = env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
-
-    for (int i = 0; i < cnt; i++) {
-        if (env->CallBooleanMethod(classObject, isAssignableFrom, classes[i])) {
-            err = jvmti->SetTag(classes[i], CLASS_TAG);
-            if (err != JVMTI_ERROR_NONE) return err;
-        }
-    }
 
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));

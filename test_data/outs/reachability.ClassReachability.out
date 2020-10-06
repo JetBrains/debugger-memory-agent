@@ -1,4 +1,4 @@
 Agent loaded
-true
-false
+java.lang.Object is reachable
+common.TestTreeNode is not reachable
 Reachable objects of class common.TestTreeNode:

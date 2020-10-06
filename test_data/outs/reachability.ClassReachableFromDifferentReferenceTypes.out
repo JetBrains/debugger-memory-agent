@@ -1,5 +1,5 @@
 Agent loaded
-true
+common.TestTreeNode$Impl1 is reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 [common.TestTreeNode$Impl1: node 2]
 [common.TestTreeNode$Impl1: node 3]
@@ -10,10 +10,10 @@ Reachable objects of class common.TestTreeNode:
 [common.TestTreeNode$Impl1: node 2]
 [common.TestTreeNode$Impl1: node 3]
 [common.TestTreeNode$Impl2: node 1]
-false
+common.TestTreeNode$Impl1 is not reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 Reachable objects of class common.TestTreeNode:
-true
+common.TestTreeNode$Impl1 is reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 [common.TestTreeNode$Impl1: node 5]
 [common.TestTreeNode$Impl1: node 6]
@@ -24,10 +24,10 @@ Reachable objects of class common.TestTreeNode:
 [common.TestTreeNode$Impl1: node 5]
 [common.TestTreeNode$Impl1: node 6]
 [common.TestTreeNode$Impl2: node 4]
-false
+common.TestTreeNode$Impl1 is not reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 Reachable objects of class common.TestTreeNode:
-true
+common.TestTreeNode$Impl1 is reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 [common.TestTreeNode$Impl1: node 8]
 [common.TestTreeNode$Impl1: node 9]
@@ -38,10 +38,10 @@ Reachable objects of class common.TestTreeNode:
 [common.TestTreeNode$Impl1: node 8]
 [common.TestTreeNode$Impl1: node 9]
 [common.TestTreeNode$Impl2: node 7]
-false
+common.TestTreeNode$Impl1 is not reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 Reachable objects of class common.TestTreeNode:
-true
+common.TestTreeNode$Impl1 is reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 [common.TestTreeNode$Impl1: node 11]
 [common.TestTreeNode$Impl1: node 12]
@@ -52,10 +52,10 @@ Reachable objects of class common.TestTreeNode:
 [common.TestTreeNode$Impl1: node 11]
 [common.TestTreeNode$Impl1: node 12]
 [common.TestTreeNode$Impl2: node 10]
-false
+common.TestTreeNode$Impl1 is not reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 Reachable objects of class common.TestTreeNode:
-true
+common.TestTreeNode$Impl1 is reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 [common.TestTreeNode$Impl1: node 14]
 [common.TestTreeNode$Impl1: node 15]
@@ -66,10 +66,10 @@ Reachable objects of class common.TestTreeNode:
 [common.TestTreeNode$Impl1: node 14]
 [common.TestTreeNode$Impl1: node 15]
 [common.TestTreeNode$Impl2: node 13]
-false
+common.TestTreeNode$Impl1 is not reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 Reachable objects of class common.TestTreeNode:
-true
+common.TestTreeNode$Impl1 is reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 [common.TestTreeNode$Impl1: node 17]
 [common.TestTreeNode$Impl1: node 18]
@@ -80,6 +80,6 @@ Reachable objects of class common.TestTreeNode:
 [common.TestTreeNode$Impl1: node 17]
 [common.TestTreeNode$Impl1: node 18]
 [common.TestTreeNode$Impl2: node 16]
-false
+common.TestTreeNode$Impl1 is not reachable
 Reachable objects of class common.TestTreeNode$Impl1:
 Reachable objects of class common.TestTreeNode:

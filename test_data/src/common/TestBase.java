@@ -67,7 +67,7 @@ public abstract class TestBase {
 
   protected static void printClassReachability(Class<?> suspectClass) {
     Object result = IdeaNativeAgentProxy.getFirstReachableObject(null, suspectClass, TestBase.DEFAULT_TIMEOUT);
-    System.out.println((((Object[]) result)[1]) != null);
+    System.out.printf("%s is%sreachable%n", suspectClass.getName(), (((Object[]) result)[1]) != null ? " " : " not ");
   }
 
   protected static void printReachableObjects(Class<?> suspectClass) {
@@ -135,10 +135,16 @@ public abstract class TestBase {
     printSizeByClasses(classes, (long[])arrayResult[1]);
   }
 
-  protected static void printSizeByClasses(Class<?>... classes) {
+  protected static void printShallowSizeByClasses(Class<?>... classes) {
     assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
     System.out.println("Shallow sizes by class:");
     printSizeByClasses(classes, getResultAsLong(IdeaNativeAgentProxy.getShallowSizeByClasses(classes, DEFAULT_TIMEOUT)));
+  }
+
+  protected static void printRetainedSizeByClasses(Class<?>... classes) {
+    assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
+    System.out.println("Retained sizes by class:");
+    printSizeByClasses(classes, getResultAsLong(IdeaNativeAgentProxy.getRetainedSizeByClasses(classes, DEFAULT_TIMEOUT)));
   }
 
   private static int indexOfReference(Object[] array, Object value) {

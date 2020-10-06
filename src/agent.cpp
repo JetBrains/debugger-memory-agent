@@ -22,7 +22,7 @@ using namespace std;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-static GlobalAgentData *gdata;
+static GlobalAgentData *gdata = nullptr;
 
 static void requiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
     jvmtiCapabilities potential;
