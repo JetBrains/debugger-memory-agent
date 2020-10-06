@@ -25,18 +25,14 @@ Tag::Tag(const Tag &referree, const Tag &referrer) :
 
 }
 
-Tag::Tag(TagInfoArray &&array) :
+Tag::Tag(TagInfoArray &&array, bool isStartTag) :
     array(std::move(array)), refCount(1),
-    isStartTag(false), alreadyReferred(false) {
+    isStartTag(isStartTag), alreadyReferred(false) {
 
 }
 
 Tag::Tag() : array(), refCount(1), isStartTag(false), alreadyReferred(false) {
 
-}
-
-Tag::~Tag() {
-    --sizesTagBalance;
 }
 
 Tag *Tag::create(query_size_t index, uint8_t state) {
@@ -57,8 +53,7 @@ Tag *Tag::copyWithoutStartMarks(const Tag &tag) {
         result[i] = TagInfoArray::TagInfo(info.index, state);
     }
 
-    ++sizesTagBalance;
-    return new Tag(std::move(result));
+    return create(std::move(result), false);
 }
 
 Tag *Tag::share() {
@@ -89,12 +84,13 @@ void Tag::visitFromUntaggedReferrer() const {
     }
 }
 
-ClassTag::ClassTag(query_size_t id) : Tag(), id(id) {
-
+Tag *Tag::create(TagInfoArray &&array, bool isStartTag) {
+    ++sizesTagBalance;
+    return new Tag(std::move(array), isStartTag);
 }
 
-ClassTag::ClassTag(query_size_t index, uint8_t state, query_size_t id) : Tag(index, state), id(id) {
-
+ClassTag::ClassTag(query_size_t id) : Tag() {
+    ids.push_back(id);
 }
 
 Tag *ClassTag::create(query_size_t index) {
@@ -102,13 +98,21 @@ Tag *ClassTag::create(query_size_t index) {
     return new ClassTag(index);
 }
 
-Tag *ClassTag::create(query_size_t index, uint8_t state, query_size_t id) {
-    ++sizesTagBalance;
-    return new ClassTag(index, state, id);
+Tag *ClassTag::createStartTag() {
+    TagInfoArray array(ids.size());
+    for (int i = 0; i < ids.size(); i++) {
+        array[i] = TagInfoArray::TagInfo(ids[i],createState(true, true, false, false));
+    }
+
+    return Tag::create(std::move(array), true);
 }
 
 Tag *tagToPointer(jlong tag) {
     return reinterpret_cast<Tag *>(tag);
+}
+
+ClassTag *tagToClassTagPointer(jlong tag) {
+    return dynamic_cast<ClassTag *>(tagToPointer(tag));
 }
 
 bool isEmptyTag(jlong tag) {

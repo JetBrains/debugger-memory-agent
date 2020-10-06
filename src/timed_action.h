@@ -37,8 +37,13 @@ public:
 
     virtual ~MemoryAgentTimedAction() = default;
 
-    jobjectArray runWithTimeout(std::chrono::milliseconds duration, ARGS_TYPES... args) {
-        finishTime = std::chrono::steady_clock::now() + duration;
+    jobjectArray runWithTimeout(jlong duration, ARGS_TYPES... args) {
+        if (duration < 0) {
+            finishTime = std::chrono::steady_clock::time_point::max();
+        } else {
+            finishTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(duration);
+        }
+
         RESULT_TYPE result = executeOperation(args...);
         jvmtiError err = cleanHeap();
         if (err != JVMTI_ERROR_NONE) {

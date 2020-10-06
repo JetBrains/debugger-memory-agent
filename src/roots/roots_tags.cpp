@@ -2,6 +2,8 @@
 
 #include "roots_tags.h"
 
+const GcTag GcTag::WeakSoftReferenceTag(true);
+
 GcTag::GcTag() : state() {
 }
 
@@ -46,18 +48,7 @@ void GcTag::setVisited() {
 }
 
 void GcTag::updateState(const GcTag *const referrer) {
-    state.updateWeakSoftReachableValue(referrer->state);
-}
-
-WeakSoftReferenceClassTag::WeakSoftReferenceClassTag() : GcTag(true) {
-
-}
-
-void WeakSoftReferenceClassTag::updateState(const GcTag *const referrer) {
-
-}
-
-GcTag *WeakSoftReferenceClassTag::create() {
-    ++rootsTagBalance;
-    return new WeakSoftReferenceClassTag();
+    if (this != &WeakSoftReferenceTag) {
+        state.updateWeakSoftReachableValue(referrer->state);
+    }
 }

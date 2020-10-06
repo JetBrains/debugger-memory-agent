@@ -9,6 +9,7 @@
 #include "types.h"
 #include "utils.h"
 #include "roots/paths_to_closest_gc_roots.h"
+#include "reachability/objects_of_class_in_heap.h"
 #include "sizes/shallow_size_by_classes.h"
 #include "sizes/retained_size_and_held_objects.h"
 #include "sizes/retained_size_by_classes.h"
@@ -21,7 +22,7 @@ using namespace std;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-static GlobalAgentData *gdata;
+static GlobalAgentData *gdata = nullptr;
 
 static void requiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
     jvmtiCapabilities potential;
@@ -87,6 +88,11 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     return JNI_OK;
 }
 
+JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM *vm, char *options, void *reserved) {
+    delete gdata;
+    return Agent_OnLoad(vm, options, reserved);
+}
+
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
     debug("on agent unload");
     delete gdata;
@@ -131,7 +137,7 @@ extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
         JNIEnv *env,
         jclass thisClass) {
-    return (uint8_t) 1;
+    return gdata != nullptr;
 }
 
 extern "C"
@@ -140,7 +146,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobjectArray objects,
         jlong timeoutInMillis) {
-    return RetainedSizeByObjectsAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), objects);
+    return RetainedSizeByObjectsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, objects);
 }
 
 extern "C"
@@ -149,7 +155,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobject object,
         jlong timeoutInMillis) {
-    return RetainedSizeAndHeldObjectsAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), object);
+    return RetainedSizeAndHeldObjectsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, object);
 }
 
 extern "C"
@@ -160,7 +166,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jint pathsNumber,
         jint objectsNumber,
         jlong timeoutInMillis) {
-    return PathsToClosestGcRootsAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), object, pathsNumber, objectsNumber);
+    return PathsToClosestGcRootsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, object, pathsNumber, objectsNumber);
 }
 
 extern "C"
@@ -169,7 +175,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobjectArray classesArray,
         jlong timeoutInMillis) {
-    return ShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), classesArray);
+    return ShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, classesArray);
 }
 
 extern "C"
@@ -178,7 +184,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobjectArray classesArray,
         jlong timeoutInMillis) {
-    return RetainedSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), classesArray);
+    return RetainedSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, classesArray);
 }
 
 extern "C"
@@ -187,7 +193,27 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobjectArray classesArray,
         jlong timeoutInMillis) {
-    return RetainedAndShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(std::chrono::milliseconds(timeoutInMillis), classesArray);
+    return RetainedAndShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, classesArray);
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getFirstReachableObject(
+        JNIEnv *env,
+        jclass thisClass,
+        jobject startObject,
+        jobjectArray suspectClass,
+        jlong timeoutInMillis) {
+    return GetFirstReachableObjectOfClassAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, startObject, suspectClass);
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getAllReachableObjects(
+        JNIEnv *env,
+        jclass thisClass,
+        jobject startObject,
+        jobject suspectClass,
+        jlong timeoutInMillis) {
+    return GetAllReachableObjectsOfClassAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, startObject, suspectClass);
 }
 
 #pragma clang diagnostic pop

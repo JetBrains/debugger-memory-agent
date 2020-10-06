@@ -8,7 +8,7 @@ RetainedSizeByObjectsAction::RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *
 
 }
 
-jvmtiError  RetainedSizeByObjectsAction::calculateRetainedSizes(const std::vector<jobject> &objects, std::vector<jlong> &result) {
+jvmtiError RetainedSizeByObjectsAction::calculateRetainedSizes(const std::vector<jobject> &objects, std::vector<jlong> &result) {
     std::set<jobject> unique(objects.begin(), objects.end());
     size_t count = objects.size();
     if (count != unique.size()) {
@@ -19,7 +19,7 @@ jvmtiError  RetainedSizeByObjectsAction::calculateRetainedSizes(const std::vecto
     return IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, visitObject, result.data(), "calculate retained sizes");
 }
 
-jvmtiError  RetainedSizeByObjectsAction::createTagForObject(jobject object, size_t index) {
+jvmtiError RetainedSizeByObjectsAction::createTagForObject(jobject object, size_t index) {
     jlong oldTag;
     jvmtiError err = jvmti->GetTag(object, &oldTag);
     if (!isOk(err)) return err;
@@ -44,7 +44,7 @@ jvmtiError RetainedSizeByObjectsAction::createTagsForObjects(const std::vector<j
     return JVMTI_ERROR_NONE;
 }
 
-jvmtiError  RetainedSizeByObjectsAction::retagStartObjects(const std::vector<jobject> &objects) {
+jvmtiError RetainedSizeByObjectsAction::retagStartObjects(const std::vector<jobject> &objects) {
     std::vector<std::pair<jobject, size_t>> objectsWithNewInfo;
     for (size_t i = 0; i < objects.size(); i++) {
         jlong oldTag;

@@ -52,11 +52,19 @@ protected:
         return err;
     }
 
-    jvmtiError createTagsForClasses(jobjectArray classesArray) {
+    jvmtiError createTagsForClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
         for (jsize i = 0; i < this->env->GetArrayLength(classesArray); i++) {
             jobject classObject = this->env->GetObjectArrayElement(classesArray, i);
-            Tag *tag = ClassTag::create(static_cast<query_size_t>(i + 1));
-            jvmtiError err = this->jvmti->SetTag(classObject, pointerToTag(tag));
+            jvmtiError err = tagClassAndItsInheritors(env, jvmti, classObject, [i](jlong oldTag) -> jlong {
+                ClassTag *classTag = tagToClassTagPointer(oldTag);
+                if (classTag != nullptr) {
+                    classTag->ids.push_back(i);
+                } else {
+                    return pointerToTag(ClassTag::create(static_cast<query_size_t>(i)));
+                }
+
+                return 0;
+            });
             if (err != JVMTI_ERROR_NONE) return err;
         }
 
@@ -65,7 +73,7 @@ protected:
 
     jvmtiError tagObjectsOfClasses(jobjectArray classesArray) {
         debug("tag objects of classes");
-        jvmtiError err = createTagsForClasses(classesArray);
+        jvmtiError err = createTagsForClasses(this->env, this->jvmti, classesArray);
         if (err != JVMTI_ERROR_NONE) return err;
 
         return this->IterateThroughHeap(0, nullptr, tagObjectOfTaggedClass, nullptr);

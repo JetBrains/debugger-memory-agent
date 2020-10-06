@@ -1,0 +1,4 @@
+Agent loaded
+java.lang.Object is reachable
+common.TestTreeNode is not reachable
+Reachable objects of class common.TestTreeNode:

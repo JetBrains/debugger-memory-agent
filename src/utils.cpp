@@ -213,3 +213,29 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
     std::set<jlong> ignored;
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
+
+jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, const std::function<jlong (jlong)> &createTag) {
+    jclass *classes;
+    jint cnt;
+    jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    jclass langClass = env->FindClass("java/lang/Class");
+    jmethodID isAssignableFrom = env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
+
+    for (int i = 0; i < cnt; i++) {
+        if (env->CallBooleanMethod(classObject, isAssignableFrom, classes[i])) {
+            jlong oldTag;
+            err = jvmti->GetTag(classes[i], &oldTag);
+            if (err != JVMTI_ERROR_NONE) return err;
+
+            jlong newTag = createTag(oldTag);
+            if (newTag != 0)  {
+                err = jvmti->SetTag(classes[i], newTag);
+                if (err != JVMTI_ERROR_NONE) return err;
+            }
+        }
+    }
+
+    return err;
+}

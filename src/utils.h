@@ -6,6 +6,7 @@
 #include "types.h"
 #include <string>
 #include <set>
+#include <functional>
 #include <jvmti.h>
 
 typedef void (*tagReleasedCallback)(jlong tag);
@@ -49,6 +50,8 @@ jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags,
 jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
                                         std::vector<std::pair<jobject, jlong>> &result,
                                         tagReleasedCallback callback);
+
+jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, const std::function<jlong (jlong)> &createTag);
 
 bool isOk(jvmtiError error);
 
