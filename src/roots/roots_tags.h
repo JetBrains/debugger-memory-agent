@@ -7,7 +7,7 @@
 #include "roots_state.h"
 #include "infos.h"
 
-static jlong rootsTagBalance = 0;
+extern jlong rootsTagBalance;
 
 class GcTag {
 public:

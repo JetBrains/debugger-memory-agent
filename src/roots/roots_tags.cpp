@@ -2,6 +2,7 @@
 
 #include "roots_tags.h"
 
+jlong rootsTagBalance = 0;
 const GcTag GcTag::WeakSoftReferenceTag(true);
 
 GcTag::GcTag() : state() {

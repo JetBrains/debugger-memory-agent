@@ -6,7 +6,7 @@
 #include "jni.h"
 #include "tag_info_array.h"
 
-static jlong sizesTagBalance = 0;
+extern jlong sizesTagBalance;
 
 class Tag {
 public:

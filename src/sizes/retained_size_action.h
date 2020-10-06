@@ -43,7 +43,10 @@ protected:
     virtual RESULT_TYPE executeOperation(jobjectArray) = 0;
 
     jvmtiError cleanHeap() final {
-        jvmtiError err = this->IterateThroughHeap(0, nullptr, clearTag, nullptr, "clear tags");
+        jvmtiHeapCallbacks cb;
+        std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
+        cb.heap_iteration_callback = clearTag;
+        jvmtiError err =  this->jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
 
         if (sizesTagBalance != 0) {
             fatal("MEMORY LEAK FOUND!");

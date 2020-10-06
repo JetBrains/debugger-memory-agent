@@ -6,6 +6,7 @@
 const Tag Tag::EmptyTag;
 const Tag Tag::TagWithNewInfo;
 const Tag Tag::HeldObjectTag;
+jlong sizesTagBalance = 0;
 
 Tag::Tag(query_size_t index, uint8_t state) :
     array(index, state), isStartTag(true),

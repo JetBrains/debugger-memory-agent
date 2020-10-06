@@ -214,7 +214,7 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
 
-jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, const std::function<jlong (jlong)> &createTag) {
+jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag) {
     jclass *classes;
     jint cnt;
     jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
