@@ -6,6 +6,7 @@
 #include "types.h"
 #include <string>
 #include <set>
+#include <functional>
 #include <jvmti.h>
 
 typedef void (*tagReleasedCallback)(jlong tag);
