@@ -1,0 +1,17 @@
+Agent loaded
+0: [common.TestTreeNode$Impl1: node 1] <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 1]
+72
+Shallow size: 24, Retained size: 72
+Held objects:
+[common.TestTreeNode$Impl1: node 1]
+[common.TestTreeNode$Impl1: node 2]
+[common.TestTreeNode$Impl1: node 3]
+Shallow sizes by class:
+	common.TestTreeNode$Impl1 -> 72
+Retained sizes by class:
+	common.TestTreeNode$Impl1 -> 72
+0: [common.TestTreeNode$Impl1: node 1] <- [root :: STACK_LOCAL :: thread id = 1 depth = 1 slot = 1]
+Shallow sizes by class:
+	common.TestTreeNode -> 72
+Retained sizes by class:
+	common.TestTreeNode -> 72

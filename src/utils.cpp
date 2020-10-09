@@ -120,12 +120,9 @@ typedef std::pair<std::set<jlong> *, tagReleasedCallback> iterationInfo;
 static jint JNICALL freeObjectCallback(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     auto info = reinterpret_cast<iterationInfo *>(userData);
     jlong tagValue = *tagPtr;
-    if (info->first->find(tagValue) == info->first->end()) {
-        *tagPtr = 0;
-
-        if (info->second != nullptr) {
-            info->second(tagValue);
-        }
+    *tagPtr = 0;
+    if (info->first->find(tagValue) == info->first->end() && info->second) {
+        info->second(tagValue);
     }
 
     return JVMTI_ITERATION_CONTINUE;
