@@ -6,8 +6,8 @@ import common.TimeoutTestBase;
 
 public class RetainedSizeAndHeldObjects extends TimeoutTestBase {
     @Override
-    protected MemoryAgentErrorCode executeOperation(long timeoutInMillis) {
-        return getErrorCode(IdeaNativeAgentProxy.size(TestTreeNode.createTreeFromString("2 1 1 0 0 0 0"), timeoutInMillis));
+    protected MemoryAgentErrorCode executeOperation(long timeoutInMillis, String cancellationFileName) {
+        return getErrorCode(IdeaNativeAgentProxy.size(TestTreeNode.createTreeFromString("2 1 1 0 0 0 0"), timeoutInMillis, cancellationFileName));
     }
 
     public static void main(String[] args) {

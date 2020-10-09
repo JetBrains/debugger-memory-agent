@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(memory_agent)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 if (WIN32 AND (NOT MINGW) AND (NOT CYGWIN))
     set(CMAKE_CXX_FLAGS_RELEASE "/MT /O2")
@@ -44,7 +44,7 @@ add_library(memory_agent SHARED
         src/roots/paths_to_closest_gc_roots.h
         src/reachability/objects_of_class_in_heap.cpp
         src/reachability/objects_of_class_in_heap.h
-        src/sizes/retained_size_action.cpp)
+        src/sizes/retained_size_action.cpp src/timed_action.cpp src/timed_action.hpp)
 
 if ((UNIX OR MINGW) AND NOT APPLE)
     target_link_libraries(memory_agent PRIVATE -static-libstdc++ -static-libgcc)

@@ -14,21 +14,21 @@ public class IdeaNativeAgentProxy {
 
   public static native boolean canFindPathsToClosestGcRoots();
 
-  public static native Object[] getShallowSizeByClasses(Object[] classes, long timeoutInMillis);
+  public static native Object[] getShallowSizeByClasses(Object[] classes, long timeoutInMillis, String cancellationFileName);
 
-  public static native Object[] getRetainedSizeByClasses(Object[] classes, long timeoutInMillis);
+  public static native Object[] getRetainedSizeByClasses(Object[] classes, long timeoutInMillis, String cancellationFileName);
 
-  public static native Object[] getShallowAndRetainedSizeByClasses(Object[] classes, long timeoutInMillis);
+  public static native Object[] getShallowAndRetainedSizeByClasses(Object[] classes, long timeoutInMillis, String cancellationFileName);
 
-  public static native Object[] findPathsToClosestGcRoots(Object object, int pathsNumber, int objectsNumber, long timeoutInMillis);
+  public static native Object[] findPathsToClosestGcRoots(Object object, int pathsNumber, int objectsNumber, long timeoutInMillis, String cancellationFileName);
 
-  public static native Object[] size(Object object, long timeoutInMillis);
+  public static native Object[] size(Object object, long timeoutInMillis, String cancellationFileName);
 
-  public static native Object[] estimateRetainedSize(Object[] objects, long timeoutInMillis);
+  public static native Object[] estimateRetainedSize(Object[] objects, long timeoutInMillis, String cancellationFileName);
 
-  public static native Object[] getFirstReachableObject(Object startObject, Object suspectClass, long timeoutInMillis);
+  public static native Object[] getFirstReachableObject(Object startObject, Object suspectClass, long timeoutInMillis, String cancellationFileName);
 
-  public static native Object[] getAllReachableObjects(Object startObject, Object suspectClass, long timeoutInMillis);
+  public static native Object[] getAllReachableObjects(Object startObject, Object suspectClass, long timeoutInMillis, String cancellationFileName);
 
   public static boolean isLoaded() {
     try {

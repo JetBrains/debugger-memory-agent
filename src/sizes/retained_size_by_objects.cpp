@@ -38,7 +38,7 @@ jvmtiError RetainedSizeByObjectsAction::createTagsForObjects(const std::vector<j
     for (size_t i = 0; i < objects.size(); i++) {
         jvmtiError err = createTagForObject(objects[i], i);
         if (!isOk(err)) return err;
-        if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+        if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
     }
 
     return JVMTI_ERROR_NONE;
@@ -50,7 +50,7 @@ jvmtiError RetainedSizeByObjectsAction::retagStartObjects(const std::vector<jobj
         jlong oldTag;
         jvmtiError err = jvmti->GetTag(objects[i], &oldTag);
         if (!isOk(err)) return err;
-        if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+        if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
         if (isTagWithNewInfo(oldTag)) {
             objectsWithNewInfo.emplace_back(objects[i], i);
@@ -60,7 +60,7 @@ jvmtiError RetainedSizeByObjectsAction::retagStartObjects(const std::vector<jobj
     for (auto objectToIndex : objectsWithNewInfo) {
         jvmtiError err = createTagForObject(objectToIndex.first, objectToIndex.second);
         if (!isOk(err)) return err;
-        if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+        if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
     }
 
     return JVMTI_ERROR_NONE;
@@ -69,23 +69,23 @@ jvmtiError RetainedSizeByObjectsAction::retagStartObjects(const std::vector<jobj
 jvmtiError RetainedSizeByObjectsAction::tagHeap(const std::vector<jobject> &objects) {
     jvmtiError err = FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
     if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     std::vector<jobject> taggedObjects;
     debug("collect objects with new info");
     err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, taggedObjects);
     if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     err = retagStartObjects(objects);
     if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     err = FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "tag heap");
     if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-    return walkHeapFromObjects(jvmti, taggedObjects, finishTime);
+    return walkHeapFromObjects(jvmti, taggedObjects, finishTime, cancellationFileName);
 }
 
 jvmtiError RetainedSizeByObjectsAction::estimateObjectsSizes(const std::vector<jobject> &objects, std::vector<jlong> &result) {

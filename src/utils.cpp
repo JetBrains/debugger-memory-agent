@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cstring>
 #include <vector>
+#include <fstream>
 #include "utils.h"
 #include "timed_action.h"
 #include "log.h"
@@ -99,7 +100,7 @@ void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &re
 }
 
 void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
-    if (!isOk(err) && err != MEMORY_AGENT_TIMEOUT_ERROR) {
+    if (!isOk(err) && err != MEMORY_AGENT_INTERRUPTED_ERROR) {
         char *errorName = nullptr;
         const char *name;
         if (jvmti->GetErrorName(err, &errorName) != JVMTI_ERROR_NONE) {
@@ -210,6 +211,18 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
     std::set<jlong> ignored;
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
+
+bool fileExists(const std::string &fileName) {
+    return std::filesystem::exists(fileName);
+}
+
+std::string jstringTostring(JNIEnv *env, jstring jStr) {
+    const char *chars = env->GetStringUTFChars(jStr, nullptr);
+    std::string str = std::string(chars);
+    env->ReleaseStringUTFChars(jStr, chars);
+    return str;
+}
+
 
 jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag) {
     jclass *classes;

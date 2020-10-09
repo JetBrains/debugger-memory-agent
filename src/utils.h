@@ -55,6 +55,10 @@ jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classO
 
 bool isOk(jvmtiError error);
 
+bool fileExists(const std::string &fileName);
+
+std::string jstringTostring(JNIEnv *env, jstring jStr);
+
 template<typename T>
 jlong pointerToTag(T tag) {
     return reinterpret_cast<jlong>(tag);

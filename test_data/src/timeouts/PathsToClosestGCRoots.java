@@ -6,9 +6,9 @@ import common.TimeoutTestBase;
 
 public class PathsToClosestGCRoots extends TimeoutTestBase {
     @Override
-    protected MemoryAgentErrorCode executeOperation(long timeoutInMillis) {
-        TestNode root = new TestNode(1);
-        return getErrorCode(IdeaNativeAgentProxy.findPathsToClosestGcRoots(root, 10, 1000, timeoutInMillis));
+    protected MemoryAgentErrorCode executeOperation(long timeoutInMillis, String cancellationFileName) {
+        TestNode root = new TestNode(10);
+        return getErrorCode(IdeaNativeAgentProxy.findPathsToClosestGcRoots(root, 10, 1000, timeoutInMillis, cancellationFileName));
     }
 
     public static void main(String[] args) {

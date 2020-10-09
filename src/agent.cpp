@@ -145,8 +145,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         JNIEnv *env,
         jclass thisClass,
         jobjectArray objects,
-        jlong timeoutInMillis) {
-    return RetainedSizeByObjectsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, objects);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return RetainedSizeByObjectsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, objects);
 }
 
 extern "C"
@@ -154,8 +155,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         JNIEnv *env,
         jclass thisClass,
         jobject object,
-        jlong timeoutInMillis) {
-    return RetainedSizeAndHeldObjectsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, object);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return RetainedSizeAndHeldObjectsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, object);
 }
 
 extern "C"
@@ -165,8 +167,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jobject object,
         jint pathsNumber,
         jint objectsNumber,
-        jlong timeoutInMillis) {
-    return PathsToClosestGcRootsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, object, pathsNumber, objectsNumber);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return PathsToClosestGcRootsAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, object, pathsNumber, objectsNumber);
 }
 
 extern "C"
@@ -174,8 +177,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         JNIEnv *env,
         jclass thisClass,
         jobjectArray classesArray,
-        jlong timeoutInMillis) {
-    return ShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, classesArray);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return ShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, classesArray);
 }
 
 extern "C"
@@ -183,8 +187,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         JNIEnv *env,
         jclass thisClass,
         jobjectArray classesArray,
-        jlong timeoutInMillis) {
-    return RetainedSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, classesArray);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return RetainedSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, classesArray);
 }
 
 extern "C"
@@ -192,8 +197,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         JNIEnv *env,
         jclass thisClass,
         jobjectArray classesArray,
-        jlong timeoutInMillis) {
-    return RetainedAndShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, classesArray);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return RetainedAndShallowSizeByClassesAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, classesArray);
 }
 
 extern "C"
@@ -202,8 +208,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobject startObject,
         jobjectArray suspectClass,
-        jlong timeoutInMillis) {
-    return GetFirstReachableObjectOfClassAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, startObject, suspectClass);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return GetFirstReachableObjectOfClassAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, startObject, suspectClass);
 }
 
 extern "C"
@@ -212,8 +219,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jclass thisClass,
         jobject startObject,
         jobject suspectClass,
-        jlong timeoutInMillis) {
-    return GetAllReachableObjectsOfClassAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, startObject, suspectClass);
+        jlong timeoutInMillis,
+        jstring cancellationFileName) {
+    return GetAllReachableObjectsOfClassAction(env, gdata->jvmti).runWithTimeout(timeoutInMillis, cancellationFileName, startObject, suspectClass);
 }
 
 #pragma clang diagnostic pop
