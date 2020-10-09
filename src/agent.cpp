@@ -91,6 +91,12 @@ JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM *vm, char *options, void *reserved)
     return Agent_OnLoad(vm, options, reserved);
 }
 
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    delete gdata;
+    Agent_OnLoad(vm, nullptr, reserved);
+    return JNI_VERSION_1_6;
+}
+
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
     debug("on agent unload");
     delete gdata;
