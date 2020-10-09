@@ -8,6 +8,12 @@ targetCompatibility = 1.6
 
 group 'org.jetbrains.intellij.deps'
 
+if (project.hasProperty("teamcity"))
+    version = "1.0." + teamcity['build.number']
+else
+    version = "1.0-SNAPSHOT"
+
+
 sourceSets {
     main.java.srcDirs = []
 }
@@ -49,13 +55,11 @@ jar {
     into('proxy') {
         from includeClasses
     }
-    version mvnVersion
 }
 task sourceJar(type: Jar) {
     from file("$projectDir/../src")
     from file("$projectDir/../test_data/proxy/src")
     classifier 'sources'
-    version mvnVersion
 }
 
 publishing {
@@ -65,7 +69,6 @@ publishing {
             groupId mvnGroupId
             artifactId mvnArtifactId
             artifact sourceJar
-            version mvnVersion
         }
     }
 }
@@ -80,7 +83,7 @@ bintray {
         repo = bintrayRepoName
         name = bintrayPkgName
         userOrg = bintrayUserOrg
-        version.name = mvnVersion
+        version.name = version
     }
 
     publications = ['MyPublication']
