@@ -8,11 +8,9 @@ targetCompatibility = 1.6
 
 group 'org.jetbrains.intellij.deps'
 
+def releaseVersion = "1.0-SNAPSHOT"
 if (project.hasProperty("teamcity"))
     releaseVersion = "1.0." + teamcity['build.number']
-else
-    releaseVersion = "1.0-SNAPSHOT"
-
 
 sourceSets {
     main.java.srcDirs = []
