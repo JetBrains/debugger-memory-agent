@@ -3,7 +3,9 @@
 
 # Debugger memory agent
 This is a native [JVMTI](https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html) agent for JVM, which is currently used in the IDEA debugger to perform basic heap diagnostic during the debug process. To attach the agent run the JVM 
-with the parameter: `-agentpath:/path/to/agent`
+with the parameter: 
+
+`-agentpath:/path/to/agent`
 
 # Available features
 After attaching this agent to JVM it can:
@@ -14,4 +16,4 @@ After attaching this agent to JVM it can:
 5. Find reachable objects of class in heap with handling weak/soft references.
 
 # Building and contributing
-See `CONTRIBUTING.md` for building and development tips before submitting a pull request. File an issue if you find any bug or have an idea for a new feature.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for building and development tips before submitting a pull request. File an issue if you find any bug or have an idea for a new feature.
