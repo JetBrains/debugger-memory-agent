@@ -1,8 +1,16 @@
 # Contributing guide for debugger memory agent
-## Requirements
-1. Python3
-2. JDK 1.8 or higher
-3. Cmake 3.1 or higher 
+## Building
+Once you've downloaded the project, you can build it using the following commands in the root project directory (Cmake 3.1 or higher required):
+```
+cmake .
+make
+```
+
+Then make sure your `JAVA_HOME` environmental variable is set to JDK 1.8 or higher and run tests with:
+```
+python3 test_runner.py
+```
+
 ## Development process
 1. Pick an issue or figure out which ation you would like to implement. Every agent action is derived from `MemoryAgentTimedAction` 
 and is implemented by overriding `cleanHeap` and `executeOperation` methods. Your action implementation must meet 3 requirements:
