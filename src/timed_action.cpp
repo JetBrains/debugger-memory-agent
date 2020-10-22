@@ -2,7 +2,7 @@
 
 #include "timed_action.h"
 
-#define INTERRUPTION_CHECK_INTERVAL 10000
+#define INTERRUPTION_CHECK_INTERVAL 100000
 
 CallbackWrapperData::CallbackWrapperData(const std::chrono::steady_clock::time_point &finishTime,
                                          void *callback, void *userData, const std::string &fileName) :
@@ -24,16 +24,13 @@ bool shouldStopExecution(const std::chrono::steady_clock::time_point &finishTime
 }
 
 bool shouldStopExecutionDuringHeapTraversal(const std::chrono::steady_clock::time_point &finishTime, const std::string &cancellationFileName) {
-    static int interval = 0;
+    static long interval = 0;
 
     if (interval == INTERRUPTION_CHECK_INTERVAL) {
         interval = 0;
-    }
-
-    if (interval == 0) {
-        interval++;
         return shouldStopExecution(finishTime, cancellationFileName);
     }
 
+    interval++;
     return false;
 }

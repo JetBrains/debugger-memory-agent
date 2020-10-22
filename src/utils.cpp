@@ -4,7 +4,7 @@
 #include <sstream>
 #include <cstring>
 #include <vector>
-#include <filesystem>
+#include <fstream>
 #include "utils.h"
 #include "timed_action.h"
 #include "log.h"
@@ -213,7 +213,7 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
 }
 
 bool fileExists(const std::string &fileName) {
-    return std::filesystem::exists(fileName);
+    return static_cast<bool>(std::ifstream(fileName));
 }
 
 std::string jstringTostring(JNIEnv *env, jstring jStr) {
