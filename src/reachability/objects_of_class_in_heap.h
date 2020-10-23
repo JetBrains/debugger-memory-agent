@@ -7,7 +7,7 @@
 
 class GetFirstReachableObjectOfClassAction : public MemoryAgentTimedAction<jobject, jobject, jobject> {
 public:
-    GetFirstReachableObjectOfClassAction(JNIEnv *env, jvmtiEnv *jvmti);
+    GetFirstReachableObjectOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
 
 private:
     jobject executeOperation(jobject startObject, jobject classObject) override;
@@ -16,7 +16,7 @@ private:
 
 class GetAllReachableObjectsOfClassAction : public MemoryAgentTimedAction<jobjectArray, jobject, jobject> {
 public:
-    GetAllReachableObjectsOfClassAction(JNIEnv *env, jvmtiEnv *jvmti);
+    GetAllReachableObjectsOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
 
 private:
     jobjectArray executeOperation(jobject startObject, jobject classObject) override;

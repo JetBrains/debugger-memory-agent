@@ -10,7 +10,7 @@
 
 class PathsToClosestGcRootsAction : public MemoryAgentTimedAction<jobjectArray, jobject, jint, jint> {
 public:
-    PathsToClosestGcRootsAction(JNIEnv *env, jvmtiEnv *jvmti);
+    PathsToClosestGcRootsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
 
 private:
     jobjectArray executeOperation(jobject object, jint pathsNumber, jint objectsNumber) override;

@@ -4,7 +4,7 @@
 #include "sizes_tags.h"
 #include "retained_size_by_classes.h"
 
-RetainedSizeByObjectsAction::RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti) : MemoryAgentTimedAction(env, jvmti) {
+RetainedSizeByObjectsAction::RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : MemoryAgentTimedAction(env, jvmti, cancellationFileName) {
 
 }
 

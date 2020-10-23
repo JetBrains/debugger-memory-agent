@@ -217,6 +217,10 @@ bool fileExists(const std::string &fileName) {
 }
 
 std::string jstringTostring(JNIEnv *env, jstring jStr) {
+    if (!jStr) {
+        return "";
+    }
+
     const char *chars = env->GetStringUTFChars(jStr, nullptr);
     std::string str = std::string(chars);
     env->ReleaseStringUTFChars(jStr, chars);

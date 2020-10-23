@@ -39,10 +39,11 @@ bool shouldStopExecutionDuringHeapTraversal(const std::chrono::steady_clock::tim
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 class MemoryAgentTimedAction {
 public:
-    MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti);
+    MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
     virtual ~MemoryAgentTimedAction() = default;
 
-    jobjectArray runWithTimeout(jlong duration, jstring interruptionFileName, ARGS_TYPES... args);
+    jobjectArray runWithTimeout(jlong duration, ARGS_TYPES... args);
+
 protected:
     virtual RESULT_TYPE executeOperation(ARGS_TYPES... args) = 0;
     virtual jvmtiError cleanHeap() = 0;

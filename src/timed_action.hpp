@@ -7,19 +7,19 @@
 
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti) : env(env), jvmti(jvmti) {
+MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) :
+    env(env), jvmti(jvmti), cancellationFileName(jstringTostring(env, reinterpret_cast<jstring>(cancellationFileName))) {
 
 }
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-jobjectArray MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::runWithTimeout(jlong duration, jstring interruptionFileName, ARGS_TYPES... args) {
+jobjectArray MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::runWithTimeout(jlong duration, ARGS_TYPES... args) {
     if (duration < 0) {
         finishTime = std::chrono::steady_clock::time_point::max();
     } else {
         finishTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(duration);
     }
 
-    cancellationFileName = jstringTostring(env, interruptionFileName);
     RESULT_TYPE result = executeOperation(args...);
     jvmtiError err = cleanHeap();
     if (err != JVMTI_ERROR_NONE) {

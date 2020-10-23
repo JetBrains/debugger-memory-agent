@@ -43,7 +43,7 @@ jint JNICALL visitObjectForShallowAndRetainedSize(jlong classTag, jlong size, jl
     return JVMTI_ITERATION_CONTINUE;
 }
 
-RetainedSizeByClassesAction::RetainedSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti) : RetainedSizeAction(env, jvmti) {
+RetainedSizeByClassesAction::RetainedSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : RetainedSizeAction(env, jvmti, cancellationFileName) {
 
 }
 
@@ -71,7 +71,7 @@ jlongArray RetainedSizeByClassesAction::executeOperation(jobjectArray classesArr
     return toJavaArray(env, result);
 }
 
-RetainedAndShallowSizeByClassesAction::RetainedAndShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti) : RetainedSizeAction(env, jvmti) {
+RetainedAndShallowSizeByClassesAction::RetainedAndShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : RetainedSizeAction(env, jvmti, cancellationFileName) {
 
 }
 

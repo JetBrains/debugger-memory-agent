@@ -7,7 +7,7 @@
 
 class ShallowSizeByClassesAction : public MemoryAgentTimedAction<jlongArray, jobjectArray> {
 public:
-    ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti);
+    ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
 
 private:
     jlongArray executeOperation(jobjectArray classesArray) override;
