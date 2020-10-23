@@ -213,7 +213,7 @@ jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) 
 }
 
 bool fileExists(const std::string &fileName) {
-    return static_cast<bool>(std::ifstream(fileName));
+    return !fileName.empty() && static_cast<bool>(std::ifstream(fileName));
 }
 
 std::string jstringTostring(JNIEnv *env, jstring jStr) {
