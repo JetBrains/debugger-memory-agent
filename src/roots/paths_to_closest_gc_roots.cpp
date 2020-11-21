@@ -246,7 +246,7 @@ namespace {
     }
 }
 
-PathsToClosestGcRootsAction::PathsToClosestGcRootsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : MemoryAgentTimedAction(env, jvmti, cancellationFileName) {
+PathsToClosestGcRootsAction::PathsToClosestGcRootsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction(env, jvmti, cancellationFileName, duration) {
 
 }
 
@@ -260,7 +260,7 @@ jobjectArray PathsToClosestGcRootsAction::collectPathsToClosestGcRoots(jlong sta
     queue.push(tag);
     prevTag[tag] = tag;
     while (!queue.empty() && number > foundRoots.size()) {
-        if (shouldStopAction()) return getEmptyArray(env);
+        if (shouldStopExecution()) return getEmptyArray(env);
 
         tag = queue.front();
         queue.pop();
@@ -279,7 +279,7 @@ jobjectArray PathsToClosestGcRootsAction::collectPathsToClosestGcRoots(jlong sta
         }
     }
 
-    if (shouldStopAction()) return getEmptyArray(env);
+    if (shouldStopExecution()) return getEmptyArray(env);
 
     return foundRoots.empty() ?
            createResultObject(env, jvmti, std::vector<jlong>{start}) :
@@ -331,7 +331,7 @@ GcTag *PathsToClosestGcRootsAction::createTags(jobject target) {
 jobjectArray PathsToClosestGcRootsAction::executeOperation(jobject object, jint pathsNumber, jint objectsNumber) {
     debug("Looking for shortest path to gc root started");
     GcTag *tag = createTags(object);
-    if (shouldStopAction()) return getEmptyArray(env);
+    if (shouldStopExecution()) return getEmptyArray(env);
 
     debug("create resulting java objects");
     jobjectArray result = collectPathsToClosestGcRoots(pointerToTag(tag), pathsNumber, objectsNumber);

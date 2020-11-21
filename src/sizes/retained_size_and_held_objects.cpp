@@ -34,7 +34,7 @@ jint JNICALL walkHeapAndSkipStartObject(jvmtiHeapReferenceKind refKind, const jv
     return visitReference(refKind, refInfo, classTag, referrerClassTag, size, tagPtr, referrerTagPtr, length, userData);
 }
 
-RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : MemoryAgentTimedAction(env, jvmti, cancellationFileName) {
+RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction(env, jvmti, cancellationFileName, duration) {
 
 }
 
@@ -55,21 +55,21 @@ jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object,
     Tag *tag = Tag::create(0, createState(true, true, false, false));
     jvmtiError err = jvmti->SetTag(object, pointerToTag(tag));
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     err = FollowReferences(0, nullptr, nullptr, walkHeapAndSkipStartObject, nullptr, "tag heap");
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     err = FollowReferences(0, nullptr, object, visitReference, nullptr, "tag heap");
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     retainedSize = 0;
     err = IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, countSizeAndRetagHeldObjects,
                              &retainedSize, "calculate retained size");
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     if (sizesTagBalance != 0) {
         fatal("MEMORY LEAK FOUND!");

@@ -8,7 +8,7 @@
 
 class RetainedSizeByObjectsAction : public MemoryAgentTimedAction<jlongArray, jobjectArray> {
 public:
-    RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
+    RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration);
 
 private:
     jlongArray executeOperation(jobjectArray objects) override;

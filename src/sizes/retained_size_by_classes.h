@@ -8,7 +8,7 @@
 
 class RetainedSizeByClassesAction : public RetainedSizeAction<jlongArray> {
 public:
-    RetainedSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
+    RetainedSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration);
 
 private:
     jlongArray executeOperation(jobjectArray classesArray) override;
@@ -17,7 +17,7 @@ private:
 
 class RetainedAndShallowSizeByClassesAction : public RetainedSizeAction<jobjectArray> {
 public:
-    RetainedAndShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
+    RetainedAndShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration);
 
 private:
     jobjectArray executeOperation(jobjectArray classesArray) override;

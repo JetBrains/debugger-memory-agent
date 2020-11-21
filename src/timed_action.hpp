@@ -7,19 +7,17 @@
 
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) :
-    env(env), jvmti(jvmti), cancellationFileName(jstringTostring(env, reinterpret_cast<jstring>(cancellationFileName))) {
+MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject fileName, jlong duration) :
+    env(env), jvmti(jvmti),
+    CancellationManager(
+            jstringTostring(env, reinterpret_cast<jstring>(fileName)),
+            duration < 0 ? std::chrono::steady_clock::time_point::max() : std::chrono::steady_clock::now() + std::chrono::milliseconds(duration)
+    ) {
 
 }
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-jobjectArray MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::runWithTimeout(jlong duration, ARGS_TYPES... args) {
-    if (duration < 0) {
-        finishTime = std::chrono::steady_clock::time_point::max();
-    } else {
-        finishTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(duration);
-    }
-
+jobjectArray MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::run(ARGS_TYPES... args) {
     RESULT_TYPE result = executeOperation(args...);
     jvmtiError err = cleanHeap();
     if (err != JVMTI_ERROR_NONE) {
@@ -28,7 +26,7 @@ jobjectArray MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::runWithTimeout(
 
     jclass langObject = env->FindClass("java/lang/Object");
     jobjectArray returnValue = env->NewObjectArray(2, langObject, nullptr);
-    env->SetObjectArrayElement(returnValue, 0, toJavaArray(env, static_cast<jint>(getErrorCode(finishTime, cancellationFileName))));
+    env->SetObjectArrayElement(returnValue, 0, toJavaArray(env, static_cast<jint>(getErrorCode())));
     env->SetObjectArrayElement(returnValue, 1, result);
     std::remove(cancellationFileName.c_str());
     return returnValue;
@@ -39,7 +37,7 @@ jint JNICALL MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::followReference
                                                                                                  jlong referrerClassTag, jlong size, jlong *tagPtr,
                                                                                                  jlong *referrerTagPtr, jint length, void *userData) {
     auto *wrapperData = reinterpret_cast<CallbackWrapperData *>(userData);
-    if (shouldStopExecutionDuringHeapTraversal(wrapperData->finishTime, wrapperData->cancellationFileName)) {
+    if (wrapperData->manager->shouldStopExecutionSyscallSafe()) {
         return JVMTI_VISIT_ABORT;
     }
     return reinterpret_cast<jvmtiHeapReferenceCallback>(wrapperData->callback)(refKind, refInfo, classTag, referrerClassTag, size, tagPtr, referrerTagPtr, length, wrapperData->userData);
@@ -48,7 +46,7 @@ jint JNICALL MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::followReference
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 jint JNICALL MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::iterateThroughHeapCallbackWrapper(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     auto *wrapperData = reinterpret_cast<CallbackWrapperData *>(userData);
-    if (shouldStopExecutionDuringHeapTraversal(wrapperData->finishTime, wrapperData->cancellationFileName)) {
+    if (wrapperData->manager->shouldStopExecutionSyscallSafe()) {
         return JVMTI_ITERATION_ABORT;
     }
     return reinterpret_cast<jvmtiHeapIterationCallback>(wrapperData->callback)(classTag, size, tagPtr, length, wrapperData->userData);
@@ -57,8 +55,8 @@ jint JNICALL MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::iterateThroughH
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 jvmtiError MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::FollowReferences(jint heapFilter, jclass klass, jobject initialObject,
                                                                                 jvmtiHeapReferenceCallback callback, void *userData,
-                                                                                const char *debugMessage) {
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+                                                                                const char *debugMessage) const {
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     if (debugMessage) {
         debug(debugMessage);
@@ -68,14 +66,14 @@ jvmtiError MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::FollowReferences(
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = followReferencesCallbackWrapper;
 
-    CallbackWrapperData wrapperData(finishTime, reinterpret_cast<void *>(callback), userData, cancellationFileName);
+    CallbackWrapperData wrapperData(reinterpret_cast<void *>(callback), userData, dynamic_cast<const CancellationManager *>(this));
     return jvmti->FollowReferences(heapFilter, klass, initialObject, &cb, &wrapperData);
 }
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-jvmtiError  MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::IterateThroughHeap(jint heapFilter, jclass klass, jvmtiHeapIterationCallback callback,
-                                                                                   void *userData, const char *debugMessage) {
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+jvmtiError MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::IterateThroughHeap(jint heapFilter, jclass klass, jvmtiHeapIterationCallback callback,
+                                                                                   void *userData, const char *debugMessage) const {
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     if (debugMessage) {
         debug(debugMessage);
@@ -85,8 +83,18 @@ jvmtiError  MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::IterateThroughHe
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_iteration_callback = iterateThroughHeapCallbackWrapper;
 
-    CallbackWrapperData wrapperData(finishTime, reinterpret_cast<void *>(callback), userData, cancellationFileName);
+    CallbackWrapperData wrapperData(reinterpret_cast<void *>(callback), userData, dynamic_cast<const CancellationManager *>(this));
     return jvmti->IterateThroughHeap(heapFilter, klass, &cb, &wrapperData);
+}
+
+template<typename RESULT_TYPE, typename... ARGS_TYPES>
+ErrorCode MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::getErrorCode() const {
+    if (fileExists(cancellationFileName)) {
+        return ErrorCode::CANCELLED;
+    } else if (finishTime < std::chrono::steady_clock::now()) {
+        return ErrorCode::TIMEOUT;
+    }
+    return ErrorCode::OK;
 }
 
 #endif //MEMORY_AGENT_TIMED_ACTION_HPP

@@ -9,15 +9,17 @@
 #include "jvmti.h"
 #include "log.h"
 #include "utils.h"
+#include "cancellation_manager.h"
 
 #define MEMORY_AGENT_INTERRUPTED_ERROR static_cast<jvmtiError>(999)
 
 struct CallbackWrapperData {
-    CallbackWrapperData(const std::chrono::steady_clock::time_point &finishTime,
-                        void *callback, void *userData, const std::string &fileName);
+    CallbackWrapperData(void *callback, void *userData, const CancellationManager *manager) :
+            callback(callback), userData(userData), manager(manager) {
 
-    std::chrono::steady_clock::time_point finishTime;
-    std::string cancellationFileName;
+    }
+
+    const CancellationManager *manager;
     void *callback;
     void *userData;
 };
@@ -28,27 +30,17 @@ enum class ErrorCode {
     CANCELLED = 2
 };
 
-ErrorCode getErrorCode(const std::chrono::steady_clock::time_point &finishTime, const std::string &cancellationFileName);
-
-bool shouldStopExecution(const std::chrono::steady_clock::time_point &finishTime, const std::string &cancellationFileName);
-
-// This function serves to minimize the number of syscalls during heap traversal by checking
-// interruption only after visiting 'n' objects in heap
-bool shouldStopExecutionDuringHeapTraversal(const std::chrono::steady_clock::time_point &finishTime, const std::string &cancellationFileName);
-
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-class MemoryAgentTimedAction {
+class MemoryAgentTimedAction : public CancellationManager {
 public:
-    MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName);
+    MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration);
     virtual ~MemoryAgentTimedAction() = default;
 
-    jobjectArray runWithTimeout(jlong duration, ARGS_TYPES... args);
+    jobjectArray run(ARGS_TYPES... args);
 
 protected:
     virtual RESULT_TYPE executeOperation(ARGS_TYPES... args) = 0;
     virtual jvmtiError cleanHeap() = 0;
-
-    bool shouldStopAction() const { return shouldStopExecution(finishTime, cancellationFileName); }
 
     static jint JNICALL followReferencesCallbackWrapper(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                                                         jlong referrerClassTag, jlong size, jlong *tagPtr,
@@ -58,16 +50,16 @@ protected:
 
     jvmtiError FollowReferences(jint heapFilter, jclass klass, jobject initialObject,
                                 jvmtiHeapReferenceCallback callback, void *userData,
-                                const char *debugMessage=nullptr);
+                                const char *debugMessage=nullptr) const;
 
     jvmtiError IterateThroughHeap(jint heapFilter, jclass klass, jvmtiHeapIterationCallback callback,
-                                  void *userData, const char *debugMessage=nullptr);
+                                  void *userData, const char *debugMessage=nullptr) const;
+private:
+    ErrorCode getErrorCode() const;
 
 protected:
     JNIEnv *env;
     jvmtiEnv *jvmti;
-    std::string cancellationFileName;
-    std::chrono::steady_clock::time_point finishTime;
 };
 
 

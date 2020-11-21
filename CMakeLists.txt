@@ -45,8 +45,9 @@ add_library(memory_agent SHARED
         src/reachability/objects_of_class_in_heap.cpp
         src/reachability/objects_of_class_in_heap.h
         src/sizes/retained_size_action.cpp
-        src/timed_action.cpp
-        src/timed_action.hpp)
+        src/timed_action.hpp
+        src/cancellation_manager.cpp
+        src/cancellation_manager.h)
 
 if ((UNIX OR MINGW) AND NOT APPLE)
     target_link_libraries(memory_agent PRIVATE -static-libstdc++ -static-libgcc)

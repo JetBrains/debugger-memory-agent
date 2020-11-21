@@ -43,18 +43,18 @@ jint JNICALL visitObjectForShallowAndRetainedSize(jlong classTag, jlong size, jl
     return JVMTI_ITERATION_CONTINUE;
 }
 
-RetainedSizeByClassesAction::RetainedSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : RetainedSizeAction(env, jvmti, cancellationFileName) {
+RetainedSizeByClassesAction::RetainedSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : RetainedSizeAction(env, jvmti, cancellationFileName, duration) {
 
 }
 
 jvmtiError RetainedSizeByClassesAction::getRetainedSizeByClasses(jobjectArray classesArray, std::vector<jlong> &result) {
     jvmtiError err = tagObjectsOfClasses(classesArray);
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     err = tagHeap();
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     result.resize(env->GetArrayLength(classesArray));
     return IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, visitObject, result.data(), "calculate retained sizes");
@@ -71,7 +71,7 @@ jlongArray RetainedSizeByClassesAction::executeOperation(jobjectArray classesArr
     return toJavaArray(env, result);
 }
 
-RetainedAndShallowSizeByClassesAction::RetainedAndShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : RetainedSizeAction(env, jvmti, cancellationFileName) {
+RetainedAndShallowSizeByClassesAction::RetainedAndShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : RetainedSizeAction(env, jvmti, cancellationFileName, duration) {
 
 }
 
@@ -80,11 +80,11 @@ jvmtiError RetainedAndShallowSizeByClassesAction::getShallowAndRetainedSizeByCla
                                                                                      std::vector<jlong> &retainedSizes) {
     jvmtiError err = tagObjectsOfClasses(classesArray);
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     err = tagHeap();
     if (!isOk(err)) return err;
-    if (shouldStopAction()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     retainedSizes.resize(env->GetArrayLength(classesArray));
     shallowSizes.resize(env->GetArrayLength(classesArray));

@@ -15,7 +15,7 @@ static jint JNICALL calculateShallowSize(jlong classTag, jlong size, jlong *tagP
     return JVMTI_VISIT_OBJECTS;
 }
 
-ShallowSizeByClassesAction::ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName) : MemoryAgentTimedAction(env, jvmti, cancellationFileName) {
+ShallowSizeByClassesAction::ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction(env, jvmti, cancellationFileName, duration) {
 
 }
 
@@ -43,7 +43,7 @@ jlongArray ShallowSizeByClassesAction::executeOperation(jobjectArray classesArra
     std::memset(sizes, 0, sizeof(jlong) * classesCount);
     tagClasses(classesArray);
 
-    if (shouldStopAction()) return env->NewLongArray(0);
+    if (shouldStopExecution()) return env->NewLongArray(0);
 
     IterateThroughHeap(JVMTI_HEAP_FILTER_CLASS_UNTAGGED, nullptr, calculateShallowSize, sizes);
     env->SetLongArrayRegion(result, 0, classesCount, sizes);
