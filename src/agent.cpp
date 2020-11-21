@@ -167,8 +167,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
         jint objectsNumber,
         jlong timeoutInMillis,
         jobject cancellationFileName) {
-    return PathsToClosestGcRootsAction(env, gdata->jvmti, cancellationFileName, timeoutInMillis).run(object,
-                                                                                    pathsNumber, objectsNumber);
+    return PathsToClosestGcRootsAction(env, gdata->jvmti, cancellationFileName, timeoutInMillis).run(object, pathsNumber, objectsNumber);
 }
 
 extern "C"
