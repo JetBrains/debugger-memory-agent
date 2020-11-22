@@ -34,7 +34,7 @@ jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti, const std::vector<jobject>
 template<typename RESULT_TYPE>
 class RetainedSizeAction : public MemoryAgentTimedAction<RESULT_TYPE, jobjectArray> {
 protected:
-    RetainedSizeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction<RESULT_TYPE, jobjectArray>(env, jvmti, cancellationFileName, duration) {
+    RetainedSizeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction<RESULT_TYPE, jobjectArray>(env, jvmti, object) {
 
     }
 

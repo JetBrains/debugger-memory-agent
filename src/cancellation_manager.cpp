@@ -18,7 +18,8 @@ bool CancellationManager::shouldStopExecution() const {
 bool CancellationManager::shouldStopExecutionSyscallSafe() const {
     if (performedChecks == checksToPerform) {
         std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-        if (now - lastSuccessfulCheck < std::chrono::seconds(1)) {
+        if (now - lastSuccessfulCheck < std::chrono::seconds(1) &&
+            checksToPerform < std::numeric_limits<unsigned int>::max() / 10) {
             checksToPerform *= 10;
         } else {
             checksToPerform = defaultChecksToPerformValue;

@@ -34,7 +34,7 @@ jint JNICALL walkHeapAndSkipStartObject(jvmtiHeapReferenceKind refKind, const jv
     return visitReference(refKind, refInfo, classTag, referrerClassTag, size, tagPtr, referrerTagPtr, length, userData);
 }
 
-RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction(env, jvmti, cancellationFileName, duration) {
+RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction(env, jvmti, object) {
 
 }
 

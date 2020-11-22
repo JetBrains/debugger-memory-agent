@@ -7,13 +7,19 @@
 
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject fileName, jlong duration) :
-    env(env), jvmti(jvmti),
-    CancellationManager(
-            jstringTostring(env, reinterpret_cast<jstring>(fileName)),
-            duration < 0 ? std::chrono::steady_clock::time_point::max() : std::chrono::steady_clock::now() + std::chrono::milliseconds(duration)
-    ) {
-
+MemoryAgentTimedAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) :
+    env(env), jvmti(jvmti) {
+    jclass thisClass = env->GetObjectClass(object);
+    jfieldID fileNameId = env->GetFieldID(thisClass, "cancellationFileName", "Ljava/lang/String;");
+    jfieldID timeoutId = env->GetFieldID(thisClass, "timeoutInMillis", "J");
+    jobject fileName = env->GetObjectField(object, fileNameId);
+    jlong timeout = env->GetLongField(object, timeoutId);
+    cancellationFileName = jstringTostring(env, reinterpret_cast<jstring>(fileName));
+    if (timeout < 0) {
+        finishTime = std::chrono::steady_clock::time_point::max();
+    } else {
+        finishTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout);
+    }
 }
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>

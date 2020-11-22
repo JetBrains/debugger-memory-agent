@@ -53,7 +53,7 @@ static jvmtiError getReachableObjectsOfClass(JNIEnv *env, jvmtiEnv *jvmti, jobje
     return getObjectsByTags(jvmti, std::vector<jlong>{OBJECT_OF_CLASS_TAG}, result);
 }
 
-GetFirstReachableObjectOfClassAction::GetFirstReachableObjectOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction(env, jvmti, cancellationFileName, duration) {
+GetFirstReachableObjectOfClassAction::GetFirstReachableObjectOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction(env, jvmti, object) {
 
 }
 
@@ -68,7 +68,7 @@ jvmtiError GetFirstReachableObjectOfClassAction::cleanHeap() {
     return removeAllTagsFromHeap(jvmti, nullptr);
 }
 
-GetAllReachableObjectsOfClassAction::GetAllReachableObjectsOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction(env, jvmti, cancellationFileName, duration) {
+GetAllReachableObjectsOfClassAction::GetAllReachableObjectsOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction(env, jvmti, object) {
 
 }
 

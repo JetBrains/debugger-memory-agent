@@ -33,7 +33,7 @@ enum class ErrorCode {
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 class MemoryAgentTimedAction : public CancellationManager {
 public:
-    MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration);
+    MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
     virtual ~MemoryAgentTimedAction() = default;
 
     jobjectArray run(ARGS_TYPES... args);

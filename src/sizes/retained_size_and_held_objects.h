@@ -7,7 +7,7 @@
 
 class RetainedSizeAndHeldObjectsAction : public MemoryAgentTimedAction<jobjectArray, jobject> {
 public:
-    RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration);
+    RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
 private:
     jobjectArray executeOperation(jobject object) override;

@@ -9,6 +9,7 @@
 class CancellationManager {
 public:
     CancellationManager(const std::string &, const std::chrono::steady_clock::time_point &);
+    CancellationManager() = default;
 
     ~CancellationManager() = default;
 
@@ -16,15 +17,15 @@ public:
 
     bool shouldStopExecutionSyscallSafe() const;
 
+protected:
+    std::string cancellationFileName;
+    std::chrono::steady_clock::time_point finishTime;
+
 private:
     const static unsigned int defaultChecksToPerformValue = 10000;
     mutable std::chrono::steady_clock::time_point lastSuccessfulCheck;
     mutable unsigned int checksToPerform;
     mutable unsigned int performedChecks;
-
-protected:
-    std::string cancellationFileName;
-    std::chrono::steady_clock::time_point finishTime;
 };
 
 

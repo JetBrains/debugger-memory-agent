@@ -15,7 +15,7 @@ static jint JNICALL calculateShallowSize(jlong classTag, jlong size, jlong *tagP
     return JVMTI_VISIT_OBJECTS;
 }
 
-ShallowSizeByClassesAction::ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject cancellationFileName, jlong duration) : MemoryAgentTimedAction(env, jvmti, cancellationFileName, duration) {
+ShallowSizeByClassesAction::ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction(env, jvmti, object) {
 
 }
 
