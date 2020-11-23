@@ -9,8 +9,8 @@ public class IdeaNativeAgentProxy {
     timeoutInMillis = -1;
   }
 
-  public IdeaNativeAgentProxy(String cancellationFileName, long timeoutInMillis) {
-    this.cancellationFileName = cancellationFileName;
+  public IdeaNativeAgentProxy(Object cancellationFileName, long timeoutInMillis) {
+    this.cancellationFileName = (String)cancellationFileName;
     this.timeoutInMillis = timeoutInMillis;
   }
 
