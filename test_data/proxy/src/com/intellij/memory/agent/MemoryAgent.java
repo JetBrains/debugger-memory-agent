@@ -39,7 +39,7 @@ public class MemoryAgent {
     private static Object getResult(Object result) throws MemoryAgentException {
         Object[] errorCodeAdResult = (Object[])result;
         if (((int[])errorCodeAdResult[0])[0] != 0) {
-            throw new MemoryAgentException("Failed to call native method");
+            throw new MemoryAgentException("Native method wasn't executed successfully");
         }
 
         return errorCodeAdResult[1];
