@@ -1,4 +1,3 @@
-import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import common.TestBase;
 import common.TestTreeNode;
 
