@@ -5,26 +5,32 @@ import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import java.io.File;
 
 public class MemoryAgent {
-    private static MemoryAgent INSTANCE = null;
     private final IdeaNativeAgentProxy proxy;
+
+    private static class LazyHolder {
+        static final MemoryAgent INSTANCE = new MemoryAgent();
+        static Exception loadingException = null;
+        static {
+            try {
+                File agentLib = AgentExtractor.extract(new File(System.getProperty("java.io.tmpdir")));
+                System.load(agentLib.getAbsolutePath());
+            } catch (Exception ex) {
+                loadingException = ex;
+            }
+        }
+    }
 
     private MemoryAgent() {
         proxy = new IdeaNativeAgentProxy();
     }
 
-    public static synchronized MemoryAgent get() throws MemoryAgentException {
-        if (INSTANCE != null) {
-            return INSTANCE;
-        }
-
-        try {
-            File agentLib = AgentExtractor.extract(new File(System.getProperty("java.io.tmpdir")));
-            System.load(agentLib.getAbsolutePath());
-            INSTANCE = new MemoryAgent();
-            return INSTANCE;
-        } catch (Exception ex) {
+    public static MemoryAgent get() throws MemoryAgentException {
+        Exception ex = LazyHolder.loadingException;
+        if (ex != null) {
             throw new MemoryAgentException("Couldn't load memory agent", ex);
         }
+
+        return LazyHolder.INSTANCE;
     }
 
     @SuppressWarnings("unchecked")
