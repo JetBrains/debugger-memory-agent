@@ -14,15 +14,18 @@ public:
     ~CancellationManager() = default;
 
     /*
-     * NOTE: This method is time consuming because it uses syscalls to check cancellation
-     * @returns true if class user should stop execution, otherwise false
+     * NOTE: This method is time-consuming because it uses syscalls to check the cancellation
+     *
+     * @returns true if a class user should stop the execution, otherwise false
      */
     bool shouldStopExecution() const;
 
     /*
      * NOTE: This method is intended to minimize the number of syscalls
      * when frequent cancellation checking is necessary (e.g. during heap traversals)
-     * @returns true once in a number of method calls if class user should stop execution, otherwise false
+     *
+     * @returns true once in many calls of this method if a class user should stop the execution,
+     * otherwise false
      */
     bool shouldStopExecutionSyscallSafe() const;
 
