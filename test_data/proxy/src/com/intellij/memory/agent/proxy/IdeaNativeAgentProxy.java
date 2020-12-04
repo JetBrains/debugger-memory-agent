@@ -1,36 +1,46 @@
 package com.intellij.memory.agent.proxy;
 
 public class IdeaNativeAgentProxy {
-  private IdeaNativeAgentProxy() {
+  public String cancellationFileName;
+  public long timeoutInMillis;
+
+  public IdeaNativeAgentProxy() {
+    cancellationFileName = "";
+    timeoutInMillis = -1;
   }
 
-  public static native boolean canEstimateObjectSize();
+  public IdeaNativeAgentProxy(Object cancellationFileName, long timeoutInMillis) {
+    this.cancellationFileName = (String)cancellationFileName;
+    this.timeoutInMillis = timeoutInMillis;
+  }
 
-  public static native boolean canGetRetainedSizeByClasses();
+  public native boolean canEstimateObjectSize();
 
-  public static native boolean canGetShallowSizeByClasses();
+  public native boolean canGetRetainedSizeByClasses();
 
-  public static native boolean canEstimateObjectsSizes();
+  public native boolean canGetShallowSizeByClasses();
 
-  public static native boolean canFindPathsToClosestGcRoots();
+  public native boolean canEstimateObjectsSizes();
 
-  public static native Object[] getShallowSizeByClasses(Object[] classes, long timeoutInMillis);
+  public native boolean canFindPathsToClosestGcRoots();
 
-  public static native Object[] getRetainedSizeByClasses(Object[] classes, long timeoutInMillis);
+  public native Object[] getShallowSizeByClasses(Object[] classes);
 
-  public static native Object[] getShallowAndRetainedSizeByClasses(Object[] classes, long timeoutInMillis);
+  public native Object[] getRetainedSizeByClasses(Object[] classes);
 
-  public static native Object[] findPathsToClosestGcRoots(Object object, int pathsNumber, int objectsNumber, long timeoutInMillis);
+  public native Object[] getShallowAndRetainedSizeByClasses(Object[] classes);
 
-  public static native Object[] size(Object object, long timeoutInMillis);
+  public native Object[] findPathsToClosestGcRoots(Object object, int pathsNumber, int objectsNumber);
 
-  public static native Object[] estimateRetainedSize(Object[] objects, long timeoutInMillis);
+  public native Object[] size(Object object);
 
-  public static native Object[] getFirstReachableObject(Object startObject, Object suspectClass, long timeoutInMillis);
+  public native Object[] estimateRetainedSize(Object[] objects);
 
-  public static native Object[] getAllReachableObjects(Object startObject, Object suspectClass, long timeoutInMillis);
+  public native Object[] getFirstReachableObject(Object startObject, Object suspectClass);
 
-  public static boolean isLoaded() {
+  public native Object[] getAllReachableObjects(Object startObject, Object suspectClass);
+
+  public boolean isLoaded() {
     try {
       return isLoadedImpl();
     } catch (Throwable t) {
@@ -38,5 +48,5 @@ public class IdeaNativeAgentProxy {
     }
   }
 
-  private static native boolean isLoadedImpl();
+  private native boolean isLoadedImpl();
 }

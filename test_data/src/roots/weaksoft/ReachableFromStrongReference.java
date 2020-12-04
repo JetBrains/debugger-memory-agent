@@ -1,6 +1,5 @@
 package roots.weaksoft;
 
-import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import common.TestBase;
 
 import java.lang.ref.PhantomReference;
@@ -32,6 +31,6 @@ public class ReachableFromStrongReference extends TestBase {
         );
         SoftReference<Object> ref3 = new SoftReference<>(testClass.object);
 
-        doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(testClass.object, 4, 1000, TestBase.DEFAULT_TIMEOUT));
+        doPrintGcRoots(proxy.findPathsToClosestGcRoots(testClass.object, 4, 1000));
     }
 }

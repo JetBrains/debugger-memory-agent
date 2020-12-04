@@ -126,7 +126,7 @@ jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr, j
 
 jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti,
                                const std::vector<jobject> &objects,
-                               const std::chrono::steady_clock::time_point &finishTime) {
+                               const CancellationManager &manager) {
     jvmtiError err = JVMTI_ERROR_NONE;
     if (!objects.empty()) {
         jvmtiHeapCallbacks cb;
@@ -134,8 +134,8 @@ jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti,
         cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&spreadInfo);
         int heapWalksCnt = 0;
         for (auto &object : objects) {
-            if (finishTime < std::chrono::steady_clock::now()) {
-                return MEMORY_AGENT_TIMEOUT_ERROR;
+            if (manager.shouldStopExecution()) {
+                return MEMORY_AGENT_INTERRUPTED_ERROR;
             }
 
             jlong tag;

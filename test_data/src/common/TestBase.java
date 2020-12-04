@@ -9,12 +9,20 @@ import java.util.stream.Collectors;
 public abstract class TestBase {
   protected enum MemoryAgentErrorCode {
     OK(0),
-    TIMEOUT(1);
+    TIMEOUT(1),
+    CANCELLED(2);
 
     public final int id;
+    private static final Map<Integer, MemoryAgentErrorCode> ID_TO_ERROR_CODE;
+    static {
+      ID_TO_ERROR_CODE = new HashMap<>();
+      for (MemoryAgentErrorCode value : values()) {
+        ID_TO_ERROR_CODE.put(value.id, value);
+      }
+    }
 
     public static MemoryAgentErrorCode valueOf(int value) {
-      return value == 0 ? OK : TIMEOUT;
+      return ID_TO_ERROR_CODE.get(value);
     }
 
     MemoryAgentErrorCode(int id) {
@@ -22,20 +30,12 @@ public abstract class TestBase {
     }
   }
 
-  static {
-    if(IdeaNativeAgentProxy.isLoaded()) {
-      System.out.println("Agent loaded");
-    }
-    else {
-      System.out.println("Agent not loaded");
-    }
-  }
-
+  public static final long DEFAULT_TIMEOUT = -1;
+  public static final String DEFAULT_CANCELLATION_FILE = System.getProperty("java.io.tmpdir") + "memory_agent_cancellation_file";
   private static final int DEFAULT_PATHS_LIMIT = 10;
   private static final int DEFAULT_OBJECTS_LIMIT = 5000;
-  public static final long DEFAULT_TIMEOUT = -1;
+  protected static final IdeaNativeAgentProxy proxy = new IdeaNativeAgentProxy(DEFAULT_CANCELLATION_FILE, DEFAULT_TIMEOUT);;
   private static final Map<Integer, String> referenceDescription = new HashMap<>();
-
   static {
     referenceDescription.put(1, "CLASS");
     referenceDescription.put(2, "FIELD");
@@ -57,6 +57,15 @@ public abstract class TestBase {
     referenceDescription.put(42, "TRUNCATE");
   }
 
+  static {
+    if(proxy.isLoaded()) {
+      System.out.println("Agent loaded");
+    }
+    else {
+      System.out.println("Agent not loaded");
+    }
+  }
+
   protected static long[] getResultAsLong(Object result) {
     return (long[])((Object[])result)[1];
   }
@@ -66,18 +75,18 @@ public abstract class TestBase {
   }
 
   protected static void printClassReachability(Class<?> suspectClass) {
-    Object result = IdeaNativeAgentProxy.getFirstReachableObject(null, suspectClass, TestBase.DEFAULT_TIMEOUT);
+    Object result = proxy.getFirstReachableObject(null, suspectClass);
     System.out.printf("%s is%sreachable%n", suspectClass.getName(), (((Object[]) result)[1]) != null ? " " : " not ");
   }
 
   protected static void printReachableObjects(Class<?> suspectClass) {
-    Object result = IdeaNativeAgentProxy.getAllReachableObjects(null, suspectClass, TestBase.DEFAULT_TIMEOUT);
+    Object result = proxy.getAllReachableObjects(null, suspectClass);
     Object[] objects  = (Object[]) ((Object[]) result)[1];
     printReachableObjects(objects, suspectClass);
   }
 
   protected static void printReachableObjects(Object startObject, Class<?> suspectClass) {
-    Object result = IdeaNativeAgentProxy.getAllReachableObjects(startObject, suspectClass, TestBase.DEFAULT_TIMEOUT);
+    Object result = proxy.getAllReachableObjects(startObject, suspectClass);
     Object[] objects  = (Object[]) ((Object[]) result)[1];
     printReachableObjects(objects, suspectClass);
   }
@@ -88,13 +97,13 @@ public abstract class TestBase {
   }
 
   protected static void printSize(Object object) {
-    Object result = IdeaNativeAgentProxy.size(object, DEFAULT_TIMEOUT);
+    Object result = proxy.size(object);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     System.out.println(((long[])arrayResult[0])[1]);
   }
 
   protected static void printSizeAndHeldObjects(Object object) {
-    Object result = IdeaNativeAgentProxy.size(object, DEFAULT_TIMEOUT);
+    Object result = proxy.size(object);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     long[] sizes = ((long[]) arrayResult[0]);
     System.out.printf("Shallow size: %d, Retained size: %d\n", sizes[0], sizes[1]);
@@ -114,7 +123,7 @@ public abstract class TestBase {
 
   protected static void printSizes(Object... objects) {
     String names = Arrays.toString(Arrays.stream(objects).map(TestBase::asString).toArray());
-    System.out.println(names + " -> " + Arrays.toString(getResultAsLong(IdeaNativeAgentProxy.estimateRetainedSize(objects, DEFAULT_TIMEOUT))));
+    System.out.println(names + " -> " + Arrays.toString(getResultAsLong(proxy.estimateRetainedSize(objects))));
   }
 
   private static void printSizeByClasses(Class<?>[] classes, long[] sizes) {
@@ -125,9 +134,9 @@ public abstract class TestBase {
   }
 
   protected static void printShallowAndRetainedSizeByClasses(Class<?>... classes) {
-    assertTrue(IdeaNativeAgentProxy.canGetRetainedSizeByClasses());
-    assertTrue(IdeaNativeAgentProxy.canGetShallowSizeByClasses());
-    Object result = IdeaNativeAgentProxy.getShallowAndRetainedSizeByClasses(classes, DEFAULT_TIMEOUT);
+    assertTrue(proxy.canGetRetainedSizeByClasses());
+    assertTrue(proxy.canGetShallowSizeByClasses());
+    Object result = proxy.getShallowAndRetainedSizeByClasses(classes);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     System.out.println("Shallow sizes by class:");
     printSizeByClasses(classes, (long[])arrayResult[0]);
@@ -136,15 +145,15 @@ public abstract class TestBase {
   }
 
   protected static void printShallowSizeByClasses(Class<?>... classes) {
-    assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
+    assertTrue(proxy.canEstimateObjectsSizes());
     System.out.println("Shallow sizes by class:");
-    printSizeByClasses(classes, getResultAsLong(IdeaNativeAgentProxy.getShallowSizeByClasses(classes, DEFAULT_TIMEOUT)));
+    printSizeByClasses(classes, getResultAsLong(proxy.getShallowSizeByClasses(classes)));
   }
 
   protected static void printRetainedSizeByClasses(Class<?>... classes) {
-    assertTrue(IdeaNativeAgentProxy.canEstimateObjectsSizes());
+    assertTrue(proxy.canEstimateObjectsSizes());
     System.out.println("Retained sizes by class:");
-    printSizeByClasses(classes, getResultAsLong(IdeaNativeAgentProxy.getRetainedSizeByClasses(classes, DEFAULT_TIMEOUT)));
+    printSizeByClasses(classes, getResultAsLong(proxy.getRetainedSizeByClasses(classes)));
   }
 
   private static int indexOfReference(Object[] array, Object value) {
@@ -166,7 +175,7 @@ public abstract class TestBase {
   }
 
   protected static void printGcRoots(Object object, int pathsLimit, int objectsLimit) {
-    doPrintGcRoots(IdeaNativeAgentProxy.findPathsToClosestGcRoots(object, pathsLimit, objectsLimit, DEFAULT_TIMEOUT));
+    doPrintGcRoots(proxy.findPathsToClosestGcRoots(object, pathsLimit, objectsLimit));
   }
 
   protected static void doPrintGcRoots(Object result) {

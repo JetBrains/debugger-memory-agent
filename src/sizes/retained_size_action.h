@@ -29,14 +29,12 @@ jint JNICALL retagStartObjects      (jlong classTag, jlong size, jlong *tagPtr, 
 
 jint JNICALL tagObjectOfTaggedClass (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
 
-jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti,
-                                     const std::vector<jobject> &objects,
-                                     const std::chrono::steady_clock::time_point &finishTime);
+jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti, const std::vector<jobject> &objects, const CancellationManager &manager);
 
 template<typename RESULT_TYPE>
 class RetainedSizeAction : public MemoryAgentTimedAction<RESULT_TYPE, jobjectArray> {
 protected:
-    RetainedSizeAction(JNIEnv *env, jvmtiEnv *jvmti) : MemoryAgentTimedAction<RESULT_TYPE, jobjectArray>(env, jvmti) {
+    RetainedSizeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction<RESULT_TYPE, jobjectArray>(env, jvmti, object) {
 
     }
 
@@ -85,23 +83,23 @@ protected:
     jvmtiError tagHeap() {
         jvmtiError err = this->FollowReferences(0, nullptr, nullptr, getTagsWithNewInfo, nullptr, "find objects with new info");
         if (err != JVMTI_ERROR_NONE) return err;
-        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
         std::vector<jobject> objects;
         debug("collect objects with new info");
         err = getObjectsByTags(this->jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objects);
         if (err != JVMTI_ERROR_NONE) return err;
-        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
         err = this->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, retagStartObjects, nullptr, "retag start objects");
         if (err != JVMTI_ERROR_NONE) return err;
-        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
         err = this->FollowReferences(0, nullptr, nullptr, visitReference, nullptr, "tag heap");
         if (err != JVMTI_ERROR_NONE) return err;
-        if (this->shouldStopExecution()) return MEMORY_AGENT_TIMEOUT_ERROR;
+        if (this->shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-        return walkHeapFromObjects(this->jvmti, objects, this->finishTime);
+        return walkHeapFromObjects(this->jvmti, objects, *dynamic_cast<CancellationManager *>(this));
     }
 };
 

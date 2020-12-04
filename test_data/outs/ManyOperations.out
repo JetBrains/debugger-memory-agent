@@ -15,3 +15,9 @@ Shallow sizes by class:
 	common.TestTreeNode -> 72
 Retained sizes by class:
 	common.TestTreeNode -> 72
+72
+Shallow size: 24, Retained size: 72
+Held objects:
+[common.TestTreeNode$Impl1: node 1]
+[common.TestTreeNode$Impl1: node 2]
+[common.TestTreeNode$Impl1: node 3]

@@ -1,6 +1,5 @@
 package roots;
 
-import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import common.TestBase;
 
 public class Deep extends TestBase {
@@ -14,6 +13,6 @@ public class Deep extends TestBase {
     }
 
     // should not hang or crash vm
-    IdeaNativeAgentProxy.findPathsToClosestGcRoots(testObject, Integer.MAX_VALUE, Integer.MAX_VALUE, TestBase.DEFAULT_TIMEOUT);
+    proxy.findPathsToClosestGcRoots(testObject, Integer.MAX_VALUE, Integer.MAX_VALUE);
   }
 }
