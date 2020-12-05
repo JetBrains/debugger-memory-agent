@@ -16,7 +16,7 @@ add_library(memory_agent SHARED
         src/agent.cpp
         src/utils.cpp
         src/utils.h
-        src/types.h
+        src/global_data.h
         src/log.cpp
         src/log.h
         src/timed_action.h
@@ -47,7 +47,9 @@ add_library(memory_agent SHARED
         src/sizes/retained_size_action.cpp
         src/timed_action.hpp
         src/cancellation_manager.cpp
-        src/cancellation_manager.h)
+        src/cancellation_manager.h
+        src/allocation_sampling.cpp
+        src/allocation_sampling.h)
 
 if ((UNIX OR MINGW) AND NOT APPLE)
     target_link_libraries(memory_agent PRIVATE -static-libstdc++ -static-libgcc)

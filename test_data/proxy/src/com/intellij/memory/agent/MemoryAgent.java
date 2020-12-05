@@ -5,6 +5,7 @@ import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import java.io.File;
 
 public class MemoryAgent {
+    private static final String ALLOCATION_SAMPLING_IS_NOT_SUPPORTED_MESSAGE = "Allocation sampling is not supported for this version of jdk";
     private final IdeaNativeAgentProxy proxy;
 
     private static class LazyHolder {
@@ -34,12 +35,28 @@ public class MemoryAgent {
     }
 
     @SuppressWarnings("unchecked")
-    public synchronized <T> T getFirstReachableObject(Object startObject, Class<T> suspectClass) throws MemoryAgentException {
+    public <T> T getFirstReachableObject(Object startObject, Class<T> suspectClass) throws MemoryAgentException {
         return (T)getResult(proxy.getFirstReachableObject(startObject, suspectClass));
     }
 
-    public synchronized Object[] getAllReachableObjects(Object startObject, Class<?> suspectClass) throws MemoryAgentException {
+    public Object[] getAllReachableObjects(Object startObject, Class<?> suspectClass) throws MemoryAgentException {
         return (Object[])getResult(proxy.getAllReachableObjects(startObject, suspectClass));
+    }
+    
+    public void addAllocationListener(AllocationListener allocationListener) throws MemoryAgentException {
+        if (!IdeaNativeAgentProxy.addAllocationListener(allocationListener)) {
+            throw new MemoryAgentException(ALLOCATION_SAMPLING_IS_NOT_SUPPORTED_MESSAGE);
+        }
+    }
+
+    public void setHeapSamplingInterval(long interval) throws MemoryAgentException {
+        if (!IdeaNativeAgentProxy.setHeapSamplingInterval(interval)) {
+            throw new MemoryAgentException(ALLOCATION_SAMPLING_IS_NOT_SUPPORTED_MESSAGE);
+        }
+    }
+
+    public void clearListeners() {
+        IdeaNativeAgentProxy.clearListeners();
     }
 
     private static Object getResult(Object result) throws MemoryAgentException {

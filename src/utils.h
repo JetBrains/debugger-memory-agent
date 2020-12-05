@@ -3,7 +3,7 @@
 #ifndef NATIVE_MEMORY_AGENT_UTILS_H
 #define NATIVE_MEMORY_AGENT_UTILS_H
 
-#include "types.h"
+#include "global_data.h"
 #include <string>
 #include <set>
 #include <functional>

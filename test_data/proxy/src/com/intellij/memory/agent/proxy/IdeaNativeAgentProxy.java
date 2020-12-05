@@ -40,6 +40,12 @@ public class IdeaNativeAgentProxy {
 
   public native Object[] getAllReachableObjects(Object startObject, Object suspectClass);
 
+  public static native boolean addAllocationListener(Object allocationListener);
+
+  public static native boolean setHeapSamplingInterval(long interval);
+
+  public static native void clearListeners();
+
   public boolean isLoaded() {
     try {
       return isLoadedImpl();
