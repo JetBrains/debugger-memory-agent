@@ -3,6 +3,8 @@ package com.intellij.memory.agent;
 
 import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
 import java.io.File;
+import java.lang.reflect.Array;
+import java.util.Arrays;
 
 public class MemoryAgent {
     private static final String ALLOCATION_SAMPLING_IS_NOT_SUPPORTED_MESSAGE = "Allocation sampling is not supported for this version of jdk";
@@ -39,8 +41,14 @@ public class MemoryAgent {
         return (T)getResult(proxy.getFirstReachableObject(startObject, suspectClass));
     }
 
-    public Object[] getAllReachableObjects(Object startObject, Class<?> suspectClass) throws MemoryAgentException {
-        return (Object[])getResult(proxy.getAllReachableObjects(startObject, suspectClass));
+    @SuppressWarnings("unchecked")
+    public <T> T[] getAllReachableObjects(Object startObject, Class<T> suspectClass) throws MemoryAgentException {
+        Object[] foundObjects = (Object [])getResult(proxy.getAllReachableObjects(startObject, suspectClass));
+        T[] resultArray = (T[])Array.newInstance(suspectClass, foundObjects.length);
+        for (int i = 0; i < foundObjects.length; i++) {
+            resultArray[i] = (T)foundObjects[i];
+        }
+        return resultArray;
     }
     
     public void addAllocationListener(AllocationListener allocationListener) throws MemoryAgentException {
