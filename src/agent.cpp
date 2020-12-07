@@ -102,49 +102,49 @@ JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canEstimateObjectSize(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canEstimateObjectSize(
         JNIEnv *env,
         jobject thisObject) {
     return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canEstimateObjectsSizes(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canEstimateObjectsSizes(
         JNIEnv *env,
         jobject thisObject) {
     return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindPathsToClosestGcRoots(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canFindPathsToClosestGcRoots(
         JNIEnv *env,
         jobject thisObject) {
     return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canGetRetainedSizeByClasses(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canGetRetainedSizeByClasses(
         JNIEnv *env,
         jobject thisObject) {
     return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canGetShallowSizeByClasses(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canGetShallowSizeByClasses(
         JNIEnv *env,
         jobject thisObject) {
     return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_isLoadedImpl(
         JNIEnv *env,
-        jobject thisObject) {
+        jclass thisClass) {
     return gdata != nullptr;
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_estimateRetainedSize(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray objects) {
@@ -152,7 +152,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_size(
         JNIEnv *env,
         jobject thisObject,
         jobject object) {
@@ -160,7 +160,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_findPathsToClosestGcRoots(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_findPathsToClosestGcRoots(
         JNIEnv *env,
         jobject thisObject,
         jobject object,
@@ -170,7 +170,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowSizeByClasses(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray classesArray) {
@@ -178,7 +178,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getRetainedSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getRetainedSizeByClasses(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray classesArray) {
@@ -186,7 +186,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClasses(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray classesArray) {
@@ -194,7 +194,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getFirstReachableObject(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getFirstReachableObject(
         JNIEnv *env,
         jobject thisObject,
         jobject startObject,
@@ -203,7 +203,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getAllReachableObjects(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getAllReachableObjects(
         JNIEnv *env,
         jobject thisObject,
         jobject startObject,
@@ -212,23 +212,24 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_addAllocationListener(
+JNIEXPORT jint JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_addAllocationListener(
         JNIEnv *env,
         jclass thisClass, 
-        jobject listener) {
+        jobject listener,
+        jobjectArray trackedClasses) {
     if (!canSampleAllocations) {
-        return (jboolean) 0;
+        return (jint) -1;
     }
-    listenersHolder.addListener(env, listener);
-    return (jboolean) 1;
+    size_t index = listenersHolder.addListener(env, listener, fromJavaArray(env, trackedClasses));
+    return (jint) index;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_setHeapSamplingInterval(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_setHeapSamplingInterval(
         JNIEnv *env,
         jclass thisClass,
         jlong interval) {
-    if (!canSampleAllocations || JVMTI_ERROR_NONE !=  gdata->jvmti->SetHeapSamplingInterval(interval)) {
+    if (!canSampleAllocations || JVMTI_ERROR_NONE != gdata->jvmti->SetHeapSamplingInterval(interval)) {
         return (jboolean) 0;
     }
 
@@ -236,10 +237,11 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentP
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_clearListeners(
+JNIEXPORT void JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_removeAllocationListener(
         JNIEnv *env,
-        jclass thisClass) {
-    listenersHolder.clear(env);
+        jclass thisClass,
+        jint index) {
+    listenersHolder.removeListener(env, index);
 }
 
 #pragma clang diagnostic pop

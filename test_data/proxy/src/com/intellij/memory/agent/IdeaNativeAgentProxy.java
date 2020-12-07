@@ -1,4 +1,4 @@
-package com.intellij.memory.agent.proxy;
+package com.intellij.memory.agent;
 
 public class IdeaNativeAgentProxy {
   public String cancellationFileName;
@@ -40,13 +40,13 @@ public class IdeaNativeAgentProxy {
 
   public native Object[] getAllReachableObjects(Object startObject, Object suspectClass);
 
-  public static native boolean addAllocationListener(Object allocationListener);
+  static native int addAllocationListener(Object allocationListener, Object[] trackedClasses);
 
-  public static native boolean setHeapSamplingInterval(long interval);
+  static native int removeAllocationListener(int index);
 
-  public static native void clearListeners();
+  static native boolean setHeapSamplingInterval(long interval);
 
-  public boolean isLoaded() {
+  public static boolean isLoaded() {
     try {
       return isLoadedImpl();
     } catch (Throwable t) {
@@ -54,5 +54,5 @@ public class IdeaNativeAgentProxy {
     }
   }
 
-  private native boolean isLoadedImpl();
+  private static native boolean isLoadedImpl();
 }

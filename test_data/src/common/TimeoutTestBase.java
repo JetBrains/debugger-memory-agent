@@ -1,6 +1,6 @@
 package common;
 
-import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
+import com.intellij.memory.agent.IdeaNativeAgentProxy;
 
 import java.io.File;
 import java.io.IOException;

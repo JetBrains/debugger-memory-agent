@@ -21,6 +21,12 @@ class AgentExtractor {
         }
 
         String agentFileName = agentType.prefix + "memory_agent";
+        File f = new File(String.format("%s%c%s%s", directory.getAbsolutePath(), File.separatorChar, agentFileName, agentType.suffix));
+        if (f.exists() && !f.isDirectory()) {
+            file = f;
+            return file;
+        }
+
         file = File.createTempFile(agentFileName, agentType.suffix, directory);
         try(OutputStream outputStream = new FileOutputStream(file);
             InputStream inputStream = AgentExtractor.class.getClassLoader().getResourceAsStream( "bin/" + agentFileName + agentType.suffix)) {

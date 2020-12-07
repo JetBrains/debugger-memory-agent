@@ -3,29 +3,44 @@
 #ifndef MEMORY_AGENT_ALLOCATION_SAMPLING_H
 #define MEMORY_AGENT_ALLOCATION_SAMPLING_H
 
+#include <list>
 #include <vector>
+
 #include "jni.h"
 #include "jvmti.h"
 
-class ListenersHolder {
+class AllocationListener {
 public:
-    ListenersHolder() = default;
-    ~ListenersHolder() = default;
+    AllocationListener(JNIEnv *env, jobject listener, const std::vector<jobject> &classes);
+    ~AllocationListener() = default;
 
-    void addListener(JNIEnv *env, jobject listener);
-    void notifyAll(JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size);
-    void clear(JNIEnv *env);
+    void notify(JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size);
+    bool shouldBeNotified(JNIEnv *env, jclass klass);
 
-private:
-    void setOnAllocationMethod(JNIEnv *env);
+    void deleteReferences(JNIEnv *env);
 
 private:
     static const char *allocationListenerClassName;
     static const char *onAllocationMethodName;
     static const char *onAllocationMethodSignature;
 
-    std::vector<jobject> listeners;
-    jmethodID onAllocationMethod = nullptr;
+    jobject listener;
+    jmethodID onAllocationMethod;
+    jmethodID isAssignableFrom;
+    std::vector<jobject> trackedClasses;
+};
+
+class ListenersHolder {
+public:
+    ListenersHolder() = default;
+    ~ListenersHolder() = default;
+
+    size_t addListener(JNIEnv *env, jobject listener, const std::vector<jobject> &trackedClasses);
+    void removeListener(JNIEnv *env, size_t index);
+    void notifyAll(JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size);
+
+private:
+    std::list<AllocationListener> listeners;
 };
 
 extern ListenersHolder listenersHolder;

@@ -10,7 +10,6 @@
 class GlobalAgentData {
 public:
     jvmtiEnv *jvmti;
-    JNIEnv *env;
 };
 
 #endif //NATIVE_MEMORY_AGENT_TYPES_H

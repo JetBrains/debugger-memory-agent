@@ -1,6 +1,6 @@
 package timeouts;
 
-import com.intellij.memory.agent.proxy.IdeaNativeAgentProxy;
+import com.intellij.memory.agent.IdeaNativeAgentProxy;
 import common.TestNode;
 import common.TimeoutTestBase;
 
