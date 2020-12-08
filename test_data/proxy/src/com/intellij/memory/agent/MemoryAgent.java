@@ -7,9 +7,12 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public class MemoryAgent {
+    private static final String allocationSamplingIsNotSupportedMessage = "Allocation sampling is not supported for this version of jdk";
+    private static final String agentLibraryWasNotLoadedMessage = "Agent library wasn't loaded";
+    private static final String failedToCallNativeMethodMessage = "Failed to call native method";
+
     private final IdeaNativeAgentProxy proxy;
     private final List<AllocationListenerInfo> listeners;
-    private final String allocationSamplingIsNotSupportedMessage = "Allocation sampling is not supported for this version of jdk";
 
     private static class AllocationListenerInfo {
         public final AllocationListener listener;
@@ -39,13 +42,15 @@ public class MemoryAgent {
         listeners = new LinkedList<>();
     }
 
-    public static MemoryAgent get() throws MemoryAgentException {
-        Exception ex = LazyHolder.loadingException;
-        if (ex != null) {
-            throw new MemoryAgentException("Couldn't load memory agent", ex);
+    public static MemoryAgent get() {
+        if (LazyHolder.loadingException != null) {
+            return null;
         }
-
         return LazyHolder.INSTANCE;
+    }
+
+    public static Exception getLoadingException() {
+        return LazyHolder.loadingException;
     }
 
     @SuppressWarnings("unchecked")
@@ -107,14 +112,16 @@ public class MemoryAgent {
     }
 
     private static <T> T callProxyMethod(Callable<T> callable) throws MemoryAgentException {
-        if (!IdeaNativeAgentProxy.isLoaded()) {
-            throw new MemoryAgentException("Agent library wasn't loaded");
+        if (LazyHolder.loadingException != null) {
+            throw new MemoryAgentException(agentLibraryWasNotLoadedMessage, LazyHolder.loadingException);
+        } else if (!IdeaNativeAgentProxy.isLoaded()) {
+            throw new MemoryAgentException(agentLibraryWasNotLoadedMessage);
         }
 
         try {
             return callable.call();
         } catch (Exception ex) {
-            throw new MemoryAgentException("Failed to call native method", ex);
+            throw new MemoryAgentException(failedToCallNativeMethodMessage, ex);
         }
     }
 }

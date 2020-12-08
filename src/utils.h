@@ -27,6 +27,8 @@ jlongArray toJavaArray(JNIEnv *env, jlong value);
 
 void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result);
 
+std::vector<jobject> fromJavaArray(JNIEnv *env, jobjectArray javaArray);
+
 jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second);
 
 void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message);
@@ -58,6 +60,10 @@ bool isOk(jvmtiError error);
 bool fileExists(const std::string &fileName);
 
 std::string jstringTostring(JNIEnv *env, jstring jStr);
+
+jmethodID getIsAssignableFromMethod(JNIEnv *env);
+
+std::string getToString(JNIEnv *env, jobject klass);
 
 template<typename T>
 jlong pointerToTag(T tag) {

@@ -99,6 +99,12 @@ void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &re
     }
 }
 
+std::vector<jobject> fromJavaArray(JNIEnv *env, jobjectArray javaArray) {
+    std::vector<jobject> result;
+    fromJavaArray(env, javaArray, result);
+    return result;
+}
+
 void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
     if (!isOk(err) && err != MEMORY_AGENT_INTERRUPTED_ERROR) {
         char *errorName = nullptr;
@@ -252,4 +258,14 @@ jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classO
     }
 
     return err;
+}
+
+jmethodID getIsAssignableFromMethod(JNIEnv *env) {
+    jclass langClass = env->FindClass("java/lang/Class");
+    return env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
+}
+
+std::string getToString(JNIEnv *env, jobject object) {
+    jobject name = env->CallObjectMethod(object, env->GetMethodID(env->FindClass("java/lang/Object"), "toString", "()Ljava/lang/String;"));
+    return jstringTostring(env, reinterpret_cast<jstring>(name));
 }
