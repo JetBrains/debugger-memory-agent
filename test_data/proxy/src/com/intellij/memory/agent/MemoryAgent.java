@@ -6,6 +6,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * <p>Memory agent allows to perform heap diagnostics or attach allocation listeners for
+ * <a href="https://openjdk.java.net/jeps/331">low-overhead heap profiling</a> using
+ * <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/jvmti/">JVMTI</a>.<p/>
+ *
+ * <p>To access the memory agent's instance use {@link #get()}. If the binary wasn't loaded
+ * successfully you can get the corresponding exception by calling {@link #getLoadingException()}.<p/>
+ *
+ * <p>All methods of this class (except for {@link #get()}) throw {@link com.intellij.memory.agent.MemoryAgentExecutionException}
+ * if a call to native method failed.<p/>
+ */
 public class MemoryAgent {
     private static final String allocationSamplingIsNotSupportedMessage = "Allocation sampling is not supported for this version of jdk";
     private static final String agentLibraryWasNotLoadedMessage = "Agent library wasn't loaded";
@@ -42,6 +53,13 @@ public class MemoryAgent {
         listeners = new LinkedList<>();
     }
 
+    /**
+     * Loads memory agent to JVM on the first invocation and returns its instance on success.
+     * If an error occurred while loading you can get the corresponding exception by calling
+     * {@link #getLoadingException()}.
+     *
+     * @return null if the agent wasn't loaded successfully, else MemoryAgent's instance.
+     */
     public static MemoryAgent get() {
         if (LazyHolder.loadingException != null) {
             return null;
@@ -53,13 +71,33 @@ public class MemoryAgent {
         return LazyHolder.loadingException;
     }
 
+    /**
+     * Finds the first reachable object of this class and its inheritors in heap.
+     *
+     * @param startObject Start object, from which the heap is traversed. Pass null if you want to traverse
+     *                    the heap from GC roots.
+     * @param suspectClass The class of a sought object.
+     * @param <T> The type of a sought object.
+     * @return An instance of first found reachable object of {@code suspectClass} class in heap or null if none was found.
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     */
     @SuppressWarnings("unchecked")
-    public <T> T getFirstReachableObject(Object startObject, Class<T> suspectClass) throws MemoryAgentException {
+    public <T> T getFirstReachableObject(Object startObject, Class<T> suspectClass) throws MemoryAgentExecutionException {
         return (T)getResult(callProxyMethod(() -> proxy.getFirstReachableObject(startObject, suspectClass)));
     }
 
+    /**
+     * Finds all reachable objects of this class and its inheritors in heap.
+     *
+     * @param startObject Start object, from which the heap is traversed. Pass null if you want to traverse
+     *                    the heap from GC roots.
+     * @param suspectClass The class of sought objects.
+     * @param <T> The type of sought objects.
+     * @return An array of all reachable objects of {@code suspectClass} class in heap.
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     */
     @SuppressWarnings("unchecked")
-    public <T> T[] getAllReachableObjects(Object startObject, Class<T> suspectClass) throws MemoryAgentException {
+    public <T> T[] getAllReachableObjects(Object startObject, Class<T> suspectClass) throws MemoryAgentExecutionException {
         Object[] foundObjects = (Object [])getResult(callProxyMethod(() -> proxy.getAllReachableObjects(startObject, suspectClass)));
         T[] resultArray = (T[])Array.newInstance(suspectClass, foundObjects.length);
         for (int i = 0; i < foundObjects.length; i++) {
@@ -68,20 +106,57 @@ public class MemoryAgent {
         return resultArray;
     }
 
-    public void addAllocationListener(AllocationListener allocationListener, Class<?>... trackedClasses) throws MemoryAgentException {
+    /**
+     * Adds an allocation listener that catches allocation sampling events for specified classes.
+     *
+     * @param allocationListener  {@link AllocationListener} instance to track allocation sampling events.
+     * @param trackedClasses An array of classes to track allocations for.
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     *
+     * @see #addAllocationListener
+     * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
+     */
+    public void addAllocationListener(AllocationListener allocationListener, Class<?>... trackedClasses) throws MemoryAgentExecutionException {
         int index = callProxyMethod(() -> IdeaNativeAgentProxy.addAllocationListener(allocationListener, trackedClasses));
         if (index < 0) {
-            throw new MemoryAgentException(allocationSamplingIsNotSupportedMessage);
+            throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
         }
 
         listeners.add(new AllocationListenerInfo(allocationListener, index));
     }
 
-    public void addAllocationListener(AllocationListener allocationListener) throws MemoryAgentException {
+    /**
+     * Adds an allocation listener that catches all allocation sampling events.
+     *
+     * <p>
+     * In this example stacktrace of each allocation is printed:
+     * <pre>
+     * {@code
+     * MemoryAgent agent = MemoryAgent.get();
+     * agent.addAllocationListener((thread, obj, klass, length) -> {
+     *     for (StackTraceElement element : thread.getStackTrace()) {
+     *         System.out.println(element);
+     *     }
+     * });
+     * }
+     * <pre/>
+     * </p>
+     * @param allocationListener {@link AllocationListener} instance to track allocation sampling events.
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
+     */
+    public void addAllocationListener(AllocationListener allocationListener) throws MemoryAgentExecutionException {
         addAllocationListener(allocationListener, new Class[0]);
     }
 
-    public void removeAllocationListener(AllocationListener allocationListener) throws MemoryAgentException {
+    /**
+     * Removes allocation listener from an internal data structure, so it won't receive
+     * any allocation events.
+     *
+     * @param allocationListener An instance of an allocation listener to remove.
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     */
+    public void removeAllocationListener(AllocationListener allocationListener) throws MemoryAgentExecutionException {
         int index = findListener(allocationListener);
         if (index < 0) {
             return;
@@ -91,9 +166,16 @@ public class MemoryAgent {
         listeners.remove(index);
     }
 
-    public void setHeapSamplingInterval(long interval) throws MemoryAgentException {
+    /**
+     * Set heap allocation sampling interval.
+     *
+     * @param interval Sampling interval in bytes.
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
+     */
+    public void setHeapSamplingInterval(long interval) throws MemoryAgentExecutionException {
         if (!callProxyMethod(() ->IdeaNativeAgentProxy.setHeapSamplingInterval(interval))) {
-            throw new MemoryAgentException(allocationSamplingIsNotSupportedMessage);
+            throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
         }
     }
 
@@ -111,17 +193,15 @@ public class MemoryAgent {
         return ((Object[])result)[1];
     }
 
-    private static <T> T callProxyMethod(Callable<T> callable) throws MemoryAgentException {
-        if (LazyHolder.loadingException != null) {
-            throw new MemoryAgentException(agentLibraryWasNotLoadedMessage, LazyHolder.loadingException);
-        } else if (!IdeaNativeAgentProxy.isLoaded()) {
-            throw new MemoryAgentException(agentLibraryWasNotLoadedMessage);
+    private static <T> T callProxyMethod(Callable<T> callable) throws MemoryAgentExecutionException {
+        if (!IdeaNativeAgentProxy.isLoaded()) {
+            throw new MemoryAgentExecutionException(agentLibraryWasNotLoadedMessage);
         }
 
         try {
             return callable.call();
         } catch (Exception ex) {
-            throw new MemoryAgentException(failedToCallNativeMethodMessage, ex);
+            throw new MemoryAgentExecutionException(failedToCallNativeMethodMessage, ex);
         }
     }
 }
