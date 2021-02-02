@@ -82,7 +82,7 @@ public class MemoryAgent {
      * @throws MemoryAgentExecutionException if a call to a native method failed.
      */
     @SuppressWarnings("unchecked")
-    public <T> T getFirstReachableObject(Object startObject, Class<T> suspectClass) throws MemoryAgentExecutionException {
+    public synchronized <T> T getFirstReachableObject(Object startObject, Class<T> suspectClass) throws MemoryAgentExecutionException {
         return (T)getResult(callProxyMethod(() -> proxy.getFirstReachableObject(startObject, suspectClass)));
     }
 
@@ -97,7 +97,7 @@ public class MemoryAgent {
      * @throws MemoryAgentExecutionException if a call to a native method failed.
      */
     @SuppressWarnings("unchecked")
-    public <T> T[] getAllReachableObjects(Object startObject, Class<T> suspectClass) throws MemoryAgentExecutionException {
+    public synchronized <T> T[] getAllReachableObjects(Object startObject, Class<T> suspectClass) throws MemoryAgentExecutionException {
         Object[] foundObjects = (Object [])getResult(callProxyMethod(() -> proxy.getAllReachableObjects(startObject, suspectClass)));
         T[] resultArray = (T[])Array.newInstance(suspectClass, foundObjects.length);
         for (int i = 0; i < foundObjects.length; i++) {
@@ -116,7 +116,7 @@ public class MemoryAgent {
      * @see #addAllocationListener
      * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
      */
-    public void addAllocationListener(AllocationListener allocationListener, Class<?>... trackedClasses) throws MemoryAgentExecutionException {
+    public synchronized void addAllocationListener(AllocationListener allocationListener, Class<?>... trackedClasses) throws MemoryAgentExecutionException {
         int index = callProxyMethod(() -> IdeaNativeAgentProxy.addAllocationListener(allocationListener, trackedClasses));
         if (index < 0) {
             throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
@@ -145,7 +145,7 @@ public class MemoryAgent {
      * @throws MemoryAgentExecutionException if a call to a native method failed.
      * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
      */
-    public void addAllocationListener(AllocationListener allocationListener) throws MemoryAgentExecutionException {
+    public synchronized void addAllocationListener(AllocationListener allocationListener) throws MemoryAgentExecutionException {
         addAllocationListener(allocationListener, new Class[0]);
     }
 
@@ -156,7 +156,7 @@ public class MemoryAgent {
      * @param allocationListener An instance of an allocation listener to remove.
      * @throws MemoryAgentExecutionException if a call to a native method failed.
      */
-    public void removeAllocationListener(AllocationListener allocationListener) throws MemoryAgentExecutionException {
+    public synchronized void removeAllocationListener(AllocationListener allocationListener) throws MemoryAgentExecutionException {
         int index = findListener(allocationListener);
         if (index < 0) {
             return;
@@ -173,7 +173,7 @@ public class MemoryAgent {
      * @throws MemoryAgentExecutionException if a call to a native method failed.
      * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
      */
-    public void setHeapSamplingInterval(long interval) throws MemoryAgentExecutionException {
+    public synchronized void setHeapSamplingInterval(long interval) throws MemoryAgentExecutionException {
         if (!callProxyMethod(() ->IdeaNativeAgentProxy.setHeapSamplingInterval(interval))) {
             throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
         }
