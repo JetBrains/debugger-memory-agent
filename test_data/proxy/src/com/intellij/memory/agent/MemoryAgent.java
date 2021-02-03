@@ -2,8 +2,6 @@ package com.intellij.memory.agent;
 
 import java.io.File;
 import java.lang.reflect.Array;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -15,7 +13,7 @@ import java.util.concurrent.Callable;
  * successfully you can get the corresponding exception by calling {@link #getLoadingException()}.<p/>
  *
  * <p>All methods of this class (except for {@link #get()}) throw {@link com.intellij.memory.agent.MemoryAgentExecutionException}
- * if a call to native method failed.<p/>
+ * if a call to a native method failed.<p/>
  */
 public class MemoryAgent {
     private static final String allocationSamplingIsNotSupportedMessage = "Allocation sampling is not supported for this version of jdk";
@@ -23,17 +21,7 @@ public class MemoryAgent {
     private static final String failedToCallNativeMethodMessage = "Failed to call native method";
 
     private final IdeaNativeAgentProxy proxy;
-    private final List<AllocationListenerInfo> listeners;
-
-    private static class AllocationListenerInfo {
-        public final AllocationListener listener;
-        public final int index;
-
-        AllocationListenerInfo(AllocationListener listener, int index) {
-            this.listener = listener;
-            this.index = index;
-        }
-    }
+    private ArrayOfListeners listeners = null;
 
     private static class LazyHolder {
         static final MemoryAgent INSTANCE = new MemoryAgent();
@@ -50,7 +38,6 @@ public class MemoryAgent {
 
     private MemoryAgent() {
         proxy = new IdeaNativeAgentProxy();
-        listeners = new LinkedList<>();
     }
 
     /**
@@ -67,6 +54,10 @@ public class MemoryAgent {
         return LazyHolder.INSTANCE;
     }
 
+    /**
+     * @return An exception that was thrown during binary loading,
+     * or null if the agent was loaded successfully
+     */
     public static Exception getLoadingException() {
         return LazyHolder.loadingException;
     }
@@ -117,12 +108,13 @@ public class MemoryAgent {
      * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
      */
     public synchronized void addAllocationListener(AllocationListener allocationListener, Class<?>... trackedClasses) throws MemoryAgentExecutionException {
-        int index = callProxyMethod(() -> IdeaNativeAgentProxy.addAllocationListener(allocationListener, trackedClasses));
-        if (index < 0) {
-            throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
+        if (listeners == null) {
+            listeners = new ArrayOfListeners();
+            if (!callProxyMethod(() ->IdeaNativeAgentProxy.initArrayOfListeners(listeners))) {
+                throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
+            }
         }
-
-        listeners.add(new AllocationListenerInfo(allocationListener, index));
+        listeners.add(allocationListener, trackedClasses);
     }
 
     /**
@@ -133,8 +125,8 @@ public class MemoryAgent {
      * <pre>
      * {@code
      * MemoryAgent agent = MemoryAgent.get();
-     * agent.addAllocationListener((thread, obj, klass, length) -> {
-     *     for (StackTraceElement element : thread.getStackTrace()) {
+     * agent.addAllocationListener((info) -> {
+     *     for (StackTraceElement element : info.getThread().getStackTrace()) {
      *         System.out.println(element);
      *     }
      * });
@@ -154,16 +146,11 @@ public class MemoryAgent {
      * any allocation events.
      *
      * @param allocationListener An instance of an allocation listener to remove.
-     * @throws MemoryAgentExecutionException if a call to a native method failed.
      */
-    public synchronized void removeAllocationListener(AllocationListener allocationListener) throws MemoryAgentExecutionException {
-        int index = findListener(allocationListener);
-        if (index < 0) {
-            return;
+    public synchronized void removeAllocationListener(AllocationListener allocationListener) {
+        if (listeners != null) {
+            listeners.remove(allocationListener);
         }
-
-        callProxyMethod(() -> IdeaNativeAgentProxy.removeAllocationListener(index));
-        listeners.remove(index);
     }
 
     /**
@@ -173,20 +160,34 @@ public class MemoryAgent {
      * @throws MemoryAgentExecutionException if a call to a native method failed.
      * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
      */
-    public synchronized void setHeapSamplingInterval(long interval) throws MemoryAgentExecutionException {
-        if (!callProxyMethod(() ->IdeaNativeAgentProxy.setHeapSamplingInterval(interval))) {
+    public void setHeapSamplingInterval(long interval) throws MemoryAgentExecutionException {
+        if (!callProxyMethod(() -> IdeaNativeAgentProxy.setHeapSamplingInterval(interval))) {
             throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
         }
     }
 
-    private int findListener(AllocationListener allocationListener) {
-        for (int i = 0; i < listeners.size(); i++) {
-            if (listeners.get(i).listener.equals(allocationListener)) {
-                return i;
-            }
+    /**
+     * Enables allocation sampling events. Allocation sampling is enabled by default
+     * if the running JVM supports it.
+     *
+     * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
+     * @throws MemoryAgentExecutionException if a call to a native method failed or
+     * allocation sampling is not supported
+     */
+    public void enableAllocationSampling() throws MemoryAgentExecutionException {
+        if (!callProxyMethod(IdeaNativeAgentProxy::enableAllocationSampling)) {
+            throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
         }
+    }
 
-        return -1;
+    /**
+     * Disables allocation sampling events.
+     *
+     * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     */
+    public void disableAllocationSampling() throws MemoryAgentExecutionException {
+        callProxyMethod(IdeaNativeAgentProxy::disableAllocationSampling);
     }
 
     private static Object getResult(Object result) {

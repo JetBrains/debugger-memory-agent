@@ -45,6 +45,14 @@ static void setRequiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effectiv
     }
 }
 
+static jboolean setAllocationSamplingMode(jvmtiEventMode mode) {
+    if (canSampleAllocations) {
+        jvmtiError error = gdata->jvmti->SetEventNotificationMode(mode, JVMTI_EVENT_SAMPLED_OBJECT_ALLOC, NULL);
+        return (jboolean) error == JVMTI_ERROR_NONE;
+    }
+    return (jboolean) 0;
+}
+
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
     handleOptions(options);
 
@@ -212,19 +220,6 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentPro
 }
 
 extern "C"
-JNIEXPORT jint JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_addAllocationListener(
-        JNIEnv *env,
-        jclass thisClass, 
-        jobject listener,
-        jobjectArray trackedClasses) {
-    if (!canSampleAllocations) {
-        return (jint) -1;
-    }
-    size_t index = listenersHolder.addListener(env, listener, fromJavaArray(env, trackedClasses));
-    return (jint) index;
-}
-
-extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_setHeapSamplingInterval(
         JNIEnv *env,
         jclass thisClass,
@@ -237,11 +232,29 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_s
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_removeAllocationListener(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_initArrayOfListeners(
         JNIEnv *env,
         jclass thisClass,
-        jint index) {
-    listenersHolder.removeListener(env, index);
+        jobject array) {
+    if (!canSampleAllocations) {
+        return (jboolean) 0;
+    }
+    arrayOfListeners.init(env, array);
+    return (jboolean) 1;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_enableAllocationSampling(
+        JNIEnv *env,
+        jclass thisClass) {
+    return setAllocationSamplingMode(JVMTI_ENABLE);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_disableAllocationSampling(
+        JNIEnv *env,
+        jclass thisClass) {
+    return setAllocationSamplingMode(JVMTI_DISABLE);
 }
 
 #pragma clang diagnostic pop
