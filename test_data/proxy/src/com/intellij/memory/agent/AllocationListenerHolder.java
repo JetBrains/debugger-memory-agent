@@ -16,7 +16,7 @@ class AllocationListenerHolder {
         }
 
         for (Class<?> clazz : trackedClasses) {
-            if (obj.getClass().equals(clazz)) {
+            if (clazz.isAssignableFrom(objClass)) {
                 notifyListener(thread, obj, objClass, size);
                 break;
             }
