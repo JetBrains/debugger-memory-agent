@@ -3,9 +3,9 @@
 #ifndef MEMORY_AGENT_SHALLOW_SIZE_BY_CLASSES_H
 #define MEMORY_AGENT_SHALLOW_SIZE_BY_CLASSES_H
 
-#include "../timed_action.h"
+#include "../memory_agent_action.h"
 
-class ShallowSizeByClassesAction : public MemoryAgentTimedAction<jlongArray, jobjectArray> {
+class ShallowSizeByClassesAction : public MemoryAgentAction<jlongArray, jobjectArray> {
 public:
     ShallowSizeByClassesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 

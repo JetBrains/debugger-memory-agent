@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 #include <unordered_set>
-#include "../timed_action.h"
+#include "../memory_agent_action.h"
 #include "sizes_tags.h"
 
 extern std::unordered_set<jlong> tagsWithNewInfo;
@@ -32,9 +32,9 @@ jint JNICALL tagObjectOfTaggedClass (jlong classTag, jlong size, jlong *tagPtr, 
 jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti, const std::vector<jobject> &objects, const CancellationManager &manager);
 
 template<typename RESULT_TYPE>
-class RetainedSizeAction : public MemoryAgentTimedAction<RESULT_TYPE, jobjectArray> {
+class RetainedSizeAction : public MemoryAgentAction<RESULT_TYPE, jobjectArray> {
 protected:
-    RetainedSizeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction<RESULT_TYPE, jobjectArray>(env, jvmti, object) {
+    RetainedSizeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentAction<RESULT_TYPE, jobjectArray>(env, jvmti, object) {
 
     }
 

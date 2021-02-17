@@ -1,10 +1,10 @@
-package timeouts;
+package execution;
 
 import com.intellij.memory.agent.IdeaNativeAgentProxy;
 import common.TestNode;
-import common.TimeoutTestBase;
+import common.ExecutionTestBase;
 
-public class PathsToClosestGCRoots extends TimeoutTestBase {
+public class PathsToClosestGCRoots extends ExecutionTestBase {
     @Override
     protected MemoryAgentErrorCode executeOperation(IdeaNativeAgentProxy proxy) {
         TestNode root = new TestNode(10);
@@ -12,7 +12,7 @@ public class PathsToClosestGCRoots extends TimeoutTestBase {
     }
 
     public static void main(String[] args) {
-        TimeoutTestBase test = new PathsToClosestGCRoots();
+        ExecutionTestBase test = new PathsToClosestGCRoots();
         test.doTest();
     }
 }

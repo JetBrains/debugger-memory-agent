@@ -3,7 +3,7 @@
 #ifndef MEMORY_AGENT_RETAINED_SIZE_BY_CLASSES_H
 #define MEMORY_AGENT_RETAINED_SIZE_BY_CLASSES_H
 
-#include "../timed_action.h"
+#include "../memory_agent_action.h"
 #include "retained_size_action.h"
 
 class RetainedSizeByClassesAction : public RetainedSizeAction<jlongArray> {

@@ -1,7 +1,7 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-#ifndef MEMORY_AGENT_TIMED_ACTION_H
-#define MEMORY_AGENT_TIMED_ACTION_H
+#ifndef MEMORY_AGENT_MEMORY_AGENT_ACTION_H
+#define MEMORY_AGENT_MEMORY_AGENT_ACTION_H
 
 #include <chrono>
 #include <cstring>
@@ -10,31 +10,33 @@
 #include "log.h"
 #include "utils.h"
 #include "cancellation_manager.h"
+#include "progress_manager.h"
 
 #define MEMORY_AGENT_INTERRUPTED_ERROR static_cast<jvmtiError>(999)
 
-struct CallbackWrapperData {
-    CallbackWrapperData(void *callback, void *userData, const CancellationManager *manager) :
-            callback(callback), userData(userData), manager(manager) {
-
-    }
-
-    const CancellationManager *manager;
-    void *callback;
-    void *userData;
-};
-
-enum class ErrorCode {
-    OK = 0,
-    TIMEOUT = 1,
-    CANCELLED = 2
-};
-
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-class MemoryAgentTimedAction : public CancellationManager {
+class MemoryAgentAction : public CancellationManager, public ProgressManager {
+private:
+    struct CallbackWrapperData {
+        CallbackWrapperData(void *callback, void *userData, const CancellationManager *manager) :
+                callback(callback), userData(userData), manager(manager) {
+
+        }
+
+        const CancellationManager *manager;
+        void *callback;
+        void *userData;
+    };
+
+    enum class ErrorCode {
+        OK = 0,
+        TIMEOUT = 1,
+        CANCELLED = 2
+    };
+
 public:
-    MemoryAgentTimedAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
-    virtual ~MemoryAgentTimedAction() = default;
+    MemoryAgentAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
+    virtual ~MemoryAgentAction() = default;
 
     jobjectArray run(ARGS_TYPES... args);
 
@@ -63,7 +65,7 @@ protected:
 };
 
 
-#include "timed_action.hpp"
+#include "memory_agent_action.hpp"
 
 
-#endif //MEMORY_AGENT_TIMED_ACTION_H
+#endif //MEMORY_AGENT_MEMORY_AGENT_ACTION_H

@@ -31,10 +31,13 @@ public abstract class TestBase {
   }
 
   public static final long DEFAULT_TIMEOUT = -1;
-  public static final String DEFAULT_CANCELLATION_FILE = System.getProperty("java.io.tmpdir") + "memory_agent_cancellation_file";
+  public static final String DEFAULT_CANCELLATION_FILE_PATH = System.getProperty("java.io.tmpdir") + "memory_agent_cancellation_file";
+  public static final String DEFAULT_PROGRESS_FILE_PATH = "";
   private static final int DEFAULT_PATHS_LIMIT = 10;
   private static final int DEFAULT_OBJECTS_LIMIT = 5000;
-  protected static final IdeaNativeAgentProxy proxy = new IdeaNativeAgentProxy(DEFAULT_CANCELLATION_FILE, DEFAULT_TIMEOUT);
+  protected static final IdeaNativeAgentProxy proxy = new IdeaNativeAgentProxy(
+          DEFAULT_CANCELLATION_FILE_PATH, DEFAULT_PROGRESS_FILE_PATH, DEFAULT_TIMEOUT
+  );
   private static final Map<Integer, String> referenceDescription = new HashMap<>();
   static {
     referenceDescription.put(1, "CLASS");

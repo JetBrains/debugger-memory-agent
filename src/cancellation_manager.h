@@ -8,10 +8,9 @@
 
 class CancellationManager {
 public:
-    CancellationManager(const std::string &cancellationFileName, const std::chrono::steady_clock::time_point &finishTime);
     CancellationManager() = default;
 
-    ~CancellationManager() = default;
+    virtual ~CancellationManager() = default;
 
     /*
      * NOTE: This method is time-consuming because it uses syscalls to check the cancellation
@@ -36,8 +35,8 @@ protected:
 private:
     const static unsigned int defaultChecksToPerformValue = 10000;
     mutable std::chrono::steady_clock::time_point lastSuccessfulCheck;
-    mutable unsigned int checksToPerform;
-    mutable unsigned int performedChecks;
+    mutable unsigned int checksToPerform{};
+    mutable unsigned int performedChecks{};
 };
 
 

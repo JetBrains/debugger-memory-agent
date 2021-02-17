@@ -20,7 +20,7 @@ add_library(memory_agent SHARED
         src/global_data.h
         src/log.cpp
         src/log.h
-        src/timed_action.h
+        src/memory_agent_action.h
         src/sizes/retained_size_and_held_objects.h
         src/sizes/retained_size_and_held_objects.cpp
         src/sizes/sizes_tags.h
@@ -46,11 +46,14 @@ add_library(memory_agent SHARED
         src/reachability/objects_of_class_in_heap.cpp
         src/reachability/objects_of_class_in_heap.h
         src/sizes/retained_size_action.cpp
-        src/timed_action.hpp
+        src/memory_agent_action.hpp
         src/cancellation_manager.cpp
         src/cancellation_manager.h
         src/allocation_sampling.cpp
-        src/allocation_sampling.h)
+        src/allocation_sampling.h
+        src/progress_manager.cpp
+        src/progress_manager.h
+)
 
 if ((UNIX OR MINGW) AND NOT APPLE)
     target_link_libraries(memory_agent PRIVATE -static-libstdc++ -static-libgcc)

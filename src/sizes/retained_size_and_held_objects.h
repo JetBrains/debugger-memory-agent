@@ -3,9 +3,9 @@
 #ifndef MEMORY_AGENT_RETAINED_SIZE_AND_HELD_OBJECTS_H
 #define MEMORY_AGENT_RETAINED_SIZE_AND_HELD_OBJECTS_H
 
-#include "../timed_action.h"
+#include "../memory_agent_action.h"
 
-class RetainedSizeAndHeldObjectsAction : public MemoryAgentTimedAction<jobjectArray, jobject> {
+class RetainedSizeAndHeldObjectsAction : public MemoryAgentAction<jobjectArray, jobject> {
 public:
     RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
@@ -15,9 +15,11 @@ private:
 
     jvmtiError estimateObjectSize(jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects);
 
-    jvmtiError retagStartObject(jobject object);
-
     jobjectArray createResultObject(jlong retainedSize, jlong shallowSize, const std::vector<jobject> &heldObjects);
+
+    jvmtiError traverseHeapForTheFirstTime(jobject &object);
+
+    jvmtiError traverseHeapFromStartObjectAndCountRetainedSize(jobject &object, jlong &retainedSize);
 };
 
 #endif //MEMORY_AGENT_RETAINED_SIZE_AND_HELD_OBJECTS_H
