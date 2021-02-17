@@ -7,8 +7,9 @@
 #include <jvmti.h>
 #include <iostream>
 
-typedef struct {
+class GlobalAgentData {
+public:
     jvmtiEnv *jvmti;
-} GlobalAgentData;
+};
 
 #endif //NATIVE_MEMORY_AGENT_TYPES_H

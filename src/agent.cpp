@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <cstring>
 #include "log.h"
-#include "types.h"
+#include "global_data.h"
 #include "utils.h"
 #include "roots/paths_to_closest_gc_roots.h"
 #include "reachability/objects_of_class_in_heap.h"
@@ -14,6 +14,7 @@
 #include "sizes/retained_size_and_held_objects.h"
 #include "sizes/retained_size_by_classes.h"
 #include "sizes/retained_size_by_objects.h"
+#include "allocation_sampling.h"
 
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
@@ -21,8 +22,11 @@
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
 static GlobalAgentData *gdata = nullptr;
+static bool canSampleAllocations = false;
 
-static void requiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
+extern void handleOptions(const char *);
+
+static void setRequiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
     jvmtiCapabilities potential;
     std::memset(&potential, 0, sizeof(jvmtiCapabilities));
     std::memset(&effective, 0, sizeof(jvmtiCapabilities));
@@ -35,49 +39,52 @@ static void requiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) 
     if (potential.can_generate_object_free_events) {
         effective.can_generate_object_free_events = 1;
     }
+    if (potential.can_generate_sampled_object_alloc_events) {
+        canSampleAllocations = true;
+        effective.can_generate_sampled_object_alloc_events = 1;
+    }
 }
 
-static jboolean canAddAndRemoveTags() {
-    jvmtiCapabilities capabilities;
-    std::memset(&capabilities, 0, sizeof(jvmtiCapabilities));
-    gdata->jvmti->GetCapabilities(&capabilities);
-    return static_cast<jboolean>(capabilities.can_tag_objects && capabilities.can_generate_object_free_events);
-}
-
-extern void handleOptions(const char *);
-
-static void JNICALL ObjectFreeCallback(jvmtiEnv *jvmti_env, jlong tag) {
-    debug("tagged object has been freed");
-    delete reinterpret_cast<const char *>(tag);
+static jboolean setAllocationSamplingMode(jvmtiEventMode mode) {
+    if (canSampleAllocations) {
+        jvmtiError error = gdata->jvmti->SetEventNotificationMode(mode, JVMTI_EVENT_SAMPLED_OBJECT_ALLOC, NULL);
+        return (jboolean) error == JVMTI_ERROR_NONE;
+    }
+    return (jboolean) 0;
 }
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
-    jvmtiEnv *jvmti = nullptr;
-    jvmtiCapabilities capabilities;
-    jvmtiError error;
-
     handleOptions(options);
 
     debug("on agent load");
+    jvmtiEnv *jvmti = nullptr;
     jint result = jvm->GetEnv((void **) &jvmti, JVMTI_VERSION_1_0);
     if (result != JNI_OK || jvmti == nullptr) {
         std::cerr << "ERROR: Unable to access JVMTI!" << std::endl;
         return result;
     }
 
-    requiredCapabilities(jvmti, capabilities);
-
     debug("set capabilities");
-    error = jvmti->AddCapabilities(&capabilities);
+    jvmtiCapabilities capabilities;
+    setRequiredCapabilities(jvmti, capabilities);
+    jvmtiError error = jvmti->AddCapabilities(&capabilities);
     if (error != JVMTI_ERROR_NONE) {
         handleError(jvmti, error, "Could not set capabilities");
         return JNI_ERR;
     }
 
+    if (canSampleAllocations) {
+        error = jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_SAMPLED_OBJECT_ALLOC, NULL);
+        if (error != JVMTI_ERROR_NONE) {
+            handleError(jvmti, error, "Could not set allocation sampling notification mode");
+            return JNI_ERR;
+        }
+    }
+
     debug("set callbacks");
     jvmtiEventCallbacks callbacks;
     std::memset(&callbacks, 0, sizeof(jvmtiEventCallbacks));
-    callbacks.ObjectFree = ObjectFreeCallback;
+    callbacks.SampledObjectAlloc = SampledObjectAlloc;
     jvmti->SetEventCallbacks(&callbacks, sizeof(jvmtiEventCallbacks));
 
     gdata = new GlobalAgentData();
@@ -91,55 +98,61 @@ JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM *vm, char *options, void *reserved)
     return Agent_OnLoad(vm, options, reserved);
 }
 
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    delete gdata;
+    Agent_OnLoad(vm, nullptr, reserved);
+    return JNI_VERSION_1_6;
+}
+
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
     debug("on agent unload");
     delete gdata;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canEstimateObjectSize(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canEstimateObjectSize(
         JNIEnv *env,
         jobject thisObject) {
-    return (uint8_t) 1;
+    return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canEstimateObjectsSizes(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canEstimateObjectsSizes(
         JNIEnv *env,
         jobject thisObject) {
-    return (uint8_t) 1;
+    return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canFindPathsToClosestGcRoots(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canFindPathsToClosestGcRoots(
         JNIEnv *env,
         jobject thisObject) {
-    return (uint8_t) 1;
+    return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canGetRetainedSizeByClasses(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canGetRetainedSizeByClasses(
         JNIEnv *env,
         jobject thisObject) {
-    return (uint8_t) 1;
+    return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_canGetShallowSizeByClasses(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canGetShallowSizeByClasses(
         JNIEnv *env,
         jobject thisObject) {
-    return (uint8_t) 1;
+    return (jboolean) 1;
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_isLoadedImpl(
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_isLoadedImpl(
         JNIEnv *env,
-        jobject thisObject) {
+        jclass thisClass) {
     return gdata != nullptr;
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_estimateRetainedSize(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_estimateRetainedSize(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray objects) {
@@ -147,7 +160,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_size(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_size(
         JNIEnv *env,
         jobject thisObject,
         jobject object) {
@@ -155,7 +168,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_findPathsToClosestGcRoots(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_findPathsToClosestGcRoots(
         JNIEnv *env,
         jobject thisObject,
         jobject object,
@@ -165,7 +178,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowSizeByClasses(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray classesArray) {
@@ -173,7 +186,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getRetainedSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getRetainedSizeByClasses(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray classesArray) {
@@ -181,7 +194,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClasses(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClasses(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray classesArray) {
@@ -189,7 +202,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getFirstReachableObject(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getFirstReachableObject(
         JNIEnv *env,
         jobject thisObject,
         jobject startObject,
@@ -198,12 +211,50 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAg
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_proxy_IdeaNativeAgentProxy_getAllReachableObjects(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getAllReachableObjects(
         JNIEnv *env,
         jobject thisObject,
         jobject startObject,
         jobject suspectClass) {
     return GetAllReachableObjectsOfClassAction(env, gdata->jvmti, thisObject).run(startObject, suspectClass);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_setHeapSamplingInterval(
+        JNIEnv *env,
+        jclass thisClass,
+        jlong interval) {
+    if (!canSampleAllocations || JVMTI_ERROR_NONE != gdata->jvmti->SetHeapSamplingInterval(interval)) {
+        return (jboolean) 0;
+    }
+
+    return (jboolean) 1;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_initArrayOfListeners(
+        JNIEnv *env,
+        jclass thisClass,
+        jobject array) {
+    if (!canSampleAllocations) {
+        return (jboolean) 0;
+    }
+    arrayOfListeners.init(env, array);
+    return (jboolean) 1;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_enableAllocationSampling(
+        JNIEnv *env,
+        jclass thisClass) {
+    return setAllocationSamplingMode(JVMTI_ENABLE);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_disableAllocationSampling(
+        JNIEnv *env,
+        jclass thisClass) {
+    return setAllocationSamplingMode(JVMTI_DISABLE);
 }
 
 #pragma clang diagnostic pop

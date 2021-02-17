@@ -17,7 +17,7 @@ static LogLevel LEVEL = ERROR;
 
 void handleOptions(const char *options) {
     auto level = static_cast<int>(LEVEL);
-    if (!std::string(options).empty()) {
+    if (options && !std::string(options).empty()) {
         try {
             level = std::stoi(options);
         }

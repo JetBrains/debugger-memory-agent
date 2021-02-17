@@ -3,7 +3,7 @@
 #ifndef NATIVE_MEMORY_AGENT_UTILS_H
 #define NATIVE_MEMORY_AGENT_UTILS_H
 
-#include "types.h"
+#include "global_data.h"
 #include <string>
 #include <set>
 #include <functional>
@@ -26,6 +26,8 @@ jintArray toJavaArray(JNIEnv *env, jint value);
 jlongArray toJavaArray(JNIEnv *env, jlong value);
 
 void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result);
+
+std::vector<jobject> fromJavaArray(JNIEnv *env, jobjectArray javaArray);
 
 jobjectArray wrapWithArray(JNIEnv *env, jobject first, jobject second);
 
@@ -58,6 +60,10 @@ bool isOk(jvmtiError error);
 bool fileExists(const std::string &fileName);
 
 std::string jstringTostring(JNIEnv *env, jstring jStr);
+
+jmethodID getIsAssignableFromMethod(JNIEnv *env);
+
+std::string getToString(JNIEnv *env, jobject klass);
 
 template<typename T>
 jlong pointerToTag(T tag) {

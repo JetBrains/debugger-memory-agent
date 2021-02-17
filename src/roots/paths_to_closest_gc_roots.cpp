@@ -301,8 +301,7 @@ void setTagsForReferences(JNIEnv *env, jvmtiEnv *jvmti, jlong tag) {
     jint cnt;
     jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
     handleError(jvmti, err, "Couldn't get loaded classes");
-    jclass langClass = env->FindClass("java/lang/Class");
-    jmethodID isAssignableFrom = env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
+    jmethodID isAssignableFrom = getIsAssignableFromMethod(env);
 
     for (int i = 0; i < cnt; i++) {
         for (auto & refClass : refClasses) {
