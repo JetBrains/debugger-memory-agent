@@ -110,7 +110,7 @@ public class MemoryAgent {
     public synchronized void addAllocationListener(AllocationListener allocationListener, Class<?>... trackedClasses) throws MemoryAgentExecutionException {
         if (listeners == null) {
             listeners = new ArrayOfListeners();
-            if (!callProxyMethod(() ->IdeaNativeAgentProxy.initArrayOfListeners(listeners))) {
+            if (!callProxyMethod(() -> IdeaNativeAgentProxy.initArrayOfListeners(listeners))) {
                 throw new MemoryAgentExecutionException(allocationSamplingIsNotSupportedMessage);
             }
         }
