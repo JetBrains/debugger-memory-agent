@@ -9,7 +9,7 @@ if (WIN32 AND (NOT MINGW) AND (NOT CYGWIN))
     set(CMAKE_CXX_FLAGS_MINSIZEREL "/MT")
 endif ()
 
-set(JNI_DIR $ENV{JDK_11})
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 find_package(JNI)
 include_directories(${JNI_INCLUDE_DIRS})
 

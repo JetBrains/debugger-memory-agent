@@ -1,9 +1,11 @@
 # Contributing guide for debugger memory agent
 ## Building
-Once you've downloaded the project, you can build it using the following commands in the root project directory (Cmake 3.1 or higher required):
+To build the project you should have Cmake 3.1 or higher installed, and `JDK_11` 
+environmental variable should be set to jdk 11 or higher. Once you've downloaded the project, 
+you can build it using the following commands in the root project directory:
 ```
 cmake .
-make
+cmake --build .
 ```
 
 Then make sure your `JAVA_HOME` environmental variable is set to JDK 1.8 or higher and run tests with:
