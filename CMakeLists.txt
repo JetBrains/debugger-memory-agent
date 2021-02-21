@@ -10,7 +10,7 @@ if (WIN32 AND (NOT MINGW) AND (NOT CYGWIN))
 endif ()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
-find_package(JNI)
+find_package(JNI11)
 include_directories(${JNI_INCLUDE_DIRS})
 
 add_library(memory_agent SHARED
