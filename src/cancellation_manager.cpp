@@ -3,11 +3,6 @@
 #include "cancellation_manager.h"
 #include "utils.h"
 
-CancellationManager::CancellationManager(const std::string &cancellationFileName, const std::chrono::steady_clock::time_point &finishTime) :
- finishTime(finishTime), cancellationFileName(cancellationFileName), checksToPerform(defaultChecksToPerformValue), performedChecks(0) {
-
-}
-
 bool CancellationManager::shouldStopExecution() const {
     if (fileExists(cancellationFileName) || finishTime < std::chrono::steady_clock::now()) {
         return true;
