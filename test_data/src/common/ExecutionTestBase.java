@@ -9,7 +9,7 @@ public abstract class ExecutionTestBase extends TestBase {
 
     public final void doProgressTest() throws IOException {
         IdeaNativeAgentProxy progressProxy = new IdeaNativeAgentProxy();
-        progressProxy.progressFileName = System.getProperty("java.io.tmpdir") + "memory_agent_progress_file.json";
+        progressProxy.progressFileName = System.getProperty("java.io.tmpdir") + "/memory_agent_progress_file.json";
         executeOperation(progressProxy);
         try (BufferedReader br = new BufferedReader(new FileReader(progressProxy.progressFileName))) {
             String line;
