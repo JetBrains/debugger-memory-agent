@@ -47,8 +47,8 @@ add_library(memory_agent SHARED
         src/reachability/objects_of_class_in_heap.h
         src/sizes/retained_size_action.cpp
         src/memory_agent_action.hpp
-        src/cancellation_manager.cpp
-        src/cancellation_manager.h
+        src/cancellation_checker.cpp
+        src/cancellation_checker.h
         src/allocation_sampling.cpp
         src/allocation_sampling.h
         src/progress_manager.cpp

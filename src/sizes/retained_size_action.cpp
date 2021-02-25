@@ -126,7 +126,7 @@ jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr, j
 
 jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti,
                                const std::vector<jobject> &objects,
-                               const CancellationManager &manager) {
+                               const CancellationChecker &cancellationChecker) {
     jvmtiError err = JVMTI_ERROR_NONE;
     if (!objects.empty()) {
         jvmtiHeapCallbacks cb;
@@ -134,7 +134,7 @@ jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti,
         cb.heap_reference_callback = reinterpret_cast<jvmtiHeapReferenceCallback>(&spreadInfo);
         int heapWalksCnt = 0;
         for (auto &object : objects) {
-            if (manager.shouldStopExecution()) {
+            if (cancellationChecker.shouldStopExecution()) {
                 return MEMORY_AGENT_INTERRUPTED_ERROR;
             }
 

@@ -85,7 +85,7 @@ jvmtiError RetainedSizeByObjectsAction::tagHeap(const std::vector<jobject> &obje
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-    return walkHeapFromObjects(jvmti, taggedObjects, *dynamic_cast<CancellationManager *>(this));
+    return walkHeapFromObjects(jvmti, taggedObjects, *dynamic_cast<CancellationChecker *>(this));
 }
 
 jvmtiError RetainedSizeByObjectsAction::estimateObjectsSizes(const std::vector<jobject> &objects, std::vector<jlong> &result) {

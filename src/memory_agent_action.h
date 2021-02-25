@@ -9,21 +9,21 @@
 #include "jvmti.h"
 #include "log.h"
 #include "utils.h"
-#include "cancellation_manager.h"
+#include "cancellation_checker.h"
 #include "progress_manager.h"
 
 #define MEMORY_AGENT_INTERRUPTED_ERROR static_cast<jvmtiError>(999)
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
-class MemoryAgentAction : public CancellationManager, public ProgressManager {
+class MemoryAgentAction : public CancellationChecker {
 private:
     struct CallbackWrapperData {
-        CallbackWrapperData(void *callback, void *userData, const CancellationManager *manager) :
+        CallbackWrapperData(void *callback, void *userData, const CancellationChecker *manager) :
                 callback(callback), userData(userData), manager(manager) {
 
         }
 
-        const CancellationManager *manager;
+        const CancellationChecker *manager;
         void *callback;
         void *userData;
     };
@@ -60,6 +60,7 @@ private:
     ErrorCode getErrorCode() const;
 
 protected:
+    ProgressManager progressManager;
     JNIEnv *env;
     jvmtiEnv *jvmti;
 };

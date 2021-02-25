@@ -1,16 +1,16 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-#ifndef MEMORY_AGENT_CANCELLATION_MANAGER_H
-#define MEMORY_AGENT_CANCELLATION_MANAGER_H
+#ifndef MEMORY_AGENT_CANCELLATION_CHECKER_H
+#define MEMORY_AGENT_CANCELLATION_CHECKER_H
 
 #include <chrono>
 #include <string>
 
-class CancellationManager {
+class CancellationChecker {
 public:
-    CancellationManager() = default;
+    CancellationChecker() = default;
 
-    virtual ~CancellationManager() = default;
+    virtual ~CancellationChecker() = default;
 
     /*
      * NOTE: This method is time-consuming because it uses syscalls to check the cancellation
@@ -40,4 +40,4 @@ private:
 };
 
 
-#endif //MEMORY_AGENT_CANCELLATION_MANAGER_H
+#endif //MEMORY_AGENT_CANCELLATION_CHECKER_H

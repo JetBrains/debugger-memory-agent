@@ -21,9 +21,7 @@ void ProgressManager::updateProgress(unsigned int newValue, const std::string &m
     }
 }
 
-void ProgressManager::updateProgressFileContents(const std::string &message) {
-    ofstream.open(progressFileName);
-
+void ProgressManager::writeProgressInfoInJSONFormat(const std::string &message, std::ofstream &ofstream) const {
     const char *ending = ",\n\t";
     ofstream << "{\n\t";
     ofstream << "\"minValue\": " << minValue << ending;
@@ -31,6 +29,16 @@ void ProgressManager::updateProgressFileContents(const std::string &message) {
     ofstream << "\"currentValue\": " << currentValue << ending;
     ofstream << "\"message\": " << "\"" << message << "\"\n";
     ofstream << "}";
+}
 
-    ofstream.close();
+void ProgressManager::updateProgressFileContents(const std::string &message) {
+    std::ofstream ofstream(progressFileName);
+    if (ofstream) {
+        writeProgressInfoInJSONFormat(message, ofstream);
+        ofstream.close();
+    }
+}
+
+void ProgressManager::setProgressFileName(const std::string &newProgressFileName) {
+    progressFileName = newProgressFileName;
 }

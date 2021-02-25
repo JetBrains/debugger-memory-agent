@@ -16,7 +16,8 @@ MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentAction(JNIEnv *env, jv
     jobject progressFileNameField = env->GetObjectField(object, progressFileNameId);
     jlong timeout = env->GetLongField(object, timeoutId);
     cancellationFileName = jstringTostring(env, reinterpret_cast<jstring>(cancellationFileNameField));
-    progressFileName = jstringTostring(env, reinterpret_cast<jstring>(progressFileNameField));
+    std::string progressFileName = jstringTostring(env, reinterpret_cast<jstring>(progressFileNameField));
+    progressManager.setProgressFileName(progressFileName);
     if (timeout < 0) {
         finishTime = std::chrono::steady_clock::time_point::max();
     } else {
@@ -26,11 +27,11 @@ MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentAction(JNIEnv *env, jv
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 jobjectArray MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::run(ARGS_TYPES... args) {
-    updateProgress(0, "Operation starting...");
+    progressManager.updateProgress(0, "Operation starting...");
     RESULT_TYPE result = executeOperation(args...);
-    updateProgress(99, "Cleaning heap...");
+    progressManager.updateProgress(99, "Cleaning heap...");
     jvmtiError err = cleanHeap();
-    updateProgress(100, "Finished!");
+    progressManager.updateProgress(100, "Finished!");
     if (err != JVMTI_ERROR_NONE) {
         handleError(jvmti, err, "Couldn't clean heap");
     }
@@ -77,7 +78,7 @@ jvmtiError MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::FollowReferences(jint 
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_reference_callback = followReferencesCallbackWrapper;
 
-    CallbackWrapperData wrapperData(reinterpret_cast<void *>(callback), userData, dynamic_cast<const CancellationManager *>(this));
+    CallbackWrapperData wrapperData(reinterpret_cast<void *>(callback), userData, dynamic_cast<const CancellationChecker *>(this));
     return jvmti->FollowReferences(heapFilter, klass, initialObject, &cb, &wrapperData);
 }
 
@@ -94,7 +95,7 @@ jvmtiError MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::IterateThroughHeap(jin
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_iteration_callback = iterateThroughHeapCallbackWrapper;
 
-    CallbackWrapperData wrapperData(reinterpret_cast<void *>(callback), userData, dynamic_cast<const CancellationManager *>(this));
+    CallbackWrapperData wrapperData(reinterpret_cast<void *>(callback), userData, dynamic_cast<const CancellationChecker *>(this));
     return jvmti->IterateThroughHeap(heapFilter, klass, &cb, &wrapperData);
 }
 

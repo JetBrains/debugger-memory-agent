@@ -10,20 +10,19 @@
  * This class manages the progress of an operation and stores it in a json file.
  */
 class ProgressManager {
-protected:
+public:
     explicit ProgressManager(unsigned int maxValue = 100, unsigned int minValue = 0);
-    virtual ~ProgressManager() = default;
+    ~ProgressManager() = default;
 
     void updateProgress(unsigned int newValue, const std::string &message);
+    void setProgressFileName(const std::string &newProgressFileName);
 
 private:
     void updateProgressFileContents(const std::string &message);
-
-protected:
-    std::string progressFileName;
+    void writeProgressInfoInJSONFormat(const std::string &message, std::ofstream &ofstream) const;
 
 private:
-    std::ofstream ofstream;
+    std::string progressFileName;
     unsigned int currentValue;
     unsigned int maxValue;
     unsigned int minValue;

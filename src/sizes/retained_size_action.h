@@ -29,7 +29,7 @@ jint JNICALL retagStartObjects      (jlong classTag, jlong size, jlong *tagPtr, 
 
 jint JNICALL tagObjectOfTaggedClass (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
 
-jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti, const std::vector<jobject> &objects, const CancellationManager &manager);
+jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti, const std::vector<jobject> &objects, const CancellationChecker &cancellationChecker);
 
 template<typename RESULT_TYPE>
 class RetainedSizeAction : public MemoryAgentAction<RESULT_TYPE, jobjectArray> {
@@ -99,7 +99,7 @@ protected:
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-        return walkHeapFromObjects(this->jvmti, objects, *dynamic_cast<CancellationManager *>(this));
+        return walkHeapFromObjects(this->jvmti, objects, *dynamic_cast<CancellationChecker *>(this));
     }
 };
 

@@ -42,12 +42,12 @@ jvmtiError RetainedSizeAndHeldObjectsAction::traverseHeapForTheFirstTime(jobject
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-    updateProgress(10, "Traversing heap for the first time...");
+    progressManager.updateProgress(10, "Traversing heap for the first time...");
     return FollowReferences(0, nullptr, nullptr, firstTraversal, nullptr, "tag heap");
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::traverseHeapFromStartObjectAndCountRetainedSize(jobject &object, jlong &retainedSize) {
-    updateProgress(45, "Traversing heap for the second time...");
+    progressManager.updateProgress(45, "Traversing heap for the second time...");
     retainedSize = 0;
     jvmtiError err = FollowReferences(0, nullptr, object, secondTraversal, &retainedSize, "tag heap");
     if (!isOk(err)) return err;
@@ -75,7 +75,7 @@ jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object,
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     debug("collect held objects");
-    updateProgress(85, "Collecting held objects...");
+    progressManager.updateProgress(85, "Collecting held objects...");
     return getObjectsByTags(jvmti, std::vector<jlong>{HELD_OBJECT_TAG}, heldObjects);
 }
 
