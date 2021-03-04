@@ -6,7 +6,7 @@
 #include <vector>
 #include <fstream>
 #include "utils.h"
-#include "timed_action.h"
+#include "memory_agent_action.h"
 #include "log.h"
 
 const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind) {

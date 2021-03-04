@@ -246,7 +246,7 @@ namespace {
     }
 }
 
-PathsToClosestGcRootsAction::PathsToClosestGcRootsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction(env, jvmti, object) {
+PathsToClosestGcRootsAction::PathsToClosestGcRootsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentAction(env, jvmti, object) {
 
 }
 

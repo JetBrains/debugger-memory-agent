@@ -14,10 +14,10 @@ python3 test_runner.py
 ```
 
 ## Development process
-1. Pick an issue or figure out which ation you would like to implement. Every agent action is derived from `MemoryAgentTimedAction` 
+1. Pick an issue or figure out which action you would like to implement. Every agent action is derived from `MemoryAgentAction` 
 and is implemented by overriding `cleanHeap` and `executeOperation` methods. Your action implementation must meet 3 requirements:
 
-  * The action stops execution after interruption signal;
+  * The action stops execution after an interruption signal;
   * No tags are allocated after the execution;
   * All objects in the heap are tagged with 0 after the execution.
 

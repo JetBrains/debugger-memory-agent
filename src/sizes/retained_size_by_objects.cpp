@@ -4,7 +4,7 @@
 #include "sizes_tags.h"
 #include "retained_size_by_classes.h"
 
-RetainedSizeByObjectsAction::RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction(env, jvmti, object) {
+RetainedSizeByObjectsAction::RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentAction(env, jvmti, object) {
 
 }
 
@@ -85,7 +85,7 @@ jvmtiError RetainedSizeByObjectsAction::tagHeap(const std::vector<jobject> &obje
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-    return walkHeapFromObjects(jvmti, taggedObjects, *dynamic_cast<CancellationManager *>(this));
+    return walkHeapFromObjects(jvmti, taggedObjects, *dynamic_cast<CancellationChecker *>(this));
 }
 
 jvmtiError RetainedSizeByObjectsAction::estimateObjectsSizes(const std::vector<jobject> &objects, std::vector<jlong> &result) {

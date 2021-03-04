@@ -4,9 +4,9 @@
 #define MEMORY_AGENT_RETAINED_SIZE_BY_OBJECTS_H
 
 #include <vector>
-#include "../timed_action.h"
+#include "../memory_agent_action.h"
 
-class RetainedSizeByObjectsAction : public MemoryAgentTimedAction<jlongArray, jobjectArray> {
+class RetainedSizeByObjectsAction : public MemoryAgentAction<jlongArray, jobjectArray> {
 public:
     RetainedSizeByObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 

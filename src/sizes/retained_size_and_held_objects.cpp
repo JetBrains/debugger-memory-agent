@@ -2,81 +2,81 @@
 
 #include <vector>
 #include "retained_size_and_held_objects.h"
-#include "retained_size_action.h"
 #include "sizes_tags.h"
 
-jint JNICALL countSizeAndRetagHeldObjects(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
-    if (*tagPtr == 0) {
-        return JVMTI_ITERATION_CONTINUE;
-    }
+#define START_TAG 1
+#define HELD_OBJECT_TAG 2
+#define VISITED_TAG 3
 
-    Tag *tag = tagToPointer(*tagPtr);
-    *tagPtr = 0;
-    for (query_size_t i = 0; i < tag->array.getSize(); i++) {
-        const TagInfoArray::TagInfo &info = tag->array[i];
-        if (isRetained(info.state)) {
-            *tagPtr = pointerToTag(&Tag::HeldObjectTag);
-            *reinterpret_cast<jlong *>(userData) += size;
-        }
-    }
-
-    tag->unref();
-    return JVMTI_ITERATION_CONTINUE;
-}
-
-jint JNICALL walkHeapAndSkipStartObject(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
-                                        jlong referrerClassTag, jlong size, jlong *tagPtr,
-                                        jlong *referrerTagPtr, jint length, void *userData) {
-    if (*tagPtr != 0 && tagToPointer(*tagPtr)->isStartTag) {
+jint JNICALL firstTraversal(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                            jlong referrerClassTag, jlong size, jlong *tagPtr,
+                            jlong *referrerTagPtr, jint length, void *userData) {
+    if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL) {
         return 0;
+    } else if (*tagPtr == START_TAG) {
+        return 0;
+    } else if (*tagPtr == 0) {
+        *tagPtr = VISITED_TAG;
     }
 
-    return visitReference(refKind, refInfo, classTag, referrerClassTag, size, tagPtr, referrerTagPtr, length, userData);
+    return JVMTI_VISIT_OBJECTS;
 }
 
-RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentTimedAction(env, jvmti, object) {
+jint JNICALL secondTraversal(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                            jlong referrerClassTag, jlong size, jlong *tagPtr,
+                            jlong *referrerTagPtr, jint length, void *userData) {
+    if (*tagPtr == 0) {
+        *reinterpret_cast<jlong *>(userData) += size;
+        *tagPtr = HELD_OBJECT_TAG;
+    }
+
+    return JVMTI_VISIT_OBJECTS;
+}
+
+RetainedSizeAndHeldObjectsAction::RetainedSizeAndHeldObjectsAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : MemoryAgentAction(env, jvmti, object) {
 
 }
 
-jvmtiError RetainedSizeAndHeldObjectsAction::retagStartObject(jobject object) {
-    jlong oldTag;
-    jvmtiError err = jvmti->GetTag(object, &oldTag);
+jvmtiError RetainedSizeAndHeldObjectsAction::traverseHeapForTheFirstTime(jobject &object) {
+    jvmtiError err = jvmti->SetTag(object, START_TAG);
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+
+    progressManager.updateProgress(10, "Traversing heap for the first time...");
+    return FollowReferences(0, nullptr, nullptr, firstTraversal, nullptr, "tag heap");
+}
+
+jvmtiError RetainedSizeAndHeldObjectsAction::traverseHeapFromStartObjectAndCountRetainedSize(jobject &object, jlong &retainedSize) {
+    progressManager.updateProgress(45, "Traversing heap for the second time...");
+    retainedSize = 0;
+    jvmtiError err = FollowReferences(0, nullptr, object, secondTraversal, &retainedSize, "tag heap");
+    if (!isOk(err)) return err;
+    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
+
+    err = jvmti->SetTag(object, HELD_OBJECT_TAG);
     if (!isOk(err)) return err;
 
-    if (isTagWithNewInfo(oldTag)) {
-        Tag *tag = Tag::create(0, createState(true, true, false, false));
-        err = jvmti->SetTag(object, pointerToTag(tag));
-    }
+    jlong startObjectSize = 0;
+    err = jvmti->GetObjectSize(object, &startObjectSize);
+    if (!isOk(err)) return err;
 
-    return err;
+    retainedSize += startObjectSize;
+
+    return JVMTI_ERROR_NONE;
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object, jlong &retainedSize, std::vector<jobject> &heldObjects) {
-    Tag *tag = Tag::create(0, createState(true, true, false, false));
-    jvmtiError err = jvmti->SetTag(object, pointerToTag(tag));
+    jvmtiError err = traverseHeapForTheFirstTime(object);
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-    err = FollowReferences(0, nullptr, nullptr, walkHeapAndSkipStartObject, nullptr, "tag heap");
+    err = traverseHeapFromStartObjectAndCountRetainedSize(object, retainedSize);
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
-
-    err = FollowReferences(0, nullptr, object, visitReference, nullptr, "tag heap");
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
-
-    retainedSize = 0;
-    err = IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, countSizeAndRetagHeldObjects,
-                             &retainedSize, "calculate retained size");
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
-
-    if (sizesTagBalance != 0) {
-        fatal("MEMORY LEAK FOUND!");
-    }
 
     debug("collect held objects");
-    return getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::HeldObjectTag)}, heldObjects);
+    progressManager.updateProgress(85, "Collecting held objects...");
+    return getObjectsByTags(jvmti, std::vector<jlong>{HELD_OBJECT_TAG}, heldObjects);
 }
 
 jobjectArray RetainedSizeAndHeldObjectsAction::createResultObject(jlong retainedSize, jlong shallowSize, const std::vector<jobject> &heldObjects) {
@@ -116,14 +116,5 @@ jobjectArray RetainedSizeAndHeldObjectsAction::executeOperation(jobject object) 
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::cleanHeap() {
-    jvmtiHeapCallbacks cb;
-    std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
-    cb.heap_iteration_callback = clearTag;
-    jvmtiError err =  this->jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
-
-    if (sizesTagBalance != 0) {
-        fatal("MEMORY LEAK FOUND!");
-    }
-
-    return err;
+    return removeAllTagsFromHeap(jvmti, nullptr);
 }

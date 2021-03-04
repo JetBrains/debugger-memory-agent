@@ -2,15 +2,18 @@ package com.intellij.memory.agent;
 
 public class IdeaNativeAgentProxy {
   public String cancellationFileName;
+  public String progressFileName;
   public long timeoutInMillis;
 
   public IdeaNativeAgentProxy() {
     cancellationFileName = "";
+    progressFileName = "";
     timeoutInMillis = -1;
   }
 
-  public IdeaNativeAgentProxy(Object cancellationFileName, long timeoutInMillis) {
+  public IdeaNativeAgentProxy(Object cancellationFileName, Object progressFileName, long timeoutInMillis) {
     this.cancellationFileName = (String)cancellationFileName;
+    this.progressFileName = (String)progressFileName;
     this.timeoutInMillis = timeoutInMillis;
   }
 

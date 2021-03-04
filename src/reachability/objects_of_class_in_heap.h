@@ -3,9 +3,9 @@
 #ifndef MEMORY_AGENT_OBJECTS_OF_CLASS_IN_HEAP_H
 #define MEMORY_AGENT_OBJECTS_OF_CLASS_IN_HEAP_H
 
-#include "../timed_action.h"
+#include "../memory_agent_action.h"
 
-class GetFirstReachableObjectOfClassAction : public MemoryAgentTimedAction<jobject, jobject, jobject> {
+class GetFirstReachableObjectOfClassAction : public MemoryAgentAction<jobject, jobject, jobject> {
 public:
     GetFirstReachableObjectOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
@@ -14,7 +14,7 @@ private:
     jvmtiError cleanHeap() override;
 };
 
-class GetAllReachableObjectsOfClassAction : public MemoryAgentTimedAction<jobjectArray, jobject, jobject> {
+class GetAllReachableObjectsOfClassAction : public MemoryAgentAction<jobjectArray, jobject, jobject> {
 public:
     GetAllReachableObjectsOfClassAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 

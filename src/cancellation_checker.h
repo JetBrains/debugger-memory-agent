@@ -1,17 +1,16 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-#ifndef MEMORY_AGENT_CANCELLATION_MANAGER_H
-#define MEMORY_AGENT_CANCELLATION_MANAGER_H
+#ifndef MEMORY_AGENT_CANCELLATION_CHECKER_H
+#define MEMORY_AGENT_CANCELLATION_CHECKER_H
 
 #include <chrono>
 #include <string>
 
-class CancellationManager {
+class CancellationChecker {
 public:
-    CancellationManager(const std::string &cancellationFileName, const std::chrono::steady_clock::time_point &finishTime);
-    CancellationManager() = default;
+    CancellationChecker() = default;
 
-    ~CancellationManager() = default;
+    virtual ~CancellationChecker() = default;
 
     /*
      * NOTE: This method is time-consuming because it uses syscalls to check the cancellation
@@ -36,9 +35,9 @@ protected:
 private:
     const static unsigned int defaultChecksToPerformValue = 10000;
     mutable std::chrono::steady_clock::time_point lastSuccessfulCheck;
-    mutable unsigned int checksToPerform;
-    mutable unsigned int performedChecks;
+    mutable unsigned int checksToPerform{};
+    mutable unsigned int performedChecks{};
 };
 
 
-#endif //MEMORY_AGENT_CANCELLATION_MANAGER_H
+#endif //MEMORY_AGENT_CANCELLATION_CHECKER_H
