@@ -25,7 +25,9 @@ jint JNICALL firstTraversal(jvmtiHeapReferenceKind refKind, const jvmtiHeapRefer
 jint JNICALL secondTraversal(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
                             jlong referrerClassTag, jlong size, jlong *tagPtr,
                             jlong *referrerTagPtr, jint length, void *userData) {
-    if (*tagPtr == 0) {
+    if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL) {
+        return 0;
+    } else if (*tagPtr == 0) {
         *reinterpret_cast<jlong *>(userData) += size;
         *tagPtr = HELD_OBJECT_TAG;
     }
