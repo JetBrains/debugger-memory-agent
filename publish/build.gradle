@@ -50,7 +50,7 @@ jar {
     into('bin') {
         from includeBinaries
     }
-    into('com/intellij/memory/agent/') {
+    into("") {
         from includeClasses
     }
     version releaseVersion
