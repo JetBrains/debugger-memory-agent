@@ -118,6 +118,20 @@ public class MemoryAgent {
     }
 
     /**
+     * Adds an allocation listener that catches allocation sampling events for specified class.
+     *
+     * @param allocationListener  {@link AllocationListener} instance to track allocation sampling events.
+     * @param trackedClass A class to track allocations for.
+     * @throws MemoryAgentExecutionException if a call to a native method failed.
+     *
+     * @see #addAllocationListener
+     * @see <a href="https://openjdk.java.net/jeps/331">Low-Overhead Heap Profiling</a>
+     */
+    public synchronized void addAllocationListener(Class<?> trackedClass, AllocationListener allocationListener) throws MemoryAgentExecutionException {
+        addAllocationListener(allocationListener, trackedClass);
+    }
+
+    /**
      * Adds an allocation listener that catches all allocation sampling events.
      *
      * <p>
