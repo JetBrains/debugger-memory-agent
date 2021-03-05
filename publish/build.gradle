@@ -17,7 +17,7 @@ sourceSets {
 }
 
 def binariesPath = "$projectDir/../bin"
-def proxyPath = "$projectDir/../classes/IdeaNativeAgentProxy.class"
+def libraryClassesPath = "$projectDir/../classes/"
 
 static def checkBinaries(String binPath) {
     def expectedFiles = ['libmemory_agent.dylib', 'libmemory_agent.so', 'memory_agent.dll', 'memory_agent32.dll']
@@ -38,19 +38,19 @@ task includeBinaries {
 
 task includeClasses {
     doFirst {
-        if (!new File(proxyPath).exists()) {
-            throw new GradleScriptException("Agent proxy not found")
+        if (!new File(libraryClassesPath).exists()) {
+            throw new GradleScriptException("Agent library classes not found")
         }
     }
 
-    outputs.files files(proxyPath)
+    outputs.files files(libraryClassesPath)
 }
 
 jar {
     into('bin') {
         from includeBinaries
     }
-    into('proxy') {
+    into('com/intellij/memory/agent/') {
         from includeClasses
     }
     version releaseVersion
