@@ -2,7 +2,7 @@
 [![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
 # Memory agent
-This is a native [JVMTI](https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html) agent for a JVM, which is currently used in the IDEA debugger to perform basic heap diagnostic during the debug process. It can also be used in any project, that is running on a JVM, to attach allocation sampling listeners for [low-overhead heap profiling](https://openjdk.java.net/jeps/331) and to collect information about the heap, such as retained sizes, object reachability, and paths to closest GC roots.
+This is a native [JVMTI](https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html) agent for a JVM, which is currently used in the [IDEA debugger](https://www.jetbrains.com/help/idea/analyze-objects-in-the-jvm-heap.html#45c4d5cd) to perform basic heap diagnostic during the debug process. It can also be used in any project, that is running on a JVM, to attach allocation sampling listeners for [low-overhead heap profiling](https://openjdk.java.net/jeps/331) and to collect information about the heap, such as retained sizes, object reachability, and paths to closest GC roots.
 
 # Example usage
 ## Allocation sampling
@@ -15,10 +15,11 @@ agent.addAllocationListener((info) -> {
    }
 });
 ```
-You can also change heap sampling interval with
+You can also change the [heap sampling interval](https://openjdk.java.net/jeps/331) with
 ```
 agent.setHeapSamplingInterval(512);
 ```
+The overhead for allocation sampling is [1-3%](https://openjdk.java.net/jeps/331) if the user-defined code is not taken into account.
 
 ## Checking for object reachability
 The example below shows how to check object reachability in the heap with weak/soft/phantom reference handling.
