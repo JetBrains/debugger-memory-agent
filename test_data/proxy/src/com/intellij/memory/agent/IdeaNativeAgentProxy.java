@@ -5,6 +5,13 @@ public class IdeaNativeAgentProxy {
   public String progressFileName;
   public long timeoutInMillis;
 
+  static {
+    String agentPath = System.getProperty("intellij.memory.agent.path");
+    if (agentPath != null) {
+      System.load(agentPath);
+    }
+  }
+
   public IdeaNativeAgentProxy() {
     cancellationFileName = "";
     progressFileName = "";
