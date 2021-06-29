@@ -27,6 +27,7 @@ MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentAction(JNIEnv *env, jv
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 jobjectArray MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::run(ARGS_TYPES... args) {
+    ThreadSuspender suspender(jvmti);
     progressManager.updateProgress(0, "Operation starting...");
     RESULT_TYPE result = executeOperation(args...);
     progressManager.updateProgress(99, "Cleaning heap...");
@@ -49,7 +50,7 @@ jint JNICALL MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::followReferencesCall
                                                                                             jlong referrerClassTag, jlong size, jlong *tagPtr,
                                                                                             jlong *referrerTagPtr, jint length, void *userData) {
     auto *wrapperData = reinterpret_cast<CallbackWrapperData *>(userData);
-    if (wrapperData->manager->shouldStopExecutionSyscallSafe()) {
+    if (wrapperData->cancellationChecker->shouldStopExecutionSyscallSafe()) {
         return JVMTI_VISIT_ABORT;
     }
     return reinterpret_cast<jvmtiHeapReferenceCallback>(wrapperData->callback)(refKind, refInfo, classTag, referrerClassTag, size, tagPtr, referrerTagPtr, length, wrapperData->userData);
@@ -58,7 +59,7 @@ jint JNICALL MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::followReferencesCall
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 jint JNICALL MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::iterateThroughHeapCallbackWrapper(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     auto *wrapperData = reinterpret_cast<CallbackWrapperData *>(userData);
-    if (wrapperData->manager->shouldStopExecutionSyscallSafe()) {
+    if (wrapperData->cancellationChecker->shouldStopExecutionSyscallSafe()) {
         return JVMTI_ITERATION_ABORT;
     }
     return reinterpret_cast<jvmtiHeapIterationCallback>(wrapperData->callback)(classTag, size, tagPtr, length, wrapperData->userData);

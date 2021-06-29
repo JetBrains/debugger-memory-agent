@@ -18,14 +18,14 @@ template<typename RESULT_TYPE, typename... ARGS_TYPES>
 class MemoryAgentAction : public CancellationChecker {
 private:
     struct CallbackWrapperData {
-        CallbackWrapperData(void *callback, void *userData, const CancellationChecker *manager) :
-                callback(callback), userData(userData), manager(manager) {
+        CallbackWrapperData(void *callback, void *userData, const CancellationChecker *cancellationChecker) :
+                callback(callback), userData(userData), cancellationChecker(cancellationChecker) {
 
         }
 
-        const CancellationChecker *manager;
         void *callback;
         void *userData;
+        const CancellationChecker *cancellationChecker;
     };
 
     enum class ErrorCode {
