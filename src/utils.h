@@ -9,6 +9,16 @@
 #include <functional>
 #include <jvmti.h>
 
+class ThreadSuspender {
+public:
+    explicit ThreadSuspender(jvmtiEnv *jvmti);
+    ~ThreadSuspender();
+
+private:
+    jvmtiEnv *jvmti;
+    std::vector<jthread> suspendedThreads;
+};
+
 typedef void (*tagReleasedCallback)(jlong tag);
 
 const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind);

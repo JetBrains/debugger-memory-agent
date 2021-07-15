@@ -43,6 +43,9 @@ static void setRequiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effectiv
         canSampleAllocations = true;
         effective.can_generate_sampled_object_alloc_events = 1;
     }
+    if (potential.can_suspend) {
+        effective.can_suspend = 1;
+    }
 }
 
 static jboolean setAllocationSamplingMode(jvmtiEventMode mode) {

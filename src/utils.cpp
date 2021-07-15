@@ -269,3 +269,52 @@ std::string getToString(JNIEnv *env, jobject object) {
     jobject name = env->CallObjectMethod(object, env->GetMethodID(env->FindClass("java/lang/Object"), "toString", "()Ljava/lang/String;"));
     return jstringTostring(env, reinterpret_cast<jstring>(name));
 }
+
+ThreadSuspender::ThreadSuspender(jvmtiEnv *jvmti) : jvmti(jvmti) {
+    jint threadCnt;
+    jthread *threads;
+    jvmtiError err = jvmti->GetAllThreads(&threadCnt, &threads);
+    if (!isOk(err)) {
+        handleError(jvmti, err, "Failed to get all threads");
+        return;
+    }
+
+    jthread currentThread;
+    err = jvmti->GetCurrentThread(&currentThread);
+    if (!isOk(err)) {
+        handleError(jvmti, err, "Failed to get current thread");
+        return;
+    }
+
+    jvmtiThreadInfo currentThreadInfo;
+    jvmti->GetThreadInfo(currentThread, &currentThreadInfo);
+    if (!isOk(err)) {
+        handleError(jvmti, err, "Failed to get current thread's info");
+        return;
+    }
+
+    for (int i = 0; i < threadCnt; i++) {
+        jvmtiThreadInfo info;
+        jthread thread = threads[i];
+        err = jvmti->GetThreadInfo(thread, &info);
+        if (!isOk(err)) {
+            handleError(jvmti, err, "Failed to get thread's info");
+            return;
+        }
+
+        if (strcmp(info.name, currentThreadInfo.name) != 0) {
+            if (jvmti->SuspendThread(thread) == JVMTI_ERROR_NONE) {
+                suspendedThreads.push_back(thread);
+            }
+        }
+    }
+}
+
+ThreadSuspender::~ThreadSuspender() {
+    for (jthread thread : suspendedThreads) {
+        jvmtiError err = jvmti->ResumeThread(thread);
+        if (!isOk(err)) {
+            handleError(jvmti, err, "Failed to resume thread");
+        }
+    }
+}
