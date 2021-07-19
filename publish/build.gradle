@@ -72,20 +72,14 @@ publishing {
             version releaseVersion
         }
     }
-}
 
-bintray {
-    user = System.getenv('BINTRAY_USER')
-    key = System.getenv('BINTRAY_KEY')
-
-    publish = true
-
-    pkg {
-        repo = bintrayRepoName
-        name = bintrayPkgName
-        userOrg = bintrayUserOrg
-        version.name = releaseVersion
+    repositories {
+        maven {
+            url "https://packages.jetbrains.team/maven/p/ij/intellij-dependencies"
+            credentials {
+                username = System.getenv('INTELLIJ_DEPENDENCIES_BOT')
+                password = System.getenv('INTELLIJ_DEPENDENCIES_TOKEN')
+            }
+        }
     }
-
-    publications = ['MyPublication']
 }
