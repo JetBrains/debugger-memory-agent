@@ -1,5 +1,8 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
+#include <vector>
+#include <queue>
+
 #include "retained_size_via_dominator_tree.h"
 
 using graph_t = std::vector<std::vector<jlong>>;
@@ -92,19 +95,36 @@ namespace {
         }
 
         dom[0] = -1;
+        std::vector<jlong> childCount(numOfVertices);
         for (jlong i = 1; i < n; i++) {
             jlong w = vertex[i];
             if (dom[w] != vertex[semi[w]]) {
                 dom[w] = dom[dom[w]];
             }
 
-            jlong temp = dom[w];
-            while (temp != -1) {
-                retained_sizes[temp] += sizes[w];
-                temp = dom[temp];
+            if (dom[w] >= 0) {
+                childCount[dom[w]]++;
             }
         }
 
+        std::queue<jlong> leaves;
+        for (jlong i = 1; i < n; i++) {
+            if (childCount[i] == 0) {
+                leaves.push(i);
+            }
+        }
+
+        while (!leaves.empty()) {
+            jlong leaf = leaves.front();
+            leaves.pop();
+            jlong d = dom[leaf];
+            if (d >= 0) {
+                retained_sizes[d] += retained_sizes[leaf];
+                if (--childCount[d] == 0) {
+                    leaves.push(d);
+                }
+            }
+        }
         return retained_sizes;
     }
 }
