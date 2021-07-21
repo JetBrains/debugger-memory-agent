@@ -21,43 +21,24 @@ include_directories(${JNI_INCLUDE_DIRS})
 add_library(memory_agent SHARED
         src/agent.cpp
         src/utils.cpp
-        src/utils.h
-        src/global_data.h
         src/log.cpp
-        src/log.h
-        src/memory_agent_action.h
-        src/sizes/retained_size_and_held_objects.h
         src/sizes/retained_size_and_held_objects.cpp
-        src/sizes/sizes_tags.h
         src/sizes/sizes_tags.cpp
-        src/sizes/sizes_state.h
         src/sizes/sizes_state.cpp
-        src/sizes/tag_info_array.h
         src/sizes/tag_info_array.cpp
-        src/sizes/retained_size_by_classes.h
         src/sizes/retained_size_by_classes.cpp
-        src/sizes/retained_size_action.h
-        src/sizes/retained_size_by_objects.h
         src/sizes/retained_size_by_objects.cpp
         src/sizes/shallow_size_by_classes.cpp
-        src/sizes/shallow_size_by_classes.h
-        src/roots/infos.cpp src/roots/infos.h
         src/roots/roots_tags.cpp
-        src/roots/roots_tags.h
-        src/roots/roots_state.h
         src/roots/roots_state.cpp
         src/roots/paths_to_closest_gc_roots.cpp
-        src/roots/paths_to_closest_gc_roots.h
+        src/roots/infos.cpp
         src/reachability/objects_of_class_in_heap.cpp
-        src/reachability/objects_of_class_in_heap.h
         src/sizes/retained_size_action.cpp
-        src/memory_agent_action.hpp
         src/cancellation_checker.cpp
-        src/cancellation_checker.h
         src/allocation_sampling.cpp
-        src/allocation_sampling.h
         src/progress_manager.cpp
-        src/progress_manager.h
+        src/sizes/retained_size_via_dominator_tree.cpp
 )
 
 if ((UNIX OR MINGW) AND NOT APPLE)
