@@ -1,7 +1,6 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 #include <jvmti.h>
-#include <queue>
 #include <iostream>
 #include <unordered_map>
 #include <cstring>
@@ -12,8 +11,8 @@
 #include "reachability/objects_of_class_in_heap.h"
 #include "sizes/shallow_size_by_classes.h"
 #include "sizes/retained_size_and_held_objects.h"
+#include "sizes/retained_size_via_dominator_tree.h"
 #include "sizes/retained_size_by_classes.h"
-#include "sizes/retained_size_by_objects.h"
 #include "allocation_sampling.h"
 
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
@@ -159,7 +158,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentPro
         JNIEnv *env,
         jobject thisObject,
         jobjectArray objects) {
-    return RetainedSizeByObjectsAction(env, gdata->jvmti, thisObject).run(objects);
+    return RetainedSizeViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(objects);
 }
 
 extern "C"
