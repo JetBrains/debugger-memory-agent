@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 
 # always build universal binaries on macOS
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "")
 
 project(memory_agent)
 
