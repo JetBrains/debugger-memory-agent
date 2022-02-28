@@ -4,6 +4,7 @@
 #define MEMORY_AGENT_MEMORY_AGENT_ACTION_HPP
 
 #include "memory_agent_action.h"
+#include "log.h"
 
 template<typename RESULT_TYPE, typename... ARGS_TYPES>
 MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::MemoryAgentAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) :
@@ -72,7 +73,7 @@ jvmtiError MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::FollowReferences(jint 
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     if (debugMessage) {
-        debug(debugMessage);
+        logger::debug(debugMessage);
     }
 
     jvmtiHeapCallbacks cb;
@@ -89,7 +90,7 @@ jvmtiError MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>::IterateThroughHeap(jin
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     if (debugMessage) {
-        debug(debugMessage);
+        logger::debug(debugMessage);
     }
 
     jvmtiHeapCallbacks cb;

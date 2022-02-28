@@ -76,7 +76,7 @@ jvmtiError RetainedSizeAndHeldObjectsAction::estimateObjectSize(jobject &object,
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
-    debug("collect held objects");
+    logger::debug("collect held objects");
     progressManager.updateProgress(85, "Collecting held objects...");
     return getObjectsByTags(jvmti, std::vector<jlong>{HELD_OBJECT_TAG}, heldObjects);
 }

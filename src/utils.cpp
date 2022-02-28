@@ -4,7 +4,6 @@
 #include <sstream>
 #include <cstring>
 #include <vector>
-#include <fstream>
 #include "utils.h"
 #include "memory_agent_action.h"
 #include "log.h"
@@ -118,7 +117,7 @@ void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
         std::stringstream ss;
 
         ss << "ERROR: JVMTI: " << err << "(" << name << "): " << message << std::endl;
-        error(ss.str().data());
+        logger::error(ss.str().data());
     }
 }
 
@@ -139,20 +138,19 @@ jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tag
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_iteration_callback = freeObjectCallback;
-    std::set<jlong> ignoredSet(ignoredTags.begin(), ignoredTags.end());
-    iterationInfo userData(&ignoredSet, callback);
-    debug("remove tags");
+    iterationInfo userData(&ignoredTags, callback);
+    logger::debug("remove tags");
     jvmtiError err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, &userData);
-    debug("tags removed");
+    logger::debug("tags removed");
     return err;
 }
 
 static jvmtiError collectObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, jint &objectsCount, jobject **objects, jlong **objectsTags) {
     auto tagsCount = static_cast<jint>(tags.size());
 
-    debug("call GetObjectsWithTags");
+    logger::debug("call GetObjectsWithTags");
     jvmtiError err = jvmti->GetObjectsWithTags(tagsCount, tags.data(), &objectsCount, objects, objectsTags);
-    debug("call GetObjectsWithTags finished");
+    logger::debug("call GetObjectsWithTags finished");
 
     return err;
 }
@@ -232,7 +230,6 @@ std::string jstringTostring(JNIEnv *env, jstring jStr) {
     env->ReleaseStringUTFChars(jStr, chars);
     return str;
 }
-
 
 jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag) {
     jclass *classes;

@@ -331,23 +331,23 @@ GcTag *PathsToClosestGcRootsAction::createTags(jobject target) {
 }
 
 jobjectArray PathsToClosestGcRootsAction::executeOperation(jobject object, jint pathsNumber, jint objectsNumber) {
-    debug("Looking for shortest path to gc root started");
+    logger::debug("Looking for shortest path to gc root started");
     GcTag *tag = createTags(object);
     if (shouldStopExecution()) return getEmptyArray(env);
 
-    debug("create resulting java objects");
+    logger::debug("create resulting java objects");
     jobjectArray result = collectPathsToClosestGcRoots(pointerToTag(tag), pathsNumber, objectsNumber);
 
     return result;
 }
 
 jvmtiError PathsToClosestGcRootsAction::cleanHeap() {
-    debug("remove all tags from objects in heap");
+    logger::debug("remove all tags from objects in heap");
     std::set<jlong> ignoredTag {pointerToTag(&GcTag::WeakSoftReferenceTag)};
     jvmtiError err = removeTagsFromHeap(jvmti, ignoredTag, GcTag::cleanTag);
 
     if (rootsTagBalance != 0) {
-        fatal("MEMORY LEAK FOUND!");
+        logger::fatal("MEMORY LEAK FOUND!");
     }
 
     return err;

@@ -4,61 +4,77 @@
 #include <iostream>
 #include "log.h"
 
-enum LogLevel {
-    NO_LOG = 0,
-    FATAL = 1,
-    ERROR = 2,
-    WARN = 3,
-    INFO = 4,
-    DEBUG = 5
-};
+namespace logger {
+    enum LogLevel {
+        NO_LOG = 0,
+        FATAL = 1,
+        ERROR = 2,
+        WARN = 3,
+        INFO = 4,
+        DEBUG = 5
+    };
 
-static LogLevel LEVEL = ERROR;
+    LogLevel LEVEL = ERROR;
+    std::chrono::steady_clock::time_point timePoint;
 
-void handleOptions(const char *options) {
-    auto level = static_cast<int>(LEVEL);
-    if (options && !std::string(options).empty()) {
-        try {
-            level = std::stoi(options);
-        }
-        catch (const std::invalid_argument &e) {
-            error("Invalid log level argument. Expected value is integer between 0 and 5. \"ERROR\" level will be set");
+    void fatal(const char *msg) {
+        if (LEVEL >= FATAL) {
+            std::cerr << "MEMORY_AGENT::FATAL " << msg << std::endl;
         }
     }
 
-    if (NO_LOG <= level && level <= DEBUG) {
-        LEVEL = static_cast<LogLevel>(level);
-    } else {
-        warn("Unexpected log level. Expected value between 0 and 5");
+    void error(const char *msg) {
+        if (LEVEL >= ERROR) {
+            std::cerr << "MEMORY_AGENT::ERROR " << msg << std::endl;
+        }
     }
-}
 
-void fatal(const char *msg) {
-    if (LEVEL >= FATAL) {
-        std::cerr << "MEMORY_AGENT::FATAL " << msg << std::endl;
+    void warn(const char *msg) {
+        if (LEVEL >= WARN) {
+            std::cout << "MEMORY_AGENT::WARN " << msg << std::endl;
+        }
     }
-}
 
-void error(const char *msg) {
-    if (LEVEL >= ERROR) {
-        std::cerr << "MEMORY_AGENT::ERROR " << msg << std::endl;
+    void info(const char *msg) {
+        if (LEVEL >= INFO) {
+            std::cout << "MEMORY_AGENT::INFO " << msg << std::endl;
+        }
     }
-}
 
-void warn(const char *msg) {
-    if (LEVEL >= WARN) {
-        std::cout << "MEMORY_AGENT::WARN " << msg << std::endl;
+    void debug(const char *msg) {
+        if (LEVEL >= DEBUG) {
+            std::cout << "MEMORY_AGENT::DEBUG " << msg << std::endl;
+        }
     }
-}
 
-void info(const char *msg) {
-    if (LEVEL >= INFO) {
-        std::cout << "MEMORY_AGENT::INFO " << msg << std::endl;
+    void resetTimer() {
+        timePoint = std::chrono::steady_clock::now();
     }
-}
 
-void debug(const char *msg) {
-    if (LEVEL >= DEBUG) {
-        std::cout << "MEMORY_AGENT::DEBUG " << msg << std::endl;
+    void logPassedTime() {
+        if (LEVEL >= DEBUG) {
+            long long passedTime = std::__1::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - timePoint
+            ).count();
+            std::cout << "MEMORY_AGENT::TIME_MS" << passedTime << std::endl;
+        }
+    }
+
+    void handleOptions(const char *options) {
+        auto level = static_cast<int>(LEVEL);
+        if (options && !std::string(options).empty()) {
+            try {
+                level = std::stoi(options);
+            }
+            catch (const std::invalid_argument &e) {
+                logger::error("Invalid log level argument. Expected value is integer between 0 and 5. \"ERROR\" level will be set");
+            }
+        }
+
+        if (NO_LOG <= level && level <= DEBUG) {
+            LEVEL = static_cast<LogLevel>(level);
+        } else {
+            logger::warn("Unexpected log level. Expected value between 0 and 5");
+        }
     }
 }

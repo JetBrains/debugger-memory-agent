@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include "../memory_agent_action.h"
 #include "sizes_tags.h"
+#include "../log.h"
 
 extern std::unordered_set<jlong> tagsWithNewInfo;
 
@@ -47,7 +48,7 @@ protected:
         jvmtiError err =  this->jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
 
         if (sizesTagBalance != 0) {
-            fatal("MEMORY LEAK FOUND!");
+            logger::fatal("MEMORY LEAK FOUND!");
         }
 
         return err;
@@ -73,7 +74,7 @@ protected:
     }
 
     jvmtiError tagObjectsOfClasses(jobjectArray classesArray) {
-        debug("tag objects of classes");
+        logger::debug("tag objects of classes");
         jvmtiError err = createTagsForClasses(this->env, this->jvmti, classesArray);
         if (err != JVMTI_ERROR_NONE) return err;
 
@@ -86,7 +87,7 @@ protected:
         if (this->shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
         std::vector<jobject> objects;
-        debug("collect objects with new info");
+        logger::debug("collect objects with new info");
         err = getObjectsByTags(this->jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, objects);
         if (err != JVMTI_ERROR_NONE) return err;
         if (this->shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;

@@ -57,7 +57,7 @@ jvmtiError ShallowSizeByClassesAction::cleanHeap() {
     jvmtiError err =  this->jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
 
     if (sizesTagBalance != 0) {
-        fatal("MEMORY LEAK FOUND!");
+        logger::fatal("MEMORY LEAK FOUND!");
     }
 
     return err;
