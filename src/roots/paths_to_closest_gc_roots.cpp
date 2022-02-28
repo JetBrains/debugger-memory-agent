@@ -259,6 +259,7 @@ jobjectArray PathsToClosestGcRootsAction::collectPathsToClosestGcRoots(jlong sta
     jlong tag = start;
     queue.push(tag);
     prevTag[tag] = tag;
+    progressManager.updateProgress(80, "Calculating paths to closest GC roots...");
     while (!queue.empty() && number > foundRoots.size()) {
         if (shouldStopExecution()) return getEmptyArray(env);
 
@@ -281,6 +282,7 @@ jobjectArray PathsToClosestGcRootsAction::collectPathsToClosestGcRoots(jlong sta
 
     if (shouldStopExecution()) return getEmptyArray(env);
 
+    progressManager.updateProgress(90, "Packing result...");
     return foundRoots.empty() ?
            createResultObject(env, jvmti, std::vector<jlong>{start}) :
            createResultObjectForGcRootsPaths(env, jvmti, foundRoots, prevTag, start, objectsNumber);
@@ -321,6 +323,7 @@ GcTag *PathsToClosestGcRootsAction::createTags(jobject target) {
     jvmtiError err = jvmti->SetTag(target, pointerToTag(tag));
     handleError(jvmti, err, "Could not set getTag for target object");
 
+    progressManager.updateProgress(20, "Capturing heap dump...");
     err = FollowReferences(0, nullptr, nullptr, collectPaths, nullptr, "collecting objects paths");
     handleError(jvmti, err, "FollowReference call failed");
 
