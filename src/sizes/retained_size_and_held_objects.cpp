@@ -49,7 +49,7 @@ jvmtiError RetainedSizeAndHeldObjectsAction::traverseHeapForTheFirstTime(jobject
 }
 
 jvmtiError RetainedSizeAndHeldObjectsAction::traverseHeapFromStartObjectAndCountRetainedSize(jobject &object, jlong &retainedSize) {
-    progressManager.updateProgress(45, "Traversing heap for the second time...");
+    progressManager.updateProgress(80, "Traversing heap for the second time...");
     retainedSize = 0;
     jvmtiError err = FollowReferences(0, nullptr, object, secondTraversal, &retainedSize, "tag heap");
     if (!isOk(err)) return err;
