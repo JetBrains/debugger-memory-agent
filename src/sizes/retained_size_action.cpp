@@ -146,11 +146,11 @@ jvmtiError walkHeapFromObjects(jvmtiEnv *jvmti,
                 tagsWithNewInfo.erase(tag);
                 err = jvmti->FollowReferences(0, nullptr, object, &cb, nullptr);
                 if (err != JVMTI_ERROR_NONE) return err;
-                debug(std::to_string(tagsWithNewInfo.size()).c_str());
+                logger::debug(std::to_string(tagsWithNewInfo.size()).c_str());
                 heapWalksCnt++;
             }
         }
-        debug(std::string("Total heap walks: " + std::to_string(heapWalksCnt)).c_str());
+        logger::debug(std::string("Total heap walks: " + std::to_string(heapWalksCnt)).c_str());
     }
 
     return err;

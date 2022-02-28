@@ -12,7 +12,7 @@ jvmtiError RetainedSizeByObjectsAction::calculateRetainedSizes(const std::vector
     std::set<jobject> unique(objects.begin(), objects.end());
     size_t count = objects.size();
     if (count != unique.size()) {
-        fatal("Invalid argument: objects should be unique");
+        logger::fatal("Invalid argument: objects should be unique");
     }
 
     result.resize(static_cast<unsigned long>(count));
@@ -72,7 +72,7 @@ jvmtiError RetainedSizeByObjectsAction::tagHeap(const std::vector<jobject> &obje
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
 
     std::vector<jobject> taggedObjects;
-    debug("collect objects with new info");
+    logger::debug("collect objects with new info");
     err = getObjectsByTags(jvmti, std::vector<jlong>{pointerToTag(&Tag::TagWithNewInfo)}, taggedObjects);
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
@@ -99,8 +99,8 @@ jvmtiError RetainedSizeByObjectsAction::estimateObjectsSizes(const std::vector<j
 }
 
 jlongArray RetainedSizeByObjectsAction::executeOperation(jobjectArray objects) {
-    debug("start estimate objects sizes");
-    debug("convert java array to vector");
+    logger::debug("start estimate objects sizes");
+    logger::debug("convert java array to vector");
     std::vector<jobject> javaObjects;
     fromJavaArray(env, objects, javaObjects);
     std::vector<jlong> result;
@@ -120,7 +120,7 @@ jvmtiError RetainedSizeByObjectsAction::cleanHeap() {
     jvmtiError err =  this->jvmti->IterateThroughHeap(0, nullptr, &cb, nullptr);
 
     if (sizesTagBalance != 0) {
-        fatal("MEMORY LEAK FOUND!");
+        logger::fatal("MEMORY LEAK FOUND!");
     }
 
     return err;
