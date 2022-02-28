@@ -127,7 +127,7 @@ static jint JNICALL freeObjectCallback(jlong classTag, jlong size, jlong *tagPtr
     auto info = reinterpret_cast<iterationInfo *>(userData);
     jlong tagValue = *tagPtr;
     *tagPtr = 0;
-    if (info->first->find(tagValue) == info->first->end() && info->second) {
+    if (info->second && info->first->find(tagValue) == info->first->end()) {
         info->second(tagValue);
     }
 
