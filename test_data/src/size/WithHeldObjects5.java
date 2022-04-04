@@ -19,6 +19,7 @@ public class WithHeldObjects5 extends TestBase {
         root3.right = root2.right;
         root3.left = root2;
         printSizeAndHeldObjects(root2);
+        printSizes(root2, root2.left, root3);
         root2 = null;
         printSizeAndHeldObjects(root3);
     }

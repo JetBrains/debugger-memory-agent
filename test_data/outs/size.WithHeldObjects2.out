@@ -6,7 +6,9 @@ Held objects:
 [common.TestTreeNode$Impl1: node 4]
 [common.TestTreeNode$Impl1: node 5]
 [common.TestTreeNode$Impl2: node 1]
+[[common.TestTreeNode$Impl2: node 1], [common.TestTreeNode$Impl3: node 6], [common.TestTreeNode$Impl1: node 5]] -> [120, 24, 24]
 Shallow size: 24, Retained size: 48
 Held objects:
 [common.TestTreeNode$Impl1: node 5]
 [common.TestTreeNode$Impl2: node 1]
+[[common.TestTreeNode$Impl2: node 1], [common.TestTreeNode$Impl3: node 6], [common.TestTreeNode$Impl1: node 5]] -> [48, 24, 24]
