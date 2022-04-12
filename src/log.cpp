@@ -2,6 +2,7 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include "log.h"
 
 namespace logger {
@@ -16,34 +17,45 @@ namespace logger {
 
     LogLevel LEVEL = ERROR;
     std::chrono::steady_clock::time_point timePoint;
+    std::ostream *out = &std::cout;
+
+    void open(const char *fileName) {
+        out = new std::ofstream(fileName);
+    }
+
+    void close() {
+        if (out != &std::cout) {
+            delete out;
+        }
+    }
 
     void fatal(const char *msg) {
         if (LEVEL >= FATAL) {
-            std::cerr << "MEMORY_AGENT::FATAL " << msg << std::endl;
+            *out << "MEMORY_AGENT::FATAL " << msg << std::endl;
         }
     }
 
     void error(const char *msg) {
         if (LEVEL >= ERROR) {
-            std::cerr << "MEMORY_AGENT::ERROR " << msg << std::endl;
+            *out << "MEMORY_AGENT::ERROR " << msg << std::endl;
         }
     }
 
     void warn(const char *msg) {
         if (LEVEL >= WARN) {
-            std::cout << "MEMORY_AGENT::WARN " << msg << std::endl;
+            *out << "MEMORY_AGENT::WARN " << msg << std::endl;
         }
     }
 
     void info(const char *msg) {
         if (LEVEL >= INFO) {
-            std::cout << "MEMORY_AGENT::INFO " << msg << std::endl;
+            *out  << "MEMORY_AGENT::INFO " << msg << std::endl;
         }
     }
 
     void debug(const char *msg) {
         if (LEVEL >= DEBUG) {
-            std::cout << "MEMORY_AGENT::DEBUG " << msg << std::endl;
+            *out << "MEMORY_AGENT::DEBUG " << msg << std::endl;
         }
     }
 
@@ -56,7 +68,7 @@ namespace logger {
             long long passedTime = std::__1::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - timePoint
             ).count();
-            std::cout << "MEMORY_AGENT::TIME_MS" << passedTime << std::endl;
+            *out << "MEMORY_AGENT::TIME_MS " << passedTime << std::endl;
         }
     }
 
