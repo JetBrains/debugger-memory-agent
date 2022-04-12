@@ -56,9 +56,9 @@ static jboolean setAllocationSamplingMode(jvmtiEventMode mode) {
 }
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
-    handleOptions(options);
+    logger::handleOptions(options);
 
-    debug("on agent load");
+    logger::debug("on agent load");
     jvmtiEnv *jvmti = nullptr;
     jint result = jvm->GetEnv((void **) &jvmti, JVMTI_VERSION_1_0);
     if (result != JNI_OK || jvmti == nullptr) {
@@ -66,7 +66,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
         return result;
     }
 
-    debug("set capabilities");
+    logger::debug("set capabilities");
     jvmtiCapabilities capabilities;
     setRequiredCapabilities(jvmti, capabilities);
     jvmtiError error = jvmti->AddCapabilities(&capabilities);
@@ -83,7 +83,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
         }
     }
 
-    debug("set callbacks");
+    logger::debug("set callbacks");
     jvmtiEventCallbacks callbacks;
     std::memset(&callbacks, 0, sizeof(jvmtiEventCallbacks));
     callbacks.SampledObjectAlloc = SampledObjectAlloc;
@@ -91,7 +91,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
 
     gdata = new GlobalAgentData();
     gdata->jvmti = jvmti;
-    debug("initializing done");
+    logger::debug("initializing done");
     return JNI_OK;
 }
 

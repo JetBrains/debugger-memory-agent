@@ -19,6 +19,10 @@ namespace logger {
     void logPassedTime();
 
     void handleOptions(const char *options);
+
+    void open(const char *fileName);
+
+    void close();
 }
 
 #endif //MEMORY_AGENT_LOG_H
