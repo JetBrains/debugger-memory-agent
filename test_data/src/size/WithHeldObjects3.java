@@ -18,16 +18,19 @@ public class WithHeldObjects3 extends TestBase {
         root1.right = TestTreeNode.createTreeFromString("1 1 0 0 1 0 0");
         printSizeAndHeldObjects(root1);
         printSizes(root1, root2, root3);
+        printSizesOfTestTreeNodeClasses();
         root2.left = root1.right;
         root3.left = root1.right;
         printSizeAndHeldObjects(root1);
         printSizeAndHeldObjects(root2);
         printSizeAndHeldObjects(root3);
         printSizes(root1, root2, root3);
+        printSizesOfTestTreeNodeClasses();
         root1.right = null;
         root2.left = null;
         printSizeAndHeldObjects(root3);
         printSizes(root1, root2, root3);
+        printSizesOfTestTreeNodeClasses();
     }
 }
 

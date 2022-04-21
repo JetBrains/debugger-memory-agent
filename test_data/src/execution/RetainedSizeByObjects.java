@@ -8,7 +8,7 @@ public class RetainedSizeByObjects extends ExecutionTestBase {
     @Override
     protected MemoryAgentErrorCode executeOperation(IdeaNativeAgentProxy proxy) {
         TestTreeNode root = TestTreeNode.createTreeFromString("2 1 1 0 0 0 0");
-        return getErrorCode(proxy.estimateRetainedSize(new Object[]{root}));
+        return getErrorCode(proxy.getShallowAndRetainedSizeByObjects(new Object[]{root}));
     }
 
     public static void main(String[] args) {

@@ -4,6 +4,7 @@ import com.intellij.memory.agent.IdeaNativeAgentProxy;
 
 import java.lang.management.ManagementFactory;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class TestBase {
@@ -124,15 +125,45 @@ public abstract class TestBase {
     objectsNames.forEach(System.out::println);
   }
 
+  protected static void printSizesOfTestTreeNodeClasses() {
+    printSizesByClass(TestTreeNode.Impl1.class);
+    printSizesByClass(TestTreeNode.Impl2.class);
+    printSizesByClass(TestTreeNode.Impl3.class);
+    printSizesByClass(TestTreeNode.Impl4.class);
+  }
+
+  protected static void printSizesByClass(Class<?> classRef) {
+    Object result = proxy.getShallowAndRetainedSizeByClass(classRef, DEFAULT_OBJECTS_LIMIT);
+    Object[] arrayResult = (Object[]) ((Object[]) result)[1];
+    System.out.println("Class " + classRef.getName());
+    printSizesOfObjects((Object[]) arrayResult[0], (long[])arrayResult[1], (long[])arrayResult[2]);
+  }
+
   protected static void printSizes(Object... objects) {
-    String names = Arrays.toString(Arrays.stream(objects).map(TestBase::asString).toArray());
-    System.out.println(names + " -> " + Arrays.toString(getResultAsLong(proxy.estimateRetainedSize(objects))));
+    Object result = proxy.getShallowAndRetainedSizeByObjects(objects);
+    Object[] arrayResult = (Object[]) ((Object[]) result)[1];
+    printSizesOfObjects(objects, (long[])arrayResult[0], (long[])arrayResult[1]);
+  }
+
+  private static void printSizesOfObjects(Object[] objects, long[] shallowSizes, long[] retainedSizes) {
+    System.out.println("Shallow sizes:");
+    printSizeByObjects(objects, shallowSizes);
+    System.out.println("Retained sizes:");
+    printSizeByObjects(objects, retainedSizes);
   }
 
   private static void printSizeByClasses(Class<?>[] classes, long[] sizes) {
-    assertEquals(classes.length, sizes.length);
+    printSize(classes, sizes, Class::getTypeName);
+  }
+
+  private static void printSizeByObjects(Object[] objects, long[] sizes) {
+    printSize(objects, sizes, TestBase::asString);
+  }
+
+  private static <T> void printSize(T[] objects, long[] sizes, Function<T, String> toString) {
+    assertEquals(objects.length, sizes.length);
     for (int i = 0; i < sizes.length; i++) {
-      System.out.println("\t" + classes[i].getTypeName() + " -> " + sizes[i]);
+      System.out.println("\t" + toString.apply(objects[i]) + " -> " + sizes[i]);
     }
   }
 

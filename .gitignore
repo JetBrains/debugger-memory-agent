@@ -23,6 +23,7 @@ venv/**
 
 # CMake
 cmake-build-*/
+CMakeFiles/**
 
 # Windows build directories
 build32/**
