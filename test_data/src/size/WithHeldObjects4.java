@@ -23,6 +23,7 @@ public class WithHeldObjects4 extends TestBase {
         printSizeAndHeldObjects(root2);
         printSizes(root2, root2.left, root2.left.left, root2.right, root2.right.right);
         printSizes(root2, root3, root4);
+        printSizesOfTestTreeNodeClasses();
         root3.left = root2.right;
         root4.left = root2.right.right;
         printSizeAndHeldObjects(root2);
@@ -30,11 +31,13 @@ public class WithHeldObjects4 extends TestBase {
         printSizeAndHeldObjects(root4);
         printSizes(root2, root2.left, root2.left.left, root2.right, root2.right.right);
         printSizes(root2, root3, root4);
+        printSizesOfTestTreeNodeClasses();
         root2 = null;
         printSizeAndHeldObjects(root3);
         printSizes(root3, root4);
         root3 = null;
         printSizeAndHeldObjects(root4);
+        printSizesOfTestTreeNodeClasses();
     }
 }
 

@@ -1,370 +1,280 @@
 // Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 #include <vector>
-#include <queue>
-#include <unordered_set>
 
 #include "retained_size_via_dominator_tree.h"
+#include "dominator_tree.h"
 
-namespace {
-    void log(const std::string &str) {
-        std::ofstream out;
-        out.open("/Users/Nikita.Nazarov/CLionProjects/debugger-memory-agent/log.txt", std::ios_base::app);
-        out << str << std::endl;
+#define VISITED_TAG (-1)
+#define MOCK_REFERRER_TAG (-2)
+#define CLASS_TAG (-3)
+#define OBJECT_OF_CLASS_TAG (-4)
+
+class SizesViaDominatorTreeHeapDumpInfo {
+public:
+    SizesViaDominatorTreeHeapDumpInfo() : graph(1), sizes(1) {}
+
+    jvmtiError initAndSetTagsForObjects(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray objects) {
+        jvmtiError err = JVMTI_ERROR_NONE;
+        jsize size = env->GetArrayLength(objects);
+        for (jsize i = 0; i < size; i++) {
+            jobject object = env->GetObjectArrayElement(objects, i);
+            jlong objectTag;
+            err = jvmti->GetTag(object, &objectTag);
+            if (!isOk(err)) return err;
+            if (objectTag != 0 && objectTag != OBJECT_OF_CLASS_TAG)
+                continue;
+
+            jlong tag = currentTag++;
+            err = jvmti->SetTag(object, tag);
+            if (!isOk(err)) return err;
+
+            jlong objectSize;
+            err = jvmti->GetObjectSize(object, &objectSize);
+            if (!isOk(err)) return err;
+
+            graph.emplace_back();
+            sizes.push_back(objectSize);
+        }
+        lastStartTag = currentTag - 1;
+        wasVisitedDuringFirstTraversal.resize(currentTag);
+
+        return err;
     }
 
-    class Timer {
-    public:
-        std::chrono::steady_clock::time_point begin;
-        void start() {
-            begin = std::chrono::steady_clock::now();
-        }
-
-        void end() {
-            log(std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count()));
-        }
-    };
-
-    Timer timer;
-    class graph {
-    public:
-        void addNewVertexAndListNeighbours(const std::vector<jlong> &neighbours) {
-            for (jlong neighbour : neighbours) {
-                vertices.push_back(neighbour);
+    void setUpNeighboursForMasterNode() {
+        for (jint i = 1; i <= lastStartTag; i++) {
+            if (wasVisitedDuringFirstTraversal[i]) {
+                graph[0].push_back(i);
             }
-            jlong last = indices.size() - 1;
-            indices.push_back(indices[last] + neighbours.size());
-        }
-
-        template<class Iterator>
-        void addNewVertexAndListNeighbours(Iterator begin, Iterator end) {
-            jlong addedNeighbours = 0;
-            for (Iterator it = begin; it  != end; ++it, ++addedNeighbours) {
-                vertices.push_back(*it);
-            }
-
-            jlong last = indices.size() - 1;
-            indices.push_back(indices[last] + addedNeighbours);
-        }
-
-        void replaceStartVertexAndListNeighbours(const std::unordered_set<jlong> &neighbours) {
-            for (jlong i = 1; i < indices.size(); i++) {
-                indices[i] += neighbours.size();
-            }
-
-            std::vector<jlong> newVertices;
-            jlong neighboursSize = neighbours.size();
-            newVertices.resize(neighboursSize + vertices.size());
-            jlong i = 0;
-            for (auto it = neighbours.begin(); it != neighbours.end(); ++it, ++i) {
-                newVertices[i] = *it;
-            }
-
-            for (jlong i = 0; i < vertices.size(); i++) {
-                newVertices[neighboursSize + i] = vertices[i];
-            }
-
-            vertices = std::move(newVertices);
-        }
-
-        [[nodiscard]] jlong numOfVertices() const { return indices.size() - 1; }
-
-        void print() {
-            std::cout << "Num of vertices: " << numOfVertices() << std::endl;
-            for (size_t i = 0; i < numOfVertices(); i++) {
-                std::cout << "Neighbors of " << i << ":" << std::endl;
-                visitNeighbours(i, [](jlong v) { std::cout << v << " "; });
-                std::cout << std::endl;
-            }
-        }
-
-        void visitNeighbours(jlong vertex, const std::function<void(jlong)> &&callback) const {
-            if (vertex < 0 || vertex >= numOfVertices()) {
-                return;
-            }
-
-            for (jlong i = indices[vertex]; i < indices[vertex + 1]; i++) {
-                callback(vertices[i]);
-            }
-        }
-
-        [[nodiscard]] graph transpose() const {
-            graph transposed;
-            std::vector<jlong> currentlyAddedVerticesCnt;
-            std::vector<jlong> neighboursCnt;
-            neighboursCnt.resize(indices.size());
-            currentlyAddedVerticesCnt.resize(indices.size());
-            transposed.indices.resize(indices.size());
-            transposed.vertices.resize(vertices.size());
-            for (jlong i = 0; i < indices.size() - 1; i++) {
-                for (jlong j = indices[i]; j < indices[i + 1]; j++) {
-                    ++neighboursCnt[vertices[j] + 1];
-                }
-            }
-
-            jlong sum = 0;
-            for (jlong i = 0; i < neighboursCnt.size(); i++) {
-                sum += neighboursCnt[i];
-                transposed.indices[i] = sum;
-            }
-
-            for (jlong i = 0; i < indices.size() - 1; i++) {
-                for (jlong j = indices[i]; j < indices[i + 1]; j++) {
-                    jlong vertex = vertices[j];
-                    jlong index = transposed.indices[vertex];
-                    transposed.vertices[index + currentlyAddedVerticesCnt[vertex]++] = i;
-                }
-            }
-
-            return transposed;
-        }
-
-        void clear() {
-            vertices.clear();
-            indices = {0};
-        }
-
-    private:
-        std::vector<jlong> indices = {0};
-        std::vector<jlong> vertices;
-    };
-
-    void link(jlong v, jlong w, std::vector<jlong> &ancestor) {
-        ancestor[w] = v;
-    }
-
-    void compress(jlong v, std::vector<jlong> &ancestor, std::vector<jlong> &label, std::vector<jlong> &semi) {
-        if (ancestor[ancestor[v]] != 0) {
-            compress(ancestor[v], ancestor, label, semi);
-            if (semi[label[ancestor[v]]] < semi[label[v]]) {
-                label[v] = label[ancestor[v]];
-            }
-            ancestor[v] = ancestor[ancestor[v]];
         }
     }
 
-    jlong eval(jlong v, std::vector<jlong> &ancestor, std::vector<jlong> &label, std::vector<jlong> &semi) {
-        if (ancestor[v] == 0) {
-            return v;
-        }
-        compress(v, ancestor, label, semi);
-        return label[v];
+    jlong addNewVertex(jlong size) {
+        sizes.push_back(size);
+        graph.emplace_back();
+        return currentTag++;
     }
 
-    void dfs(
-        jlong &n, const graph &g,
-        std::vector<jlong> &semi,
-        std::vector<jlong> &parent,
-        std::vector<jlong> &vertex
-    ) {
-        std::stack<jlong> stack;
-        stack.push(0);
-        n++;
-        while (!stack.empty()) {
-            jlong t = stack.top();
-            stack.pop();
-            g.visitNeighbours(t, [&](jlong w) {
-                if (w != 0 && semi[w] == 0) {
-                    semi[w] = n;
-                    vertex[n] = w;
-                    n++;
-                    parent[w] = t;
-                    stack.push(w);
-                }
-            });
+    void addNeighbour(jlong parent, jlong neighbour) {
+        if (parent >= graph.size()) {
+            throw std::invalid_argument("Parent number exceeds graph size");
         }
+        graph[parent].push_back(neighbour);
     }
 
-    std::vector<jlong> calculateRetainedSizes(graph &g, const std::vector<jlong> &sizes) {
-        size_t numOfVertices = g.numOfVertices();
-
-        log("Allocating memory...");
-        std::vector<jlong> semi(numOfVertices);
-        std::vector<jlong> parent(numOfVertices);
-        std::vector<jlong> vertex(numOfVertices);
-        std::vector<std::vector<jlong>> bucket(numOfVertices);
-        std::vector<jlong> ancestor(numOfVertices);
-        std::vector<jlong> label(numOfVertices);
-        std::vector<jlong> dom(numOfVertices);
-        std::vector<jlong> retained_sizes(numOfVertices);
-
-        for (jlong i = 0; i < numOfVertices; i++) {
-            retained_sizes[i] = sizes[i];
-            label[i] = i;
+    void visitStartVertex(jlong vertex) {
+        if (vertex >= wasVisitedDuringFirstTraversal.size()) {
+            throw std::invalid_argument("Vertex number exceeds number of start vertices");
         }
-
-        log("Traversing graph...");
-        jlong n = 0;
-        dfs(n, g, semi, parent, vertex);
-
-        graph transposed = g.transpose();
-        g.clear();
-
-        for (jlong i = n - 1; i > 0; i--) {
-            jlong w = vertex[i];
-            transposed.visitNeighbours(w, [&](size_t v) {
-                jlong u = eval(v, ancestor, label, semi);
-                if (semi[u] < semi[w]) {
-                    semi[w] = semi[u];
-                }
-            });
-
-            bucket[vertex[semi[w]]].push_back(w);
-            link(parent[w], w, ancestor);
-
-            for (jlong v : bucket[parent[w]]) {
-                jlong u = eval(v, ancestor, label, semi);
-                if (semi[u] < semi[v]) {
-                    dom[v] = u;
-                } else {
-                    dom[v] = parent[w];
-                }
-            }
-            bucket[parent[w]].clear();
-        }
-
-        dom[0] = -1;
-        std::vector<jlong> childCount(numOfVertices);
-        for (jlong i = 1; i < n; i++) {
-            jlong w = vertex[i];
-            if (dom[w] != vertex[semi[w]]) {
-                dom[w] = dom[dom[w]];
-            }
-
-            if (dom[w] >= 0) {
-                childCount[dom[w]]++;
-            }
-        }
-
-        std::queue<jlong> leaves;
-        for (jlong i = 1; i < n; i++) {
-            if (childCount[i] == 0) {
-                leaves.push(i);
-            }
-        }
-
-        log("Fetching retained size...");
-        while (!leaves.empty()) {
-            jlong leaf = leaves.front();
-            leaves.pop();
-            jlong d = dom[leaf];
-            if (d >= 0) {
-                retained_sizes[d] += retained_sizes[leaf];
-                if (--childCount[d] == 0) {
-                    leaves.push(d);
-                }
-            }
-        }
-        return retained_sizes;
+        wasVisitedDuringFirstTraversal[vertex] = true;
     }
-}
 
-struct HeapDumpInfo {
-    HeapDumpInfo() : g(1), sizes(1) {}
-
-    graph graph;
+public:
+    std::vector<std::vector<jlong>> graph;
     std::vector<jlong> sizes;
-    std::unordered_set<jlong> roots;
-    std::vector<jlong> currentTagNeighbours;
-    std::vector<std::vector<jlong>> g;
-    jlong currentReferrerTag = 0;
-    jlong tag = 1;
+    std::vector<bool> wasVisitedDuringFirstTraversal;
+    jlong lastStartTag = 1;
+    jlong currentTag = 1;
 };
 
-jint JNICALL dumpHeapGraph(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
-                           jlong referrerClassTag, jlong size, jlong *tagPtr,
-                           jlong *referrerTagPtr, jint length, void *userData) {
-    if (refKind == JVMTI_HEAP_REFERENCE_CLASS ||
-        refKind == JVMTI_HEAP_REFERENCE_CLASS_LOADER ||
-        refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL ||
-        refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL) {
-        return 0;
+namespace {
+    jint JNICALL collectObjects(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                jlong *referrerTagPtr, jint length, void *userData) {
+        if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL) {
+            return 0;
+        } else if (classTag == CLASS_TAG) {
+            *tagPtr = OBJECT_OF_CLASS_TAG;
+        }
+        return JVMTI_VISIT_OBJECTS;
     }
 
-    auto *info = reinterpret_cast<HeapDumpInfo *>(userData);
+    jint JNICALL firstTraversal(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                jlong *referrerTagPtr, jint length, void *userData) {
+        auto *info = reinterpret_cast<SizesViaDominatorTreeHeapDumpInfo *>(userData);
+        if (refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL) {
+            return 0;
+        } else if (*tagPtr == 0) {
+            *tagPtr = VISITED_TAG;
+        } else if (*tagPtr <= info->lastStartTag) {
+            if (*tagPtr > 0) {
+                info->visitStartVertex(*tagPtr);
+            }
+            return 0;
+        }
 
-    if (*tagPtr == 0) {
-        *tagPtr = info->tag;
-        info->sizes.push_back(size);
-        info->g.emplace_back();
-        info->tag++;
+        return JVMTI_VISIT_OBJECTS;
     }
 
-    if (referrerTagPtr == nullptr) {
-        info->roots.insert(*tagPtr);
-    } else {
-        info->g[*referrerTagPtr].push_back(*tagPtr);
-    }
+    jint JNICALL secondTraversal(jvmtiHeapReferenceKind refKind, const jvmtiHeapReferenceInfo *refInfo, jlong classTag,
+                                 jlong referrerClassTag, jlong size, jlong *tagPtr,
+                                 jlong *referrerTagPtr, jint length, void *userData) {
+        if (*referrerTagPtr == MOCK_REFERRER_TAG) {
+            return JVMTI_VISIT_OBJECTS;
+        }
 
-    return JVMTI_VISIT_OBJECTS;
+        auto *info = reinterpret_cast<SizesViaDominatorTreeHeapDumpInfo *>(userData);
+        if (*tagPtr == VISITED_TAG || refKind == JVMTI_HEAP_REFERENCE_JNI_LOCAL || refKind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL) {
+            return 0;
+        } else if (*tagPtr == 0) {
+            *tagPtr = info->addNewVertex(size);
+            info->addNeighbour(*referrerTagPtr, *tagPtr);
+        } else {
+            info->addNeighbour(*referrerTagPtr, *tagPtr);
+            return 0;
+        }
+
+        return JVMTI_VISIT_OBJECTS;
+    }
 }
 
-jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
-    if (*tagPtr == 0) {
-        return JVMTI_ITERATION_CONTINUE;
-    }
-
-    return JVMTI_ITERATION_CONTINUE;
-}
-
-jlongArray RetainedSizeViaDominatorTreeAction::executeOperation(jobjectArray objects) {
-    jlong heapSize = 0;
-    jvmtiError err = jvmti->IterateThroughHeap(0, nullptr, nullptr, dumpHeapGraph, visitObject, &heapSize);
+jobjectArray RetainedSizeViaDominatorTreeAction::executeOperation(jobjectArray objects) {
+    SizesViaDominatorTreeHeapDumpInfo info;
+    jvmtiError err = info.initAndSetTagsForObjects(env, jvmti, objects);
     if (err != JVMTI_ERROR_NONE) return nullptr;
 
-    log("START");
-    HeapDumpInfo info;
-    log("Capturing heap dump...");
-    progressManager.updateProgress(10, "Capturing heap dump");
-    timer.start();
-    err = FollowReferences(0, nullptr, nullptr, dumpHeapGraph, &info, "dump heap graph");
-    timer.end();
+    // We set a tag for the input array to ignore it during traversal
+    err = jvmti->SetTag(objects, MOCK_REFERRER_TAG);
     if (err != JVMTI_ERROR_NONE) return nullptr;
 
-//    info.graph.replaceStartVertexAndListNeighbours(info.roots);
+    progressManager.updateProgress(10, "Traversing heap for the first time...");
+    logger::resetTimer();
+    err = FollowReferences(0, nullptr, nullptr, firstTraversal, &info, "first traversal");
+    logger::logPassedTime();
+    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
 
-    log("Converting graph...");
-    timer.start();
-    info.graph.addNewVertexAndListNeighbours(info.roots.begin(), info.roots.end());
-    for (jlong i = 1; i < info.g.size(); i++) {
-        info.graph.addNewVertexAndListNeighbours(info.g[i]);
-    }
-    timer.end();
+    logger::resetTimer();
+    progressManager.updateProgress(60, "Traversing heap for the second time...");
+    err = FollowReferences(0, nullptr, objects, secondTraversal, &info, "second traversal");
+    logger::logPassedTime();
+    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
 
-    log("Cleaning previous graph...");
-    timer.start();
-    for (jlong i = 0; i < info.g.size(); i++) {
-        info.g[i].clear();
-    }
-    info.g.clear();
-    timer.end();
-
-    progressManager.updateProgress(10, "Calculating retained size");
-    log("Calculating retained size...");
-    timer.start();
+    progressManager.updateProgress(80, "Calculating retained size...");
+    info.setUpNeighboursForMasterNode();
     std::vector<jlong> retained_sizes = calculateRetainedSizes(info.graph, info.sizes);
-    timer.end();
 
-    log("Extracting answer");
-    progressManager.updateProgress(10, "Extracting answer");
-    std::vector<jlong> result;
+    progressManager.updateProgress(95, "Extracting answer...");
     jsize size = env->GetArrayLength(objects);
-    result.reserve(size);
+    std::vector<jlong> shallowSizes;
+    std::vector<jlong> retainedSizes;
+    retainedSizes.reserve(size);
+    shallowSizes.reserve(size);
     for (jsize i = 0; i < size; i++) {
         jobject object = env->GetObjectArrayElement(objects, i);
         jlong tag;
         jvmti->GetTag(object, &tag);
-        result.push_back(retained_sizes[tag]);
+        retainedSizes.push_back(retained_sizes[tag]);
+        shallowSizes.push_back(info.sizes[tag]);
     }
 
-    return toJavaArray(env, result);
+    jclass langObject = env->FindClass("java/lang/Object");
+    jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
+    env->SetObjectArrayElement(result, 0, toJavaArray(env, shallowSizes));
+    env->SetObjectArrayElement(result, 1, toJavaArray(env, retainedSizes));
+    if (!isOk(err)) {
+        handleError(jvmti, err, "Could not estimate retained size by classes");
+        return nullptr;
+    }
+    return result;
 }
 
 jvmtiError RetainedSizeViaDominatorTreeAction::cleanHeap() {
     return removeAllTagsFromHeap(jvmti, nullptr);
 }
 
-RetainedSizeViaDominatorTreeAction::RetainedSizeViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object)
-        : MemoryAgentAction(env, jvmti, object) {
+RetainedSizeViaDominatorTreeAction::RetainedSizeViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : 
+	MemoryAgentAction(env, jvmti, object) {
+}
 
+jobjectArray RetainedSizeByClassViaDominatorTreeAction::executeOperation(jobject classRef, jlong objectsLimit) {
+    jvmtiError err = jvmti->SetTag(classRef, CLASS_TAG);
+    if (err != JVMTI_ERROR_NONE) return nullptr;
+
+    err = FollowReferences(0, nullptr, nullptr, collectObjects, nullptr, "collect objects of class");
+    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+
+    std::vector<jobject> objectsOfClass;
+    err = getObjectsByTags(jvmti, std::vector<jlong>{OBJECT_OF_CLASS_TAG}, objectsOfClass);
+    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+
+    // Constructing the master node
+    jclass langObject = env->FindClass("java/lang/Object");
+    jobjectArray objects = env->NewObjectArray(objectsOfClass.size(), langObject, nullptr);
+    for (int i = 0; i < objectsOfClass.size(); i++) {
+        env->SetObjectArrayElement(objects, i, objectsOfClass[i]);
+    }
+
+    err = jvmti->SetTag(classRef, 0);
+    if (err != JVMTI_ERROR_NONE) return nullptr;
+
+    SizesViaDominatorTreeHeapDumpInfo info;
+    err = info.initAndSetTagsForObjects(env, jvmti, objects);
+    if (err != JVMTI_ERROR_NONE) return nullptr;
+
+    // We set a tag for the input array to ignore it during traversal
+    err = jvmti->SetTag(objects, MOCK_REFERRER_TAG);
+    if (err != JVMTI_ERROR_NONE) return nullptr;
+
+    progressManager.updateProgress(10, "Traversing heap for the first time...");
+    logger::resetTimer();
+    err = FollowReferences(0, nullptr, nullptr, firstTraversal, &info, "first traversal");
+    logger::logPassedTime();
+    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+
+    logger::resetTimer();
+    progressManager.updateProgress(60, "Traversing heap for the second time...");
+    err = FollowReferences(0, nullptr, objects, secondTraversal, &info, "second traversal");
+    logger::logPassedTime();
+    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+
+    progressManager.updateProgress(80, "Calculating retained size...");
+    info.setUpNeighboursForMasterNode();
+    std::vector<jlong> retainedSizes = calculateRetainedSizes(info.graph, info.sizes);
+
+    // Sort objects by their retained size
+    std::sort(objectsOfClass.begin(), objectsOfClass.end(), [&](jobject a, jobject b) {
+        jlong tagA;
+        jvmti->GetTag(a, &tagA);
+        jlong tagB;
+        jvmti->GetTag(b, &tagB);
+        return retainedSizes[tagA] > retainedSizes[tagB];
+    });
+
+    progressManager.updateProgress(95, "Extracting answer...");
+    size_t size = std::min((size_t)objectsLimit, objectsOfClass.size());
+    std::vector<jlong> shallowSizes;
+    std::vector<jlong> sortedRetainedSizes;
+    sortedRetainedSizes.reserve(size);
+    shallowSizes.reserve(size);
+    for (size_t i = 0; i < size; i++) {
+        jobject object = objectsOfClass[i];
+        jlong tag;
+        jvmti->GetTag(object, &tag);
+        sortedRetainedSizes.push_back(retainedSizes[tag]);
+        shallowSizes.push_back(info.sizes[tag]);
+    }
+
+    jobjectArray result = env->NewObjectArray(3, langObject, nullptr);
+    objects = env->NewObjectArray(size, langObject, nullptr);
+    for (int i = 0; i < size; i++) {
+        env->SetObjectArrayElement(objects, i, objectsOfClass[i]);
+    }
+    env->SetObjectArrayElement(result, 0, objects);
+    env->SetObjectArrayElement(result, 1, toJavaArray(env, shallowSizes));
+    env->SetObjectArrayElement(result, 2, toJavaArray(env, sortedRetainedSizes));
+    if (!isOk(err)) {
+        handleError(jvmti, err, "Could not estimate retained size by classes");
+        return nullptr;
+    }
+    return result;
+}
+
+jvmtiError RetainedSizeByClassViaDominatorTreeAction::cleanHeap() {
+    return removeAllTagsFromHeap(jvmti, nullptr);
+}
+
+RetainedSizeByClassViaDominatorTreeAction::RetainedSizeByClassViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) :
+        MemoryAgentAction(env, jvmti, object) {
 }

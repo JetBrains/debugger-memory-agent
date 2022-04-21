@@ -39,6 +39,7 @@ add_library(memory_agent SHARED
         src/allocation_sampling.cpp
         src/progress_manager.cpp
         src/sizes/retained_size_via_dominator_tree.cpp
+        src/sizes/dominator_tree.cpp
 )
 
 if ((UNIX OR MINGW) AND NOT APPLE)

@@ -7,14 +7,22 @@
 #include <jvmti.h>
 #include "../memory_agent_action.h"
 
-class RetainedSizeViaDominatorTreeAction : public MemoryAgentAction<jlongArray, jobjectArray> {
+class RetainedSizeViaDominatorTreeAction : public MemoryAgentAction<jobjectArray, jobjectArray> {
 public:
     RetainedSizeViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
 private:
-    jlongArray executeOperation(jobjectArray objects) override;
+    jobjectArray executeOperation(jobjectArray objects) override;
     jvmtiError cleanHeap() override;
 };
 
+class RetainedSizeByClassViaDominatorTreeAction : public MemoryAgentAction<jobjectArray, jobject, jlong> {
+public:
+    RetainedSizeByClassViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
+
+private:
+    jobjectArray executeOperation(jobject classRef, jlong objectsLimit) override;
+    jvmtiError cleanHeap() override;
+};
 
 #endif //MEMORY_AGENT_RETAINED_SIZE_VIA_DOMINATOR_TREE_ACTION_H

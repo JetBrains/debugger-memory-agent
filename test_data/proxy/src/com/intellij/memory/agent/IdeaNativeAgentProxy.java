@@ -44,11 +44,13 @@ public class IdeaNativeAgentProxy {
 
   public native Object[] size(Object object);
 
-  public native Object[] estimateRetainedSize(Object[] objects);
-
   public native Object[] getFirstReachableObject(Object startObject, Object suspectClass);
 
   public native Object[] getAllReachableObjects(Object startObject, Object suspectClass);
+
+  public native Object[] getShallowAndRetainedSizeByObjects(Object[] objects);
+
+  public native Object[] getShallowAndRetainedSizeByClass(Object classRef, long limit);
 
   static native boolean setHeapSamplingInterval(long interval);
 

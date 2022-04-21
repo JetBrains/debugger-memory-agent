@@ -14,6 +14,7 @@
 #include "sizes/retained_size_via_dominator_tree.h"
 #include "sizes/retained_size_by_classes.h"
 #include "allocation_sampling.h"
+#include "sizes/retained_size_by_objects.h"
 
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
@@ -22,8 +23,6 @@
 
 static GlobalAgentData *gdata = nullptr;
 static bool canSampleAllocations = false;
-
-extern void handleOptions(const char *);
 
 static void setRequiredCapabilities(jvmtiEnv *jvmti, jvmtiCapabilities &effective) {
     jvmtiCapabilities potential;
@@ -107,7 +106,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
-    debug("on agent unload");
+    logger::debug("on agent unload");
     delete gdata;
 }
 
@@ -158,7 +157,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentPro
         JNIEnv *env,
         jobject thisObject,
         jobjectArray objects) {
-    return RetainedSizeViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(objects);
+    return RetainedSizeByObjectsAction(env, gdata->jvmti, thisObject).run(objects);
 }
 
 extern "C"
@@ -219,6 +218,23 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentPro
         jobject startObject,
         jobject suspectClass) {
     return GetAllReachableObjectsOfClassAction(env, gdata->jvmti, thisObject).run(startObject, suspectClass);
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowAndRetainedSizeByObjects(
+        JNIEnv *env,
+        jobject thisObject,
+        jobjectArray objects) {
+    return RetainedSizeViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(objects);
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClass(
+        JNIEnv *env,
+        jobject thisObject,
+        jobject classRef,
+        jlong objectsLimit) {
+    return RetainedSizeByClassViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(classRef, objectsLimit);
 }
 
 extern "C"
