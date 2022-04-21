@@ -4,11 +4,14 @@
 #include "dominator_tree.h"
 
 namespace {
-    void link(long v, long w, std::vector<long> &ancestor) {
+    using jlongs = std::vector<jlong>;
+    using graph_t = std::vector<jlongs>;
+
+    void link(jlong v, jlong w, jlongs &ancestor) {
         ancestor[w] = v;
     }
 
-    void compress(long v, std::vector<long> &ancestor, std::vector<long> &label, std::vector<long> &semi) {
+    void compress(jlong v, jlongs &ancestor, jlongs &label, jlongs &semi) {
         if (ancestor[ancestor[v]] != -1) {
             compress(ancestor[v], ancestor, label, semi);
             if (semi[label[ancestor[v]]] < semi[label[v]]) {
@@ -18,7 +21,7 @@ namespace {
         }
     }
 
-    long eval(long v, std::vector<long> &ancestor, std::vector<long> &label, std::vector<long> &semi) {
+    jlong eval(jlong v, jlongs &ancestor, jlongs &label, jlongs &semi) {
         if (ancestor[v] == -1) {
             return v;
         }
@@ -27,14 +30,8 @@ namespace {
         return label[v];
     }
 
-    void dfs(
-        jlong v, jlong &n,
-        const std::vector<std::vector<jlong>> &graph,
-        std::vector <jlong> &semi,
-        std::vector <jlong> &parent,
-        std::vector <jlong> &vertex,
-        std::vector<std::vector<jlong>> &pred
-    ) {
+    void dfs(jlong v, jlong &n, const graph_t &graph, jlongs &semi,
+             jlongs &parent, jlongs &vertex, graph_t &pred) {
         semi[v] = n;
         vertex[n] = v;
         n++;
@@ -48,33 +45,25 @@ namespace {
     }
 }
 
-std::vector<jlong> calculateRetainedSizes(const std::vector<std::vector<jlong>> &graph, const std::vector<jlong> &sizes) {
-    size_t numOfVertices = graph.size();
+jlongs calculateRetainedSizesViaDominatorTree(const graph_t &graph, const jlongs &sizes) {
+    auto n = static_cast<jlong>(graph.size());
+    jlongs semi(n);
+    jlongs parent(n);
+    jlongs vertex(n);
+    jlongs ancestor(n);
+    jlongs label(n);
+    jlongs dom(n);
+    jlongs retainedSizes(n);
+    graph_t pred(n);
+    graph_t bucket(n);
 
-    std::vector<jlong> semi(numOfVertices);
-    std::vector<jlong> parent(numOfVertices);
-    std::vector<jlong> vertex(numOfVertices);
-    std::vector<std::vector<jlong>> pred(numOfVertices);
-    std::vector<std::vector<jlong>> bucket(numOfVertices);
-    std::vector<jlong> ancestor(numOfVertices);
-    std::vector<jlong> label(numOfVertices);
-    std::vector<jlong> dom(numOfVertices);
-    std::vector<jlong> retained_sizes(numOfVertices);
-    std::vector<jlong> child(numOfVertices);
-    std::vector<jlong> link_size(numOfVertices);
-
-    for (jlong i = 0; i < numOfVertices; i++) {
-        retained_sizes[i] = sizes[i];
+    for (jlong i = 0; i < n; i++) {
+        retainedSizes[i] = sizes[i];
         label[i] = i;
-        link_size[i] = 1;
         ancestor[i] = -1;
     }
 
-    link_size[0] = 0;
-    label[0] = 0;
-    semi[0] = 0;
-
-    jlong n = 0;
+    n = 0;
     dfs(0, n, graph, semi, parent, vertex, pred);
 
     for (jlong i = n - 1; i > 0; i--) {
@@ -100,7 +89,7 @@ std::vector<jlong> calculateRetainedSizes(const std::vector<std::vector<jlong>> 
     }
 
     dom[0] = -1;
-    std::vector<jlong> childCount(numOfVertices);
+    jlongs childCount(n);
     for (jlong i = 1; i < n; i++) {
         jlong w = vertex[i];
         if (dom[w] != vertex[semi[w]]) {
@@ -124,12 +113,12 @@ std::vector<jlong> calculateRetainedSizes(const std::vector<std::vector<jlong>> 
         leaves.pop();
         jlong d = dom[leaf];
         if (d >= 0) {
-            retained_sizes[d] += retained_sizes[leaf];
+            retainedSizes[d] += retainedSizes[leaf];
             if (--childCount[d] == 0) {
                 leaves.push(d);
             }
         }
     }
 
-    return retained_sizes;
+    return retainedSizes;
 }

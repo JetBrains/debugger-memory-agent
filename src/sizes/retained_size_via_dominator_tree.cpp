@@ -128,110 +128,113 @@ namespace {
 
         return JVMTI_VISIT_OBJECTS;
     }
+
+    jobjectArray getObjectArrayOfSize(JNIEnv *env, size_t size) {
+        return env->NewObjectArray(static_cast<jsize>(size), env->FindClass("java/lang/Object"), nullptr);
+    }
 }
 
-jobjectArray RetainedSizeViaDominatorTreeAction::executeOperation(jobjectArray objects) {
-    SizesViaDominatorTreeHeapDumpInfo info;
-    jvmtiError err = info.initAndSetTagsForObjects(env, jvmti, objects);
-    if (err != JVMTI_ERROR_NONE) return nullptr;
+template<typename RESULT_TYPE, typename... ARGS_TYPES>
+jvmtiError RetainedSizesAction<RESULT_TYPE, ARGS_TYPES...>::calculateRetainedSizes(jobjectArray objects,
+                                                                                   std::vector<jlong> &retainedSizes,
+                                                                                   SizesViaDominatorTreeHeapDumpInfo &info) {
+    jvmtiError err = info.initAndSetTagsForObjects(this->env, this->jvmti, objects);
+    if (!isOk(err)) return err;
 
     // We set a tag for the input array to ignore it during traversal
-    err = jvmti->SetTag(objects, MOCK_REFERRER_TAG);
-    if (err != JVMTI_ERROR_NONE) return nullptr;
+    err = this->jvmti->SetTag(objects, MOCK_REFERRER_TAG);
+    if (!isOk(err)) return err;
 
-    progressManager.updateProgress(10, "Traversing heap for the first time...");
+    this->progressManager.updateProgress(10, "Traversing heap for the first time...");
     logger::resetTimer();
-    err = FollowReferences(0, nullptr, nullptr, firstTraversal, &info, "first traversal");
+    err = this->FollowReferences(0, nullptr, nullptr, firstTraversal, &info);
     logger::logPassedTime();
-    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+    if (!isOk(err) || this->shouldStopExecution()) return err;
 
     logger::resetTimer();
-    progressManager.updateProgress(60, "Traversing heap for the second time...");
-    err = FollowReferences(0, nullptr, objects, secondTraversal, &info, "second traversal");
+    this->progressManager.updateProgress(60, "Traversing heap for the second time...");
+    err = this->FollowReferences(0, nullptr, objects, secondTraversal, &info);
     logger::logPassedTime();
-    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+    if (!isOk(err) || this->shouldStopExecution()) return err;
 
-    progressManager.updateProgress(80, "Calculating retained size...");
+    this->progressManager.updateProgress(80, "Calculating retained size...");
     info.setUpNeighboursForMasterNode();
-    std::vector<jlong> retained_sizes = calculateRetainedSizes(info.graph, info.sizes);
+    retainedSizes = calculateRetainedSizesViaDominatorTree(info.graph, info.sizes);
+
+    return err;
+}
+
+template<typename RESULT_TYPE, typename... ARGS_TYPES>
+RetainedSizesAction<RESULT_TYPE, ARGS_TYPES...>::RetainedSizesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) :
+    MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...>(env, jvmti, object) {
+
+}
+
+jobjectArray RetainedSizesViaDominatorTreeAction::executeOperation(jobjectArray objects) {
+    SizesViaDominatorTreeHeapDumpInfo info;
+    std::vector<jlong> retainedSizes;
+    jvmtiError err = calculateRetainedSizes(objects, retainedSizes, info);
+    if (!isOk(err) || shouldStopExecution()) return nullptr;
 
     progressManager.updateProgress(95, "Extracting answer...");
+    return constructResultObject(objects, retainedSizes, info);
+}
+
+jobjectArray RetainedSizesViaDominatorTreeAction::constructResultObject(jobjectArray objects,
+                                                                        const std::vector<jlong> &retainedSizes,
+                                                                        const SizesViaDominatorTreeHeapDumpInfo &info) {
     jsize size = env->GetArrayLength(objects);
     std::vector<jlong> shallowSizes;
-    std::vector<jlong> retainedSizes;
-    retainedSizes.reserve(size);
+    std::vector<jlong> resultingRetainedSizes;
+    resultingRetainedSizes.reserve(size);
     shallowSizes.reserve(size);
     for (jsize i = 0; i < size; i++) {
         jobject object = env->GetObjectArrayElement(objects, i);
         jlong tag;
         jvmti->GetTag(object, &tag);
-        retainedSizes.push_back(retained_sizes[tag]);
+        resultingRetainedSizes.push_back(retainedSizes[tag]);
         shallowSizes.push_back(info.sizes[tag]);
     }
-
-    jclass langObject = env->FindClass("java/lang/Object");
-    jobjectArray result = env->NewObjectArray(2, langObject, nullptr);
+    jobjectArray result = getObjectArrayOfSize(env, 2);
     env->SetObjectArrayElement(result, 0, toJavaArray(env, shallowSizes));
-    env->SetObjectArrayElement(result, 1, toJavaArray(env, retainedSizes));
-    if (!isOk(err)) {
-        handleError(jvmti, err, "Could not estimate retained size by classes");
-        return nullptr;
-    }
+    env->SetObjectArrayElement(result, 1, toJavaArray(env, resultingRetainedSizes));
+
     return result;
 }
 
-jvmtiError RetainedSizeViaDominatorTreeAction::cleanHeap() {
+jvmtiError RetainedSizesViaDominatorTreeAction::cleanHeap() {
     return removeAllTagsFromHeap(jvmti, nullptr);
 }
 
-RetainedSizeViaDominatorTreeAction::RetainedSizeViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) : 
-	MemoryAgentAction(env, jvmti, object) {
+RetainedSizesViaDominatorTreeAction::RetainedSizesViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) :
+    RetainedSizesAction(env, jvmti, object) {
 }
 
-jobjectArray RetainedSizeByClassViaDominatorTreeAction::executeOperation(jobject classRef, jlong objectsLimit) {
+jobjectArray RetainedSizesByClassViaDominatorTreeAction::executeOperation(jobject classRef, jlong objectsLimit) {
     jvmtiError err = jvmti->SetTag(classRef, CLASS_TAG);
-    if (err != JVMTI_ERROR_NONE) return nullptr;
+    if (!isOk(err)) return nullptr;
 
-    err = FollowReferences(0, nullptr, nullptr, collectObjects, nullptr, "collect objects of class");
-    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+    progressManager.updateProgress(5, "Collecting objects of class");
+    err = FollowReferences(0, nullptr, nullptr, collectObjects, nullptr);
+    if (!isOk(err) || shouldStopExecution()) return nullptr;
 
     std::vector<jobject> objectsOfClass;
     err = getObjectsByTags(jvmti, std::vector<jlong>{OBJECT_OF_CLASS_TAG}, objectsOfClass);
-    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
+    if (!isOk(err) || shouldStopExecution()) return nullptr;
 
     // Constructing the master node
-    jclass langObject = env->FindClass("java/lang/Object");
-    jobjectArray objects = env->NewObjectArray(objectsOfClass.size(), langObject, nullptr);
+    jobjectArray objects = getObjectArrayOfSize(env, objectsOfClass.size());
     for (int i = 0; i < objectsOfClass.size(); i++) {
         env->SetObjectArrayElement(objects, i, objectsOfClass[i]);
     }
 
     err = jvmti->SetTag(classRef, 0);
-    if (err != JVMTI_ERROR_NONE) return nullptr;
+    if (!isOk(err)) return nullptr;
 
     SizesViaDominatorTreeHeapDumpInfo info;
-    err = info.initAndSetTagsForObjects(env, jvmti, objects);
-    if (err != JVMTI_ERROR_NONE) return nullptr;
-
-    // We set a tag for the input array to ignore it during traversal
-    err = jvmti->SetTag(objects, MOCK_REFERRER_TAG);
-    if (err != JVMTI_ERROR_NONE) return nullptr;
-
-    progressManager.updateProgress(10, "Traversing heap for the first time...");
-    logger::resetTimer();
-    err = FollowReferences(0, nullptr, nullptr, firstTraversal, &info, "first traversal");
-    logger::logPassedTime();
-    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
-
-    logger::resetTimer();
-    progressManager.updateProgress(60, "Traversing heap for the second time...");
-    err = FollowReferences(0, nullptr, objects, secondTraversal, &info, "second traversal");
-    logger::logPassedTime();
-    if (err != JVMTI_ERROR_NONE || shouldStopExecution()) return nullptr;
-
-    progressManager.updateProgress(80, "Calculating retained size...");
-    info.setUpNeighboursForMasterNode();
-    std::vector<jlong> retainedSizes = calculateRetainedSizes(info.graph, info.sizes);
+    std::vector<jlong> retainedSizes;
+    err = calculateRetainedSizes(objects, retainedSizes, info);
+    if (!isOk(err) || shouldStopExecution()) return nullptr;
 
     // Sort objects by their retained size
     std::sort(objectsOfClass.begin(), objectsOfClass.end(), [&](jobject a, jobject b) {
@@ -243,7 +246,14 @@ jobjectArray RetainedSizeByClassViaDominatorTreeAction::executeOperation(jobject
     });
 
     progressManager.updateProgress(95, "Extracting answer...");
-    size_t size = std::min((size_t)objectsLimit, objectsOfClass.size());
+    return constructResultObject(objectsOfClass, retainedSizes, info, objectsLimit);
+}
+
+jobjectArray RetainedSizesByClassViaDominatorTreeAction::constructResultObject(const std::vector<jobject> &objectsOfClass,
+                                                                               const std::vector<jlong> &retainedSizes,
+                                                                               const SizesViaDominatorTreeHeapDumpInfo &info,
+                                                                               jlong objectsLimit) {
+    size_t size = std::min(static_cast<size_t>(objectsLimit), objectsOfClass.size());
     std::vector<jlong> shallowSizes;
     std::vector<jlong> sortedRetainedSizes;
     sortedRetainedSizes.reserve(size);
@@ -256,25 +266,22 @@ jobjectArray RetainedSizeByClassViaDominatorTreeAction::executeOperation(jobject
         shallowSizes.push_back(info.sizes[tag]);
     }
 
-    jobjectArray result = env->NewObjectArray(3, langObject, nullptr);
-    objects = env->NewObjectArray(size, langObject, nullptr);
+    jobjectArray result = getObjectArrayOfSize(env, 3);
+    jobjectArray objects = getObjectArrayOfSize(env, size);
     for (int i = 0; i < size; i++) {
         env->SetObjectArrayElement(objects, i, objectsOfClass[i]);
     }
     env->SetObjectArrayElement(result, 0, objects);
     env->SetObjectArrayElement(result, 1, toJavaArray(env, shallowSizes));
     env->SetObjectArrayElement(result, 2, toJavaArray(env, sortedRetainedSizes));
-    if (!isOk(err)) {
-        handleError(jvmti, err, "Could not estimate retained size by classes");
-        return nullptr;
-    }
+
     return result;
 }
 
-jvmtiError RetainedSizeByClassViaDominatorTreeAction::cleanHeap() {
+jvmtiError RetainedSizesByClassViaDominatorTreeAction::cleanHeap() {
     return removeAllTagsFromHeap(jvmti, nullptr);
 }
 
-RetainedSizeByClassViaDominatorTreeAction::RetainedSizeByClassViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) :
-        MemoryAgentAction(env, jvmti, object) {
+RetainedSizesByClassViaDominatorTreeAction::RetainedSizesByClassViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object) :
+    RetainedSizesAction(env, jvmti, object) {
 }

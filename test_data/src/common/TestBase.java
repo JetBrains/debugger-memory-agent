@@ -133,14 +133,14 @@ public abstract class TestBase {
   }
 
   protected static void printSizesByClass(Class<?> classRef) {
-    Object result = proxy.getShallowAndRetainedSizeByClass(classRef, DEFAULT_OBJECTS_LIMIT);
+    Object result = proxy.getSortedShallowAndRetainedSizesByClass(classRef, DEFAULT_OBJECTS_LIMIT);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     System.out.println("Class " + classRef.getName());
     printSizesOfObjects((Object[]) arrayResult[0], (long[])arrayResult[1], (long[])arrayResult[2]);
   }
 
   protected static void printSizes(Object... objects) {
-    Object result = proxy.getShallowAndRetainedSizeByObjects(objects);
+    Object result = proxy.getShallowAndRetainedSizesByObjects(objects);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     printSizesOfObjects(objects, (long[])arrayResult[0], (long[])arrayResult[1]);
   }

@@ -221,20 +221,20 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentPro
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowAndRetainedSizeByObjects(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowAndRetainedSizesByObjects(
         JNIEnv *env,
         jobject thisObject,
         jobjectArray objects) {
-    return RetainedSizeViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(objects);
+    return RetainedSizesViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(objects);
 }
 
 extern "C"
-JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getShallowAndRetainedSizeByClass(
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getSortedShallowAndRetainedSizesByClass(
         JNIEnv *env,
         jobject thisObject,
         jobject classRef,
         jlong objectsLimit) {
-    return RetainedSizeByClassViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(classRef, objectsLimit);
+    return RetainedSizesByClassViaDominatorTreeAction(env, gdata->jvmti, thisObject).run(classRef, objectsLimit);
 }
 
 extern "C"
