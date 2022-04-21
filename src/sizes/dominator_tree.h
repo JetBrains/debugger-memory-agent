@@ -6,6 +6,7 @@
 #include <vector>
 #include <jni.h>
 
-std::vector<jlong> calculateRetainedSizes(const std::vector<std::vector<jlong>> &graph, const std::vector<jlong> &sizes);
+std::vector<jlong> calculateRetainedSizesViaDominatorTree(const std::vector<std::vector<jlong>> &graph,
+                                                          const std::vector<jlong> &sizes);
 
 #endif //MEMORY_AGENT_DOMINATOR_TREE_H

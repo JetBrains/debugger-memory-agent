@@ -7,22 +7,41 @@
 #include <jvmti.h>
 #include "../memory_agent_action.h"
 
-class RetainedSizeViaDominatorTreeAction : public MemoryAgentAction<jobjectArray, jobjectArray> {
+// Forward declaration
+class SizesViaDominatorTreeHeapDumpInfo;
+
+template<typename RESULT_TYPE, typename... ARGS_TYPES>
+class RetainedSizesAction : public MemoryAgentAction<RESULT_TYPE, ARGS_TYPES...> {
 public:
-    RetainedSizeViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
+    RetainedSizesAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
+
+protected:
+    jvmtiError calculateRetainedSizes(jobjectArray objects, std::vector<jlong> &retainedSizes,
+                                      SizesViaDominatorTreeHeapDumpInfo &info);
+};
+
+class RetainedSizesViaDominatorTreeAction : public RetainedSizesAction<jobjectArray, jobjectArray> {
+public:
+    RetainedSizesViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
 private:
     jobjectArray executeOperation(jobjectArray objects) override;
     jvmtiError cleanHeap() override;
+
+    jobjectArray constructResultObject(jobjectArray objects, const std::vector<jlong> &retainedSizes,
+                                       const SizesViaDominatorTreeHeapDumpInfo &info);
 };
 
-class RetainedSizeByClassViaDominatorTreeAction : public MemoryAgentAction<jobjectArray, jobject, jlong> {
+class RetainedSizesByClassViaDominatorTreeAction : public RetainedSizesAction<jobjectArray, jobject, jlong> {
 public:
-    RetainedSizeByClassViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
+    RetainedSizesByClassViaDominatorTreeAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
 private:
     jobjectArray executeOperation(jobject classRef, jlong objectsLimit) override;
     jvmtiError cleanHeap() override;
+
+    jobjectArray constructResultObject(const std::vector<jobject> &objectsOfClass, const std::vector<jlong> &retainedSizes,
+                                       const SizesViaDominatorTreeHeapDumpInfo &info, jlong objectsLimit);
 };
 
 #endif //MEMORY_AGENT_RETAINED_SIZE_VIA_DOMINATOR_TREE_ACTION_H
