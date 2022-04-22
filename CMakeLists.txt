@@ -36,6 +36,8 @@ add_library(memory_agent SHARED
         src/sizes/tag_info_array.cpp
         src/sizes/retained_size_by_classes.h
         src/sizes/retained_size_by_classes.cpp
+        src/sizes/retained_size_by_classloaders.h
+        src/sizes/retained_size_by_classloaders.cpp
         src/sizes/retained_size_action.h
         src/sizes/retained_size_by_objects.h
         src/sizes/retained_size_by_objects.cpp
