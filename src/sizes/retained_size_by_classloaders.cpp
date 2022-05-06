@@ -11,18 +11,10 @@ jvmtiIterationControl JNICALL putTagCallback(jvmtiHeapRootKind root_kind,
                                                jlong size,
                                                jlong *tag_ptr,
                                                void *user_data) {
-    if (root_kind != JVMTI_HEAP_ROOT_JNI_GLOBAL &&
-        root_kind != JVMTI_HEAP_ROOT_JNI_LOCAL) {
+    if (root_kind != JVMTI_HEAP_ROOT_JNI_GLOBAL && root_kind != JVMTI_HEAP_ROOT_JNI_LOCAL) {
         *tag_ptr = GC_ROOT_TAG;
     }
     return JVMTI_ITERATION_IGNORE;
-}
-
-jvmtiIterationControl JNICALL removeTagCallback(jvmtiHeapRootKind root_kind, jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
-    if (*tag_ptr == GC_ROOT_TAG) {
-        tag_ptr = nullptr;
-    }
-    return JVMTI_ITERATION_CONTINUE;
 }
 
 jobjectArray RetainedSizeByClassLoadersAction::getFilteredRoots(jobject classLoader) {
@@ -30,7 +22,6 @@ jobjectArray RetainedSizeByClassLoadersAction::getFilteredRoots(jobject classLoa
     jint nroots;
     jobject *roots;
     jvmti->GetObjectsWithTags(1, &GC_ROOT_TAG, &nroots, &roots, NULL);
-    jvmti->IterateOverReachableObjects(removeTagCallback, NULL, NULL, NULL);
     removeAllTagsFromHeap(jvmti, nullptr);
 
     std::vector <jobject> filteredRoots;
@@ -38,7 +29,6 @@ jobjectArray RetainedSizeByClassLoadersAction::getFilteredRoots(jobject classLoa
         jobject rootClassLoader = getClassLoader(env, roots[i]);
         if (!env->IsSameObject(rootClassLoader, NULL)) {
             if (isEqual(env, classLoader, rootClassLoader)) {
-                std::cout << "HEY!!" << std::endl;
                 filteredRoots.push_back(roots[i]);
             }
         }
