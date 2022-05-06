@@ -4,47 +4,53 @@
 #include "retained_size_by_classloaders.h"
 
 
-const jlong GC_ROOT_TAG = 7;
+const jlong GC_ROOT_TAG = 17;
 
-jvmtiIterationControl JNICALL heapRootCallback(jvmtiHeapRootKind root_kind, jlong class_tag,
-                                               jlong size, jlong *tag_ptr, void *user_data) {
-    *tag_ptr = GC_ROOT_TAG;
+jvmtiIterationControl JNICALL putTagCallback(jvmtiHeapRootKind root_kind,
+                                               jlong class_tag,
+                                               jlong size,
+                                               jlong *tag_ptr,
+                                               void *user_data) {
+    if (root_kind != JVMTI_HEAP_ROOT_JNI_GLOBAL &&
+        root_kind != JVMTI_HEAP_ROOT_JNI_LOCAL) {
+        *tag_ptr = GC_ROOT_TAG;
+    }
     return JVMTI_ITERATION_IGNORE;
 }
 
-jobjectArray RetainedSizeByClassLoadersAction::getLoadedClassesByClassLoader(jobject classLoader) {
-    jclass instrumentationClass = env->FindClass("java/lang/instrument/Instrumentation");
-    jmethodID getAllLoadedClasses = env->GetMethodID(instrumentationClass, "getInitiatedClasses",
-                                                     "(java/lang/ClassLoader)[java/lang/Class");
-    return static_cast<jobjectArray>(env->CallObjectMethod(instrumentationClass, getAllLoadedClasses, classLoader));
+jvmtiIterationControl JNICALL removeTagCallback(jvmtiHeapRootKind root_kind, jlong class_tag, jlong size, jlong *tag_ptr, void *user_data) {
+    if (*tag_ptr == GC_ROOT_TAG) {
+        tag_ptr = nullptr;
+    }
+    return JVMTI_ITERATION_CONTINUE;
 }
 
-jobjectArray RetainedSizeByClassLoadersAction::filterLoadedClassesAsRoots(jobjectArray loadedClasses) {
-    jvmti->IterateOverReachableObjects(heapRootCallback, NULL, NULL, NULL);
+jobjectArray RetainedSizeByClassLoadersAction::getFilteredRoots(jobject classLoader) {
+    jvmti->IterateOverReachableObjects(putTagCallback, NULL, NULL, NULL);
     jint nroots;
     jobject *roots;
     jvmti->GetObjectsWithTags(1, &GC_ROOT_TAG, &nroots, &roots, NULL);
-    std::vector<jobject> rootLoadedClasses;
-    for (jsize i = 0; i < env->GetArrayLength(loadedClasses); i++) {
-        for (jsize j = 0; j < nroots; j++) {
-            if (env->GetObjectArrayElement(loadedClasses, i) == roots[j]) {
-                rootLoadedClasses.push_back(roots[i]);
+    jvmti->IterateOverReachableObjects(removeTagCallback, NULL, NULL, NULL);
+    removeAllTagsFromHeap(jvmti, nullptr);
+
+    std::vector <jobject> filteredRoots;
+    for (jsize i = 0; i < nroots; i++) {
+        jobject rootClassLoader = getClassLoader(env, roots[i]);
+        if (!env->IsSameObject(rootClassLoader, NULL)) {
+            if (isEqual(env, classLoader, rootClassLoader)) {
+                std::cout << "HEY!!" << std::endl;
+                filteredRoots.push_back(roots[i]);
             }
         }
     }
-    return toJavaArray(env, rootLoadedClasses);
+    return toJavaArray(env, filteredRoots);
 }
 
 jvmtiError RetainedSizeByClassLoadersAction::tagRootLoadedClassesByClassLoaders(jobjectArray classLoadersArray) {
     debug("tag classes loaded by classloaders");
-    jvmti->IterateOverReachableObjects(heapRootCallback, NULL, NULL, NULL);
-    jint nroots;
-    jobject *roots;
-    jvmti->GetObjectsWithTags(1, &GC_ROOT_TAG, &nroots, &roots, NULL);
     for (jsize i = 0; i < env->GetArrayLength(classLoadersArray); i++) {
-        jobjectArray loadedClasses = getLoadedClassesByClassLoader(env->GetObjectArrayElement(classLoadersArray, i));
-        jobjectArray rootLoadedClasses = filterLoadedClassesAsRoots(loadedClasses);
-        jvmtiError err = createTagsForClasses(this->env, this->jvmti, rootLoadedClasses);
+        jobjectArray filteredRoots = getFilteredRoots(env->GetObjectArrayElement(classLoadersArray, i));
+        jvmtiError err = createTagsForClasses(this->env, this->jvmti, filteredRoots);
         if (err != JVMTI_ERROR_NONE) return err;
     }
     return IterateThroughHeap(0, nullptr, tagObjectOfTaggedClass, nullptr);
@@ -56,7 +62,7 @@ RetainedSizeByClassLoadersAction::RetainedSizeByClassLoadersAction(JNIEnv *env, 
 }
 
 jvmtiError RetainedSizeByClassLoadersAction::getRetainedSizeByClassLoaders(jobjectArray classLoadersArray,
-                                                                           std::vector<jlong> &result) {
+                                                                           std::vector <jlong> &result) {
     jvmtiError err = tagRootLoadedClassesByClassLoaders(classLoadersArray);
     if (!isOk(err)) return err;
     if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
@@ -71,7 +77,7 @@ jvmtiError RetainedSizeByClassLoadersAction::getRetainedSizeByClassLoaders(jobje
 }
 
 jlongArray RetainedSizeByClassLoadersAction::executeOperation(jobjectArray classLoadersArray) {
-    std::vector<jlong> result;
+    std::vector <jlong> result;
     jvmtiError err = getRetainedSizeByClassLoaders(classLoadersArray, result);
     if (!isOk(err)) {
         handleError(jvmti, err, "Could not estimate retained size by classloaders");

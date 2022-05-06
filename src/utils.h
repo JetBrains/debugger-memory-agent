@@ -73,6 +73,10 @@ std::string jstringTostring(JNIEnv *env, jstring jStr);
 
 jmethodID getIsAssignableFromMethod(JNIEnv *env);
 
+jobject getClassLoader(JNIEnv *env, jobject obj);
+
+bool isEqual(JNIEnv *env, jobject obj1, jobject obj2);
+
 std::string getToString(JNIEnv *env, jobject klass);
 
 template<typename T>

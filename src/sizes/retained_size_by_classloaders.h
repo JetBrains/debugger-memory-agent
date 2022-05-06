@@ -15,8 +15,7 @@ private:
     jlongArray executeOperation(jobjectArray classLoadersArray) override;
     jvmtiError getRetainedSizeByClassLoaders(jobjectArray classLoadersArray, std::vector<jlong> &result);
     jvmtiError tagRootLoadedClassesByClassLoaders(jobjectArray classLoadersArray);
-    jobjectArray getLoadedClassesByClassLoader(jobject classLoader);
-    jobjectArray filterLoadedClassesAsRoots(jobjectArray loadedClasses);
+    jobjectArray getFilteredRoots(jobject classLoader);
 };
 
 jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);

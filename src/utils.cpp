@@ -265,6 +265,19 @@ jmethodID getIsAssignableFromMethod(JNIEnv *env) {
     return env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
 }
 
+jobject getClassLoader(JNIEnv *env, jobject obj) {
+    jclass objClass = env->GetObjectClass(obj);
+    jobject classObj = env->CallObjectMethod(obj, env->GetMethodID(objClass, "getClass", "()Ljava/lang/Class;"));
+    objClass = env->GetObjectClass(classObj);
+    return env->CallObjectMethod(obj, env->GetMethodID(objClass, "getClassLoader", "()Ljava/lang/ClassLoader;"));
+}
+
+bool isEqual(JNIEnv *env, jobject obj, jobject otherObj){
+    jclass objClass = env->GetObjectClass(obj);
+    jmethodID equalsID = env->GetMethodID(objClass, "equals", "(Ljava/lang/Object;)Z");
+    return env->CallBooleanMethod(obj, equalsID, otherObj);
+}
+
 std::string getToString(JNIEnv *env, jobject object) {
     jobject name = env->CallObjectMethod(object, env->GetMethodID(env->FindClass("java/lang/Object"), "toString", "()Ljava/lang/String;"));
     return jstringTostring(env, reinterpret_cast<jstring>(name));
