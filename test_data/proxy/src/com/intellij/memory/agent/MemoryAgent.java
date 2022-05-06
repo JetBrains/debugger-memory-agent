@@ -98,6 +98,14 @@ public class MemoryAgent {
     }
 
     /**
+         * TODO
+         */
+        @SuppressWarnings("unchecked")
+        public synchronized long[] getRetainedSizeByClassloaders(ClassLoader[] classLoaders) throws MemoryAgentExecutionException {
+            return (long [])getResult(callProxyMethod(() -> proxy.getRetainedSizeByClassLoaders(classLoaders)));
+        }
+
+    /**
      * Adds an allocation listener that catches allocation sampling events for specified classes.
      *
      * @param allocationListener  {@link AllocationListener} instance to track allocation sampling events.

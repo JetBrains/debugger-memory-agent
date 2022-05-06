@@ -28,6 +28,8 @@ public class IdeaNativeAgentProxy {
 
   public native boolean canGetRetainedSizeByClasses();
 
+  public native boolean canGetRetainedSizeByClassLoaders();
+
   public native boolean canGetShallowSizeByClasses();
 
   public native boolean canEstimateObjectsSizes();
@@ -37,6 +39,8 @@ public class IdeaNativeAgentProxy {
   public native Object[] getShallowSizeByClasses(Object[] classes);
 
   public native Object[] getRetainedSizeByClasses(Object[] classes);
+
+  public native Object[] getRetainedSizeByClassLoaders(ClassLoader[] classLoaders);
 
   public native Object[] getShallowAndRetainedSizeByClasses(Object[] classes);
 
