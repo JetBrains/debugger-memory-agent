@@ -5,8 +5,9 @@
 
 
 const jlong GC_ROOT_TAG = 17;
+const jlong FILTERED_OBJECT = 15;
 
-jvmtiIterationControl JNICALL putTagCallback(jvmtiHeapRootKind root_kind,
+jvmtiIterationControl JNICALL tagRootsCallback(jvmtiHeapRootKind root_kind,
                                                jlong class_tag,
                                                jlong size,
                                                jlong *tag_ptr,
@@ -17,53 +18,63 @@ jvmtiIterationControl JNICALL putTagCallback(jvmtiHeapRootKind root_kind,
     return JVMTI_ITERATION_IGNORE;
 }
 
-jobjectArray RetainedSizeByClassLoadersAction::getFilteredRoots(jobject classLoader) {
-    jvmti->IterateOverReachableObjects(putTagCallback, NULL, NULL, NULL);
-    jint nroots;
-    jobject *roots;
-    jvmti->GetObjectsWithTags(1, &GC_ROOT_TAG, &nroots, &roots, NULL);
-    removeAllTagsFromHeap(jvmti, nullptr);
+jvmtiIterationControl JNICALL tagObjectCallback (jvmtiObjectReferenceKind reference_kind,
+                                               jlong class_tag,
+                                               jlong size,
+                                               jlong *tag_ptr,
+                                               jlong referrer_tag,
+                                               jint referrer_index,
+                                               void *user_data){
+    *tag_ptr = FILTERED_OBJECT;
+    return JVMTI_ITERATION_CONTINUE;
+}
 
-    std::vector <jobject> filteredRoots;
-    for (jsize i = 0; i < nroots; i++) {
+jvmtiError RetainedSizeByClassLoadersAction::getSizeByClassLoader(jobject classLoader, jlong *size) {
+    jvmtiError err = JVMTI_ERROR_NONE;
+    err = jvmti->IterateOverReachableObjects(tagRootsCallback, NULL, NULL, NULL);
+    jint rootsCount;
+    jobject *roots;
+    err = jvmti->GetObjectsWithTags(1, &GC_ROOT_TAG, &rootsCount, &roots, NULL);
+    if (!isOk(err)) return err;
+    removeAllTagsFromHeap(jvmti, nullptr);
+    for (jsize i = 0; i < rootsCount; i++) {
         jobject rootClassLoader = getClassLoader(env, roots[i]);
         if (!env->IsSameObject(rootClassLoader, NULL)) {
             if (isEqual(env, classLoader, rootClassLoader)) {
-                filteredRoots.push_back(roots[i]);
+                err = jvmti->IterateOverObjectsReachableFromObject(roots[i], tagObjectCallback, NULL);
+                if (!isOk(err)) return err;
             }
         }
     }
-    return toJavaArray(env, filteredRoots);
-}
-
-jvmtiError RetainedSizeByClassLoadersAction::tagRootLoadedClassesByClassLoaders(jobjectArray classLoadersArray) {
-    debug("tag classes loaded by classloaders");
-    for (jsize i = 0; i < env->GetArrayLength(classLoadersArray); i++) {
-        jobjectArray filteredRoots = getFilteredRoots(env->GetObjectArrayElement(classLoadersArray, i));
-        jvmtiError err = createTagsForClasses(this->env, this->jvmti, filteredRoots);
-        if (err != JVMTI_ERROR_NONE) return err;
+    jint objectsCount;
+    jobject *objects;
+    err = jvmti->GetObjectsWithTags(1, &FILTERED_OBJECT, &objectsCount, &objects, NULL);
+    if (!isOk(err)) return err;
+    removeAllTagsFromHeap(jvmti, nullptr);
+    for (jsize i = 0; i < objectsCount; i++) {
+        jlong objectSize = 0;
+        err = jvmti->GetObjectSize(objects[i], &objectSize);
+        if (!isOk(err)) return err;
+        *size += objectSize;
     }
-    return IterateThroughHeap(0, nullptr, tagObjectOfTaggedClass, nullptr);
+    return err;
 }
 
 RetainedSizeByClassLoadersAction::RetainedSizeByClassLoadersAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object)
-        : RetainedSizeAction(env, jvmti, object) {
+        : RetainedSizeAction(env, jvmti, object), retainedSizeByObjects(env, jvmti, object) {
 
 }
 
 jvmtiError RetainedSizeByClassLoadersAction::getRetainedSizeByClassLoaders(jobjectArray classLoadersArray,
                                                                            std::vector <jlong> &result) {
-    jvmtiError err = tagRootLoadedClassesByClassLoaders(classLoadersArray);
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
-
-    err = tagHeap();
-    if (!isOk(err)) return err;
-    if (shouldStopExecution()) return MEMORY_AGENT_INTERRUPTED_ERROR;
-
+    jvmtiError err = JVMTI_ERROR_NONE;
     result.resize(env->GetArrayLength(classLoadersArray));
-    return IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, visitObject, result.data(),
-                              "calculate retained sizes");
+    for (jsize i = 0; i < env->GetArrayLength(classLoadersArray); i++) {
+        jlong res = 0;
+        jvmtiError err = getSizeByClassLoader(env->GetObjectArrayElement(classLoadersArray, i), &res);
+        result[i] = res;
+    }
+    return err;
 }
 
 jlongArray RetainedSizeByClassLoadersAction::executeOperation(jobjectArray classLoadersArray) {

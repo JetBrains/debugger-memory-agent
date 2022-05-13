@@ -5,17 +5,18 @@
 
 #include "../memory_agent_action.h"
 #include "retained_size_action.h"
+#include "retained_size_by_objects.h"
 
 
 class RetainedSizeByClassLoadersAction : public RetainedSizeAction<jlongArray> {
+    RetainedSizeByObjectsAction retainedSizeByObjects;
 public:
     RetainedSizeByClassLoadersAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
 private:
     jlongArray executeOperation(jobjectArray classLoadersArray) override;
     jvmtiError getRetainedSizeByClassLoaders(jobjectArray classLoadersArray, std::vector<jlong> &result);
-    jvmtiError tagRootLoadedClassesByClassLoaders(jobjectArray classLoadersArray);
-    jobjectArray getFilteredRoots(jobject classLoader);
+    jvmtiError getSizeByClassLoader(jobject classLoader, jlong *size);
 };
 
 jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
