@@ -27,6 +27,8 @@ jbooleanArray toJavaArray(JNIEnv *env, std::vector<jboolean> &items);
 
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects);
 
+jobjectArray toJavaArray(JNIEnv *env, std::vector<jclass> &objects);
+
 jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items);
 
 jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items);
@@ -73,7 +75,7 @@ std::string jstringTostring(JNIEnv *env, jstring jStr);
 
 jmethodID getIsAssignableFromMethod(JNIEnv *env);
 
-jobject getClassLoader(JNIEnv *env, jobject obj);
+jobject getClassLoader(JNIEnv *env, jclass obj);
 
 bool isEqual(JNIEnv *env, jobject obj1, jobject obj2);
 

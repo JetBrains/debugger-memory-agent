@@ -32,36 +32,29 @@ jvmtiIterationControl JNICALL tagObjectCallback (jvmtiObjectReferenceKind refere
 jvmtiError RetainedSizeByClassLoadersAction::getSizeByClassLoader(jobject classLoader, jlong *size) {
     jvmtiError err = JVMTI_ERROR_NONE;
     err = jvmti->IterateOverReachableObjects(tagRootsCallback, NULL, NULL, NULL);
-    jint rootsCount;
-    jobject *roots;
-    err = jvmti->GetObjectsWithTags(1, &GC_ROOT_TAG, &rootsCount, &roots, NULL);
+    jclass *classes;
+    jint cnt;
+    err = jvmti->GetLoadedClasses(&cnt, &classes);
     if (!isOk(err)) return err;
     removeAllTagsFromHeap(jvmti, nullptr);
-    for (jsize i = 0; i < rootsCount; i++) {
-        jobject rootClassLoader = getClassLoader(env, roots[i]);
+    std::vector<jclass> filteredClasses;
+    for (jsize i = 0; i < cnt; i++) {
+        jobject rootClassLoader = getClassLoader(env, classes[i]);
         if (!env->IsSameObject(rootClassLoader, NULL)) {
             if (isEqual(env, classLoader, rootClassLoader)) {
-                err = jvmti->IterateOverObjectsReachableFromObject(roots[i], tagObjectCallback, NULL);
-                if (!isOk(err)) return err;
+                filteredClasses.emplace_back(classes[i]);
             }
         }
     }
-    jint objectsCount;
-    jobject *objects;
-    err = jvmti->GetObjectsWithTags(1, &FILTERED_OBJECT, &objectsCount, &objects, NULL);
-    if (!isOk(err)) return err;
-    removeAllTagsFromHeap(jvmti, nullptr);
-    for (jsize i = 0; i < objectsCount; i++) {
-        jlong objectSize = 0;
-        err = jvmti->GetObjectSize(objects[i], &objectSize);
-        if (!isOk(err)) return err;
-        *size += objectSize;
+    auto sizes = retainedSizeByClasses.run(toJavaArray(env, filteredClasses));
+    for (jsize i = 0; i < env->GetArrayLength(sizes); i++) {
+        *size +=  reinterpret_cast<jlong>(env->GetObjectArrayElement(sizes, i));
     }
     return err;
 }
 
 RetainedSizeByClassLoadersAction::RetainedSizeByClassLoadersAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object)
-        : RetainedSizeAction(env, jvmti, object), retainedSizeByObjects(env, jvmti, object) {
+        : RetainedSizeAction(env, jvmti, object), retainedSizeByClasses(env, jvmti, object) {
 
 }
 

@@ -49,6 +49,15 @@ jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects) {
     return res;
 }
 
+jobjectArray toJavaArray(JNIEnv *env, std::vector<jclass> &objects) {
+    auto count = static_cast<jsize>(objects.size());
+    jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Class"), nullptr);
+    for (auto i = 0; i < count; ++i) {
+        env->SetObjectArrayElement(res, i, objects[i]);
+    }
+    return res;
+}
+
 jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items) {
     auto count = static_cast<jsize>(items.size());
     jlongArray result = env->NewLongArray(count);
@@ -265,11 +274,8 @@ jmethodID getIsAssignableFromMethod(JNIEnv *env) {
     return env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
 }
 
-jobject getClassLoader(JNIEnv *env, jobject obj) {
-    jclass objClass = env->GetObjectClass(obj);
-    jobject classObj = env->CallObjectMethod(obj, env->GetMethodID(objClass, "getClass", "()Ljava/lang/Class;"));
-    objClass = env->GetObjectClass(classObj);
-    return env->CallObjectMethod(obj, env->GetMethodID(objClass, "getClassLoader", "()Ljava/lang/ClassLoader;"));
+jobject getClassLoader(JNIEnv *env, jclass clazz) {
+    return env->CallObjectMethod(clazz, env->GetMethodID(env->GetObjectClass(clazz), "getClassLoader", "()Ljava/lang/ClassLoader;"));
 }
 
 bool isEqual(JNIEnv *env, jobject obj, jobject otherObj){

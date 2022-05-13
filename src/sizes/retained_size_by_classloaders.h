@@ -5,11 +5,11 @@
 
 #include "../memory_agent_action.h"
 #include "retained_size_action.h"
-#include "retained_size_by_objects.h"
+#include "retained_size_by_classes.h"
 
 
 class RetainedSizeByClassLoadersAction : public RetainedSizeAction<jlongArray> {
-    RetainedSizeByObjectsAction retainedSizeByObjects;
+    RetainedSizeByClassesAction retainedSizeByClasses;
 public:
     RetainedSizeByClassLoadersAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
