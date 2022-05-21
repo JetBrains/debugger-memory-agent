@@ -9,14 +9,13 @@
 
 
 class RetainedSizeByClassLoadersAction : public RetainedSizeAction<jlongArray> {
-    RetainedSizeByClassesAction retainedSizeByClasses;
 public:
     RetainedSizeByClassLoadersAction(JNIEnv *env, jvmtiEnv *jvmti, jobject object);
 
 private:
     jlongArray executeOperation(jobjectArray classLoadersArray) override;
     jvmtiError getRetainedSizeByClassLoaders(jobjectArray classLoadersArray, std::vector<jlong> &result);
-    jvmtiError getSizeByClassLoader(jobject classLoader, jlong *size);
+    jvmtiError tagObjectsByClassLoader(jobject classLoader, jsize classLoaderIndex);
 };
 
 jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);

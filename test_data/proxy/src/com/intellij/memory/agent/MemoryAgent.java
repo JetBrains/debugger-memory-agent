@@ -101,8 +101,8 @@ public class MemoryAgent {
          * TODO
          */
         @SuppressWarnings("unchecked")
-        public synchronized long[] getRetainedSizeByClassloaders(ClassLoader[] classLoaders) throws MemoryAgentExecutionException {
-            return (long [])getResult(callProxyMethod(() -> proxy.getRetainedSizeByClassLoaders(classLoaders)));
+        public synchronized long[] getRetainedSizeByClassLoaders(ClassLoader[] classloaders) throws MemoryAgentExecutionException {
+            return (long [])getResult(callProxyMethod(() -> proxy.getRetainedSizeByClassLoaders(classloaders)));
         }
 
     /**

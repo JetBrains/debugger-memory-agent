@@ -67,6 +67,8 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
 
 jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag);
 
+jvmtiError tagClassAndItsInheritorsSimple(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject);
+
 bool isOk(jvmtiError error);
 
 bool fileExists(const std::string &fileName);

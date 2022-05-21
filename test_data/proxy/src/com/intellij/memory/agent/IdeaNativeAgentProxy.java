@@ -40,7 +40,7 @@ public class IdeaNativeAgentProxy {
 
   public native Object[] getRetainedSizeByClasses(Object[] classes);
 
-  public native Object[] getRetainedSizeByClassLoaders(ClassLoader[] classLoaders);
+  public native Object[] getRetainedSizeByClassLoaders(ClassLoader[] classloaders);
 
   public native Object[] getShallowAndRetainedSizeByClasses(Object[] classes);
 
