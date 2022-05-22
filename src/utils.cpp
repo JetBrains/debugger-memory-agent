@@ -9,39 +9,38 @@
 #include "memory_agent_action.h"
 #include "log.h"
 
-const char *getReferenceTypeDescription(jvmtiHeapReferenceKind
-kind) {
-if (kind == JVMTI_HEAP_REFERENCE_CLASS) return "Reference from an object to its class.";
-if (kind == JVMTI_HEAP_REFERENCE_FIELD)
-return "Reference from an object to the value of one of its instance fields.";
-if (kind == JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT) return "Reference from an array to one of its elements.";
-if (kind == JVMTI_HEAP_REFERENCE_CLASS_LOADER) return "Reference from a class to its class loader.";
-if (kind == JVMTI_HEAP_REFERENCE_SIGNERS) return "Reference from a class to its signers array.";
-if (kind == JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN) return "Reference from a class to its protection domain.";
-if (kind == JVMTI_HEAP_REFERENCE_INTERFACE)
-return "Reference from a class to one of its interfaces. Note: interfaces are defined via a constant pool "
-"reference, so the referenced interfaces may also be reported with a JVMTI_HEAP_REFERENCE_CONSTANT_"
-"POOL reference kind.";
-if (kind == JVMTI_HEAP_REFERENCE_STATIC_FIELD)
-return "Reference from a class to the value of one of its static fields.";
-if (kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL)
-return "Reference from a class to a resolved entry in the constant pool.";
-if (kind == JVMTI_HEAP_REFERENCE_SUPERCLASS)
-return "Reference from a class to its superclass. A callback is bot sent if the superclass is "
-"java.lang.Object. Note: loaded classes define superclasses via a constant pool reference, "
-"so the referenced superclass may also be reported with a JVMTI_HEAP_REFERENCE_CONSTANT_POOL "
-"reference kind.";
-if (kind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL) return "Heap root reference: JNI global reference.";
-if (kind == JVMTI_HEAP_REFERENCE_SYSTEM_CLASS) return "Heap root reference: System class.";
-if (kind == JVMTI_HEAP_REFERENCE_MONITOR) return "Heap root reference: monitor.";
-if (kind == JVMTI_HEAP_REFERENCE_STACK_LOCAL) return "Heap root reference: local variable on the stack.";
-if (kind == JVMTI_HEAP_REFERENCE_JNI_LOCAL) return "Heap root reference: JNI local reference.";
-if (kind == JVMTI_HEAP_REFERENCE_THREAD) return "Heap root reference: Thread.";
-if (kind == JVMTI_HEAP_REFERENCE_OTHER) return "Heap root reference: other heap root reference.";
-return "Unknown reference kind";
+const char *getReferenceTypeDescription(jvmtiHeapReferenceKind kind) {
+    if (kind == JVMTI_HEAP_REFERENCE_CLASS) return "Reference from an object to its class.";
+    if (kind == JVMTI_HEAP_REFERENCE_FIELD)
+        return "Reference from an object to the value of one of its instance fields.";
+    if (kind == JVMTI_HEAP_REFERENCE_ARRAY_ELEMENT) return "Reference from an array to one of its elements.";
+    if (kind == JVMTI_HEAP_REFERENCE_CLASS_LOADER) return "Reference from a class to its class loader.";
+    if (kind == JVMTI_HEAP_REFERENCE_SIGNERS) return "Reference from a class to its signers array.";
+    if (kind == JVMTI_HEAP_REFERENCE_PROTECTION_DOMAIN) return "Reference from a class to its protection domain.";
+    if (kind == JVMTI_HEAP_REFERENCE_INTERFACE)
+        return "Reference from a class to one of its interfaces. Note: interfaces are defined via a constant pool "
+               "reference, so the referenced interfaces may also be reported with a JVMTI_HEAP_REFERENCE_CONSTANT_"
+               "POOL reference kind.";
+    if (kind == JVMTI_HEAP_REFERENCE_STATIC_FIELD)
+        return "Reference from a class to the value of one of its static fields.";
+    if (kind == JVMTI_HEAP_REFERENCE_CONSTANT_POOL)
+        return "Reference from a class to a resolved entry in the constant pool.";
+    if (kind == JVMTI_HEAP_REFERENCE_SUPERCLASS)
+        return "Reference from a class to its superclass. A callback is bot sent if the superclass is "
+               "java.lang.Object. Note: loaded classes define superclasses via a constant pool reference, "
+               "so the referenced superclass may also be reported with a JVMTI_HEAP_REFERENCE_CONSTANT_POOL "
+               "reference kind.";
+    if (kind == JVMTI_HEAP_REFERENCE_JNI_GLOBAL) return "Heap root reference: JNI global reference.";
+    if (kind == JVMTI_HEAP_REFERENCE_SYSTEM_CLASS) return "Heap root reference: System class.";
+    if (kind == JVMTI_HEAP_REFERENCE_MONITOR) return "Heap root reference: monitor.";
+    if (kind == JVMTI_HEAP_REFERENCE_STACK_LOCAL) return "Heap root reference: local variable on the stack.";
+    if (kind == JVMTI_HEAP_REFERENCE_JNI_LOCAL) return "Heap root reference: JNI local reference.";
+    if (kind == JVMTI_HEAP_REFERENCE_THREAD) return "Heap root reference: Thread.";
+    if (kind == JVMTI_HEAP_REFERENCE_OTHER) return "Heap root reference: other heap root reference.";
+    return "Unknown reference kind";
 }
 
-jobjectArray toJavaArray(JNIEnv *env, std::vector <jobject> &objects) {
+jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects) {
     auto count = static_cast<jsize>(objects.size());
     jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Object"), nullptr);
     for (auto i = 0; i < count; ++i) {
@@ -59,21 +58,21 @@ jobjectArray toJavaArray(JNIEnv *env, std::vector <jclass> &objects) {
     return res;
 }
 
-jlongArray toJavaArray(JNIEnv *env, std::vector <jlong> &items) {
+jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items) {
     auto count = static_cast<jsize>(items.size());
     jlongArray result = env->NewLongArray(count);
     env->SetLongArrayRegion(result, 0, count, items.data());
     return result;
 }
 
-jintArray toJavaArray(JNIEnv *env, std::vector <jint> &items) {
+jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items) {
     auto count = static_cast<jsize>(items.size());
     jintArray result = env->NewIntArray(count);
     env->SetIntArrayRegion(result, 0, count, items.data());
     return result;
 }
 
-jbooleanArray toJavaArray(JNIEnv *env, std::vector <jboolean> &items) {
+jbooleanArray toJavaArray(JNIEnv *env, std::vector<jboolean> &items) {
     auto count = static_cast<jsize>(items.size());
     jbooleanArray result = env->NewBooleanArray(count);
     env->SetBooleanArrayRegion(result, 0, count, items.data());
@@ -81,12 +80,12 @@ jbooleanArray toJavaArray(JNIEnv *env, std::vector <jboolean> &items) {
 }
 
 jintArray toJavaArray(JNIEnv *env, jint value) {
-    std::vector <jint> vector = {value};
+    std::vector<jint> vector = {value};
     return toJavaArray(env, vector);
 }
 
 jlongArray toJavaArray(JNIEnv *env, jlong value) {
-    std::vector <jlong> vector = {value};
+    std::vector<jlong> vector = {value};
     return toJavaArray(env, vector);
 }
 
@@ -101,7 +100,7 @@ bool isOk(jvmtiError error) {
     return error == JVMTI_ERROR_NONE;
 }
 
-void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector <jobject> &result) {
+void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector<jobject> &result) {
     auto arrayLength = static_cast<size_t>(env->GetArrayLength(javaArray));
     result.resize(arrayLength);
     for (jsize i = 0; i < arrayLength; ++i) {
@@ -109,8 +108,8 @@ void fromJavaArray(JNIEnv *env, jobjectArray javaArray, std::vector <jobject> &r
     }
 }
 
-std::vector <jobject> fromJavaArray(JNIEnv *env, jobjectArray javaArray) {
-    std::vector <jobject> result;
+std::vector<jobject> fromJavaArray(JNIEnv *env, jobjectArray javaArray) {
+    std::vector<jobject> result;
     fromJavaArray(env, javaArray, result);
     return result;
 }
@@ -132,24 +131,24 @@ void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
     }
 }
 
-typedef std::pair<std::set < jlong> *, tagReleasedCallback>
-iterationInfo;
+typedef std::pair<std::set<jlong> *, tagReleasedCallback> iterationInfo;
 
 static jint JNICALL freeObjectCallback(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     auto info = reinterpret_cast<iterationInfo *>(userData);
     jlong tagValue = *tagPtr;
     *tagPtr = 0;
-    if (info->first->find(tagValue)== info->first->end() &&info->second) {
+    if (info->first->find(tagValue) == info->first->end() && info->second) {
         info->second(tagValue);
     }
+
     return JVMTI_ITERATION_CONTINUE;
 }
 
-jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set <jlong> &ignoredTags, tagReleasedCallback callback) {
+jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set<jlong> &ignoredTags, tagReleasedCallback callback) {
     jvmtiHeapCallbacks cb;
     std::memset(&cb, 0, sizeof(jvmtiHeapCallbacks));
     cb.heap_iteration_callback = freeObjectCallback;
-    std::set <jlong> ignoredSet(ignoredTags.begin(), ignoredTags.end());
+    std::set<jlong> ignoredSet(ignoredTags.begin(), ignoredTags.end());
     iterationInfo userData(&ignoredSet, callback);
     debug("remove tags");
     jvmtiError err = jvmti->IterateThroughHeap(JVMTI_HEAP_FILTER_UNTAGGED, nullptr, &cb, &userData);
@@ -157,9 +156,7 @@ jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set <jlong> &ignoredTags, ta
     return err;
 }
 
-static jvmtiError
-collectObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &tags, jint &objectsCount, jobject **objects,
-                     jlong **objectsTags) {
+static jvmtiError collectObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, jint &objectsCount, jobject **objects, jlong **objectsTags) {
     auto tagsCount = static_cast<jint>(tags.size());
 
     debug("call GetObjectsWithTags");
@@ -178,10 +175,10 @@ static jvmtiError deallocateArrays(jvmtiEnv *jvmti, jobject *objects, jlong *obj
     return err;
 }
 
-jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &tags, std::vector <jobject> &result) {
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, std::vector<jobject> &result) {
     jint objectsCount;
     jobject *objects;
-    jlong * objectsTags;
+    jlong *objectsTags;
 
     jvmtiError err = collectObjectsByTags(jvmti, tags, objectsCount, &objects, &objectsTags);
     if (!isOk(err)) return err;
@@ -193,15 +190,14 @@ jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &tags, std::vec
     return deallocateArrays(jvmti, objects, objectsTags);
 }
 
-jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &&tags, std::vector <jobject> &result) {
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags, std::vector<jobject> &result) {
     return getObjectsByTags(jvmti, tags, result);
 }
 
-jvmtiError
-getObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &tags, std::vector <std::pair<jobject, jlong>> &result) {
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags, std::vector<std::pair<jobject, jlong>> &result) {
     jint objectsCount = 0;
     jobject *objects;
-    jlong * objectsTags;
+    jlong *objectsTags;
 
     jvmtiError err = collectObjectsByTags(jvmti, tags, objectsCount, &objects, &objectsTags);
     if (!isOk(err)) return err;
@@ -213,14 +209,13 @@ getObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &tags, std::vector <std::p
     return deallocateArrays(jvmti, objects, objectsTags);
 }
 
-jvmtiError
-getObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &&tags, std::vector <std::pair<jobject, jlong>> &result) {
+jvmtiError getObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &&tags, std::vector<std::pair<jobject, jlong>> &result) {
     return getObjectsByTags(jvmti, tags, result);
 }
 
-jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &tags,
-                                        std::vector <std::pair<jobject, jlong>> &result, tagReleasedCallback callback) {
-    std::set <jlong> uniqueTags(tags.begin(), tags.end());
+jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tags,
+                                        std::vector<std::pair<jobject, jlong>> &result, tagReleasedCallback callback) {
+    std::set<jlong> uniqueTags(tags.begin(), tags.end());
     removeTagsFromHeap(jvmti, uniqueTags, callback);
     tags.assign(uniqueTags.begin(), uniqueTags.end());
 
@@ -228,7 +223,7 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector <jlong> &ta
 }
 
 jvmtiError removeAllTagsFromHeap(jvmtiEnv *jvmti, tagReleasedCallback callback) {
-    std::set <jlong> ignored;
+    std::set<jlong> ignored;
     return removeTagsFromHeap(jvmti, ignored, callback);
 }
 
@@ -248,11 +243,36 @@ std::string jstringTostring(JNIEnv *env, jstring jStr) {
 }
 
 
+jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag) {
+    jclass *classes;
+    jint cnt;
+    jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
+    if (err != JVMTI_ERROR_NONE) return err;
+
+    jclass langClass = env->FindClass("java/lang/Class");
+    jmethodID isAssignableFrom = env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
+
+    for (int i = 0; i < cnt; i++) {
+        if (env->CallBooleanMethod(classObject, isAssignableFrom, classes[i])) {
+            jlong oldTag;
+            err = jvmti->GetTag(classes[i], &oldTag);
+            if (err != JVMTI_ERROR_NONE) return err;
+
+            jlong newTag = createTag(oldTag);
+            if (newTag != 0)  {
+                err = jvmti->SetTag(classes[i], newTag);
+                if (err != JVMTI_ERROR_NONE) return err;
+            }
+        }
+    }
+
+    return err;
+}
+
 jvmtiError tagClass(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong(jlong)> &&createTag) {
     jlong oldTag;
     jvmtiError err = jvmti->GetTag(classObject, &oldTag);
     if (err != JVMTI_ERROR_NONE) return err;
-
     jlong newTag = createTag(oldTag);
     if (newTag != 0) {
         err = jvmti->SetTag(classObject, newTag);
@@ -266,6 +286,11 @@ jmethodID getIsAssignableFromMethod(JNIEnv *env) {
     return env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
 }
 
+std::string getToString(JNIEnv *env, jobject object) {
+    jobject name = env->CallObjectMethod(object, env->GetMethodID(env->FindClass("java/lang/Object"), "toString", "()Ljava/lang/String;"));
+    return jstringTostring(env, reinterpret_cast<jstring>(name));
+}
+
 jobject getClassLoader(JNIEnv *env, jclass clazz) {
     return env->CallObjectMethod(clazz, env->GetMethodID(env->GetObjectClass(clazz), "getClassLoader",
                                                          "()Ljava/lang/ClassLoader;"));
@@ -275,12 +300,6 @@ bool isEqual(JNIEnv *env, jobject obj, jobject otherObj) {
     jclass objClass = env->GetObjectClass(obj);
     jmethodID equalsID = env->GetMethodID(objClass, "equals", "(Ljava/lang/Object;)Z");
     return env->CallBooleanMethod(obj, equalsID, otherObj);
-}
-
-std::string getToString(JNIEnv *env, jobject object) {
-    jobject name = env->CallObjectMethod(object, env->GetMethodID(env->FindClass("java/lang/Object"), "toString",
-                                                                  "()Ljava/lang/String;"));
-    return jstringTostring(env, reinterpret_cast<jstring>(name));
 }
 
 ThreadSuspender::ThreadSuspender(jvmtiEnv *jvmti) : jvmti(jvmti) {
@@ -324,7 +343,7 @@ ThreadSuspender::ThreadSuspender(jvmtiEnv *jvmti) : jvmti(jvmti) {
 }
 
 ThreadSuspender::~ThreadSuspender() {
-    for (jthread thread: suspendedThreads) {
+    for (jthread thread : suspendedThreads) {
         jvmtiError err = jvmti->ResumeThread(thread);
         if (!isOk(err)) {
             handleError(jvmti, err, "Failed to resume thread");
