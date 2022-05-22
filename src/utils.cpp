@@ -135,31 +135,14 @@ void handleError(jvmtiEnv *jvmti, jvmtiError err, const char *message) {
 typedef std::pair<std::set < jlong> *, tagReleasedCallback>
 iterationInfo;
 
-static jint JNICALL
-freeObjectCallback(jlong
-classTag,
-jlong size, jlong
-*tagPtr,
-jint length,
-void *userData
-) {
-auto info = reinterpret_cast<iterationInfo *>(userData);
-jlong tagValue = *tagPtr;
-*
-tagPtr = 0;
-if (info->first->
-find(tagValue)
-== info->first->
-
-end() &&
-
-info->second) {
-info->
-second(tagValue);
-}
-
-return
-JVMTI_ITERATION_CONTINUE;
+static jint JNICALL freeObjectCallback(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+    auto info = reinterpret_cast<iterationInfo *>(userData);
+    jlong tagValue = *tagPtr;
+    *tagPtr = 0;
+    if (info->first->find(tagValue)== info->first->end() &&info->second) {
+        info->second(tagValue);
+    }
+    return JVMTI_ITERATION_CONTINUE;
 }
 
 jvmtiError removeTagsFromHeap(jvmtiEnv *jvmti, std::set <jlong> &ignoredTags, tagReleasedCallback callback) {
@@ -265,56 +248,16 @@ std::string jstringTostring(JNIEnv *env, jstring jStr) {
 }
 
 
-jvmtiError
-tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong(jlong)> &&createTag) {
-    jclass *classes;
-    jint cnt;
-    jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
-    std::cout << "get loaded classes" << std::endl;
+jvmtiError tagClass(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong(jlong)> &&createTag) {
+    jlong oldTag;
+    jvmtiError err = jvmti->GetTag(classObject, &oldTag);
     if (err != JVMTI_ERROR_NONE) return err;
 
-    jclass langClass = env->FindClass("java/lang/Class");
-    jmethodID isAssignableFrom = env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
-    std::cout << "get method: " << isAssignableFrom << " " << classObject /*<< " " << getToString(env, classObject)*/
-              << std::endl;
-
-    for (int i = 0; i < cnt; i++) {
-        if (classes[i] != NULL && env->CallBooleanMethod(classObject, isAssignableFrom, classes[i])) {
-            std::cout << "true" << std::endl;
-            jlong oldTag;
-            err = jvmti->GetTag(classes[i], &oldTag);
-            std::cout << "get tag" << std::endl;
-            if (err != JVMTI_ERROR_NONE) return err;
-
-            jlong newTag = createTag(oldTag);
-            std::cout << "create tag" << std::endl;
-            if (newTag != 0) {
-                err = jvmti->SetTag(classes[i], newTag);
-                std::cout << "set tag" << std::endl;
-                if (err != JVMTI_ERROR_NONE) return err;
-            }
-        }
+    jlong newTag = createTag(oldTag);
+    if (newTag != 0) {
+        err = jvmti->SetTag(classObject, newTag);
+        if (err != JVMTI_ERROR_NONE) return err;
     }
-    std::cout << "finish" << std::endl;
-
-    return err;
-}
-
-jvmtiError tagClassAndItsInheritorsSimple(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject) {
-    jclass *classes;
-    jint cnt;
-    jvmtiError err = jvmti->GetLoadedClasses(&cnt, &classes);
-    if (err != JVMTI_ERROR_NONE) return err;
-
-    jclass langClass = env->FindClass("java/lang/Class");
-    jmethodID isAssignableFrom = env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
-
-    for (int i = 0; i < cnt; i++) {
-        if (env->CallBooleanMethod(classObject, isAssignableFrom, classes[i])) {
-            err = jvmti->SetTag(classes[i], 25);
-        }
-    }
-
     return err;
 }
 

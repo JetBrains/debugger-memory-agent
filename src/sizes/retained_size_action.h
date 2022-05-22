@@ -75,7 +75,7 @@ protected:
     jvmtiError createTagsForClassLoadersClasses(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray, jsize classLoaderIndex) {
         for (jsize i = 0; i < this->env->GetArrayLength(classesArray); i++) {
             jobject classObject = this->env->GetObjectArrayElement(classesArray, i);
-            jvmtiError err = tagClassAndItsInheritors(env, jvmti, classObject, [classLoaderIndex](jlong oldTag) -> jlong {
+            jvmtiError err = tagClass(env, jvmti, classObject, [classLoaderIndex](jlong oldTag) -> jlong {
                 ClassTag *classTag = tagToClassTagPointer(oldTag);
                 if (classTag != nullptr) {
                     classTag->ids.push_back(classLoaderIndex);
@@ -85,10 +85,8 @@ protected:
 
                 return 0;
             });
-            std::cout << "TAGGED"<<std::endl;
             if (err != JVMTI_ERROR_NONE) return err;
         }
-        std::cout << "FINISH TAGGING OF CLASSES"<<std::endl;
         return JVMTI_ERROR_NONE;
     }
 

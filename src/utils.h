@@ -67,7 +67,7 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
 
 jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag);
 
-jvmtiError tagClassAndItsInheritorsSimple(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject);
+jvmtiError tagClass(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag);
 
 bool isOk(jvmtiError error);
 
