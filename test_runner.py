@@ -51,6 +51,7 @@ def output_file(name: str, directory: Optional[str] = None) -> str:
 def dynamic_library_name(lib_name) -> str:
     def dynamic_lib_format() -> str:
         os_type = platform.system()
+        os_arch = platform.processor()
         if os_type == "Windows":
             if get_java_bitness() == 32:
                 return '{}32.dll'
@@ -58,6 +59,8 @@ def dynamic_library_name(lib_name) -> str:
                 return '{}.dll'
         if os_type == "Darwin":
             return 'lib{}.dylib'
+        if os_type == "Linux" and os_arch == 'aarch64':
+            return 'lib{}_aarch64.so'
         if os_type == "Linux":
             return 'lib{}.so'
         raise Exception("Unknown OS type")
