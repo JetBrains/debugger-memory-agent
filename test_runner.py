@@ -30,15 +30,15 @@ def get_java_compiler() -> str:
     return os.path.join(JAVA_HOME, 'bin', 'javac')
 
 
-def get_java_architecture() -> str:
+def get_java_bitness() -> int:
     out = check_output([get_java_executable(), '-version'], stderr=STDOUT).decode('utf-8')
 
     if out.find('64-Bit') != -1:
-        return '64bit'
-    return '32bit'
+        return 64
+    return 32
 
 
-OUTS_DIR = 'outs' if get_java_architecture() == '64bit' else 'outs32'
+OUTS_DIR = 'outs' if get_java_bitness() == 64 else 'outs32'
 
 
 def output_file(name: str, directory: Optional[str] = None) -> str:
@@ -52,7 +52,7 @@ def dynamic_library_name(lib_name) -> str:
     def dynamic_lib_format() -> str:
         os_type = platform.system()
         if os_type == "Windows":
-            if get_java_architecture() == "32bit":
+            if get_java_bitness() == 32:
                 return '{}32.dll'
             else:
                 return '{}.dll'
