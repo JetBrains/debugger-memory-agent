@@ -49,6 +49,15 @@ jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects) {
     return res;
 }
 
+jobjectArray toJavaArray(JNIEnv *env, std::vector <jclass> &objects) {
+    auto count = static_cast<jsize>(objects.size());
+    jobjectArray res = env->NewObjectArray(count, env->FindClass("java/lang/Class"), nullptr);
+    for (auto i = 0; i < count; ++i) {
+        env->SetObjectArrayElement(res, i, objects[i]);
+    }
+    return res;
+}
+
 jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items) {
     auto count = static_cast<jsize>(items.size());
     jlongArray result = env->NewLongArray(count);
@@ -260,6 +269,18 @@ jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classO
     return err;
 }
 
+jvmtiError tagClass(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong(jlong)> &&createTag) {
+    jlong oldTag;
+    jvmtiError err = jvmti->GetTag(classObject, &oldTag);
+    if (err != JVMTI_ERROR_NONE) return err;
+    jlong newTag = createTag(oldTag);
+    if (newTag != 0) {
+        err = jvmti->SetTag(classObject, newTag);
+        if (err != JVMTI_ERROR_NONE) return err;
+    }
+    return err;
+}
+
 jmethodID getIsAssignableFromMethod(JNIEnv *env) {
     jclass langClass = env->FindClass("java/lang/Class");
     return env->GetMethodID(langClass, "isAssignableFrom", "(Ljava/lang/Class;)Z");
@@ -268,6 +289,17 @@ jmethodID getIsAssignableFromMethod(JNIEnv *env) {
 std::string getToString(JNIEnv *env, jobject object) {
     jobject name = env->CallObjectMethod(object, env->GetMethodID(env->FindClass("java/lang/Object"), "toString", "()Ljava/lang/String;"));
     return jstringTostring(env, reinterpret_cast<jstring>(name));
+}
+
+jobject getClassLoader(JNIEnv *env, jclass clazz) {
+    return env->CallObjectMethod(clazz, env->GetMethodID(env->GetObjectClass(clazz), "getClassLoader",
+                                                         "()Ljava/lang/ClassLoader;"));
+}
+
+bool isEqual(JNIEnv *env, jobject obj, jobject otherObj) {
+    jclass objClass = env->GetObjectClass(obj);
+    jmethodID equalsID = env->GetMethodID(objClass, "equals", "(Ljava/lang/Object;)Z");
+    return env->CallBooleanMethod(obj, equalsID, otherObj);
 }
 
 ThreadSuspender::ThreadSuspender(jvmtiEnv *jvmti) : jvmti(jvmti) {

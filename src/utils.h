@@ -27,6 +27,8 @@ jbooleanArray toJavaArray(JNIEnv *env, std::vector<jboolean> &items);
 
 jobjectArray toJavaArray(JNIEnv *env, std::vector<jobject> &objects);
 
+jobjectArray toJavaArray(JNIEnv *env, std::vector<jclass> &objects);
+
 jintArray toJavaArray(JNIEnv *env, std::vector<jint> &items);
 
 jlongArray toJavaArray(JNIEnv *env, std::vector<jlong> &items);
@@ -65,6 +67,8 @@ jvmtiError cleanHeapAndGetObjectsByTags(jvmtiEnv *jvmti, std::vector<jlong> &tag
 
 jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag);
 
+jvmtiError tagClass(JNIEnv *env, jvmtiEnv *jvmti, jobject classObject, std::function<jlong (jlong)> &&createTag);
+
 bool isOk(jvmtiError error);
 
 bool fileExists(const std::string &fileName);
@@ -72,6 +76,10 @@ bool fileExists(const std::string &fileName);
 std::string jstringTostring(JNIEnv *env, jstring jStr);
 
 jmethodID getIsAssignableFromMethod(JNIEnv *env);
+
+jobject getClassLoader(JNIEnv *env, jclass obj);
+
+bool isEqual(JNIEnv *env, jobject obj1, jobject obj2);
 
 std::string getToString(JNIEnv *env, jobject klass);
 

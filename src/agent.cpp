@@ -14,6 +14,7 @@
 #include "sizes/retained_size_and_held_objects.h"
 #include "sizes/retained_size_by_classes.h"
 #include "sizes/retained_size_by_objects.h"
+#include "sizes/retained_size_by_classloaders.h"
 #include "allocation_sampling.h"
 
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
@@ -141,6 +142,13 @@ JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_c
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canGetRetainedSizeByClassLoaders(
+        JNIEnv *env,
+        jobject thisObject) {
+    return (jboolean) 1;
+}
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_canGetShallowSizeByClasses(
         JNIEnv *env,
         jobject thisObject) {
@@ -194,6 +202,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentPro
         jobject thisObject,
         jobjectArray classesArray) {
     return RetainedSizeByClassesAction(env, gdata->jvmti, thisObject).run(classesArray);
+}
+
+extern "C"
+JNIEXPORT jobjectArray JNICALL Java_com_intellij_memory_agent_IdeaNativeAgentProxy_getRetainedSizeByClassLoaders(
+        JNIEnv *env,
+        jobject thisObject,
+        jobjectArray classLoadersArray) {
+    return RetainedSizeByClassLoadersAction(env, gdata->jvmti, thisObject).run(classLoadersArray);
 }
 
 extern "C"

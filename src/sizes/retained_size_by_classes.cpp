@@ -21,6 +21,11 @@ jint JNICALL visitObject(jlong classTag, jlong size, jlong *tagPtr, jint length,
     return JVMTI_ITERATION_CONTINUE;
 }
 
+jint JNICALL countHeapSize(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+    *reinterpret_cast<jlong*>(userData) += size;
+    return JVMTI_ITERATION_CONTINUE;
+}
+
 
 jint JNICALL visitObjectForShallowAndRetainedSize(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
     if (*tagPtr == 0) {
