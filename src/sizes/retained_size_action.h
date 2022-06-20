@@ -28,6 +28,7 @@ jint JNICALL clearTag               (jlong classTag, jlong size, jlong *tagPtr, 
 jint JNICALL retagStartObjects      (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
 
 jint JNICALL tagObjectOfTaggedClass (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
+jint JNICALL tagObjectOfTaggedClassSimple (jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData);
 
 jvmtiError walkHeapFromObjects      (jvmtiEnv *jvmti, const std::vector<jobject> &objects, const CancellationChecker &cancellationChecker);
 
@@ -90,6 +91,17 @@ protected:
         return JVMTI_ERROR_NONE;
     }
 
+    jvmtiError createTagsForClassLoadersClassesSimple(JNIEnv *env, jvmtiEnv *jvmti, jobjectArray classesArray) {
+        for (jsize i = 0; i < this->env->GetArrayLength(classesArray); i++) {
+            jobject classObject = this->env->GetObjectArrayElement(classesArray, i);
+            jvmtiError err = tagClass(env, jvmti, classObject, [](jlong oldTag) -> jlong {
+                return 13;
+            });
+            if (err != JVMTI_ERROR_NONE) return err;
+        }
+        return JVMTI_ERROR_NONE;
+    }
+
     jvmtiError tagObjectsOfClasses(jobjectArray classesArray) {
         debug("tag objects of classes");
         jvmtiError err = createTagsForClasses(this->env, this->jvmti, classesArray);
@@ -104,6 +116,14 @@ protected:
         if (err != JVMTI_ERROR_NONE) return err;
 
         return this->IterateThroughHeap(0, nullptr, tagObjectOfTaggedClass, nullptr);
+    }
+
+    jvmtiError tagObjectsOfClassLoaderClassesSimple(jobjectArray classesArray) {
+        debug("tag objects of classes");
+        jvmtiError err = createTagsForClassLoadersClassesSimple(this->env, this->jvmti, classesArray);
+        if (err != JVMTI_ERROR_NONE) return err;
+
+        return this->IterateThroughHeap(0, nullptr, tagObjectOfTaggedClassSimple, nullptr);
     }
 
     jvmtiError tagHeap() {

@@ -98,6 +98,10 @@ jint JNICALL clearTag(jlong classTag, jlong size, jlong *tagPtr, jint length, vo
     if (*tagPtr == 0) {
         return JVMTI_ITERATION_CONTINUE;
     }
+//    if (*tagPtr == 13) {
+//        *tagPtr = 0;
+//        return JVMTI_ITERATION_CONTINUE;
+//    }
 
     tagToPointer(*tagPtr)->unref();
     *tagPtr = 0;
@@ -120,7 +124,13 @@ jint JNICALL tagObjectOfTaggedClass(jlong classTag, jlong size, jlong *tagPtr, j
     if (pClassTag && *tagPtr == 0) {
         *tagPtr = pointerToTag(pClassTag->createStartTag());
     }
+    return JVMTI_ITERATION_CONTINUE;
+}
 
+jint JNICALL tagObjectOfTaggedClassSimple(jlong classTag, jlong size, jlong *tagPtr, jint length, void *userData) {
+    if (classTag == 13) {
+        *tagPtr = 13;
+    }
     return JVMTI_ITERATION_CONTINUE;
 }
 

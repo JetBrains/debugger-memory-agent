@@ -17,6 +17,8 @@ endif ()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 find_package(JNI11)
 include_directories(${JNI_INCLUDE_DIRS})
+include_directories("/usr/lib/jvm/java-1.11.0-openjdk-amd64/include")
+include_directories("/usr/lib/jvm/java-1.11.0-openjdk-amd64/include/linux")
 
 add_library(memory_agent SHARED
         src/agent.cpp
