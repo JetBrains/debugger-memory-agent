@@ -1,8 +1,10 @@
 # Contributing guide for debugger memory agent
+
+## Prerequisites
+To build the project you should have CMake 3.1 or higher installed, and JDK 11 or higher is installed.
+
 ## Building
-To build the project you should have Cmake 3.1 or higher installed, and `JDK_11` 
-environmental variable should be set to jdk 11 or higher. Once you've downloaded the project, 
-you can build it using the following commands in the root project directory:
+Once you've downloaded the project, you can build it using the following commands in the root project directory:
 ```
 cmake .
 cmake --build .

@@ -14,8 +14,10 @@ if (WIN32 AND (NOT MINGW) AND (NOT CYGWIN))
     set(CMAKE_CXX_FLAGS_MINSIZEREL "/MT")
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
-find_package(JNI11)
+find_package(Java 11 REQUIRED COMPONENTS Development)
+include(${CMAKE_CURRENT_LIST_DIR}/SetJavaHomeFromJavaExecutable.cmake)
+find_package(JNI REQUIRED)
+
 include_directories(${JNI_INCLUDE_DIRS})
 
 add_library(memory_agent SHARED
