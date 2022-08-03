@@ -1,5 +1,21 @@
 Agent loaded
-[[ref 1]] -> [24]
-[[ref 2]] -> [24]
-[[ref 1], [ref 2]] -> [24, 24]
-[[ref 1], [ref 2]] -> [24, 24]
+Shallow sizes:
+	[ref 1] -> 24
+Retained sizes:
+	[ref 1] -> 24
+Shallow sizes:
+	[ref 2] -> 24
+Retained sizes:
+	[ref 2] -> 24
+Shallow sizes:
+	[ref 1] -> 24
+	[ref 2] -> 24
+Retained sizes:
+	[ref 1] -> 24
+	[ref 2] -> 24
+Shallow sizes:
+	[ref 1] -> 24
+	[ref 2] -> 24
+Retained sizes:
+	[ref 1] -> 24
+	[ref 2] -> 24
