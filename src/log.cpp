@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 #include "log.h"
 
 namespace logger {
@@ -65,7 +66,7 @@ namespace logger {
 
     void logPassedTime() {
         if (LEVEL >= DEBUG) {
-            long long passedTime = std::__1::chrono::duration_cast<std::chrono::milliseconds>(
+            long long passedTime = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - timePoint
             ).count();
             *out << "MEMORY_AGENT::TIME_MS " << passedTime << std::endl;
