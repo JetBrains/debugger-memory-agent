@@ -6,6 +6,42 @@ Held objects:
 [common.TestTreeNode$Impl1: node 6]
 [common.TestTreeNode$Impl1: node 7]
 [common.TestTreeNode$Impl1: node 8]
+Shallow sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 24
+	[common.TestTreeNode$Impl2: node 3] -> 24
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 120
+	[common.TestTreeNode$Impl2: node 3] -> 48
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Class common.TestTreeNode$Impl1
+Shallow sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 24
+	[common.TestTreeNode$Impl1: node 6] -> 24
+	[common.TestTreeNode$Impl1: node 2] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 7] -> 24
+	[common.TestTreeNode$Impl1: node 8] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 120
+	[common.TestTreeNode$Impl1: node 6] -> 72
+	[common.TestTreeNode$Impl1: node 2] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 7] -> 24
+	[common.TestTreeNode$Impl1: node 8] -> 24
+Class common.TestTreeNode$Impl2
+Shallow sizes:
+	[common.TestTreeNode$Impl2: node 3] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl2: node 3] -> 48
+Class common.TestTreeNode$Impl3
+Shallow sizes:
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Class common.TestTreeNode$Impl4
+Shallow sizes:
+Retained sizes:
 Shallow size: 24, Retained size: 48
 Held objects:
 [common.TestTreeNode$Impl1: node 1]
@@ -17,9 +53,81 @@ Held objects:
 Shallow size: 24, Retained size: 24
 Held objects:
 [common.TestTreeNode$Impl3: node 5]
+Shallow sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 24
+	[common.TestTreeNode$Impl2: node 3] -> 24
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 48
+	[common.TestTreeNode$Impl2: node 3] -> 48
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Class common.TestTreeNode$Impl1
+Shallow sizes:
+	[common.TestTreeNode$Impl1: node 6] -> 24
+	[common.TestTreeNode$Impl1: node 1] -> 24
+	[common.TestTreeNode$Impl1: node 2] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 7] -> 24
+	[common.TestTreeNode$Impl1: node 8] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl1: node 6] -> 72
+	[common.TestTreeNode$Impl1: node 1] -> 48
+	[common.TestTreeNode$Impl1: node 2] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 7] -> 24
+	[common.TestTreeNode$Impl1: node 8] -> 24
+Class common.TestTreeNode$Impl2
+Shallow sizes:
+	[common.TestTreeNode$Impl2: node 3] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl2: node 3] -> 48
+Class common.TestTreeNode$Impl3
+Shallow sizes:
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Class common.TestTreeNode$Impl4
+Shallow sizes:
+Retained sizes:
 Shallow size: 24, Retained size: 96
 Held objects:
 [common.TestTreeNode$Impl1: node 6]
 [common.TestTreeNode$Impl1: node 7]
 [common.TestTreeNode$Impl1: node 8]
 [common.TestTreeNode$Impl3: node 5]
+Shallow sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 24
+	[common.TestTreeNode$Impl2: node 3] -> 24
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl1: node 1] -> 48
+	[common.TestTreeNode$Impl2: node 3] -> 48
+	[common.TestTreeNode$Impl3: node 5] -> 96
+Class common.TestTreeNode$Impl1
+Shallow sizes:
+	[common.TestTreeNode$Impl1: node 6] -> 24
+	[common.TestTreeNode$Impl1: node 1] -> 24
+	[common.TestTreeNode$Impl1: node 2] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 7] -> 24
+	[common.TestTreeNode$Impl1: node 8] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl1: node 6] -> 72
+	[common.TestTreeNode$Impl1: node 1] -> 48
+	[common.TestTreeNode$Impl1: node 2] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 7] -> 24
+	[common.TestTreeNode$Impl1: node 8] -> 24
+Class common.TestTreeNode$Impl2
+Shallow sizes:
+	[common.TestTreeNode$Impl2: node 3] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl2: node 3] -> 48
+Class common.TestTreeNode$Impl3
+Shallow sizes:
+	[common.TestTreeNode$Impl3: node 5] -> 24
+Retained sizes:
+	[common.TestTreeNode$Impl3: node 5] -> 96
+Class common.TestTreeNode$Impl4
+Shallow sizes:
+Retained sizes:
