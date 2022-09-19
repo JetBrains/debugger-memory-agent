@@ -20,7 +20,7 @@ def binariesPath = "$projectDir/../bin"
 def libraryClassesPath = "$projectDir/../classes/"
 
 static def checkBinaries(String binPath) {
-    def expectedFiles = ['libmemory_agent.dylib', 'libmemory_agent.so', 'memory_agent.dll', 'memory_agent32.dll']
+    def expectedFiles = ['libmemory_agent.dylib', 'libmemory_agent.so', 'memory_agent.dll', 'memory_agent64a.dll', 'memory_agent32.dll']
     expectedFiles.collect { new File(binPath, it) }.each { file ->
         if (!file.exists()) {
             throw new GradleException("Binary dependency not found: ${file.path}")
