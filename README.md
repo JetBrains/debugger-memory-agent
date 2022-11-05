@@ -33,15 +33,15 @@ for (TestClass instance : agent.getAllReachableObjects(null, TestClass.class)) {
 ```
 
 # Using the agent in your projects
-The library is published to the bintray [repository](https://bintray.com/jetbrains/intellij-third-party-dependencies/debugger-memory-agent).
+The library is hosted at a separate [intellij-dependencies repository](https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/org/jetbrains/intellij/deps/debugger-memory-agent).
 
 ## Maven
 Add the external repository url:
 ```
 <repositories>
   <repository>
-    <id>jetbrains.bintray</id>
-    <url>https://jetbrains.bintray.com/intellij-third-party-dependencies</url>
+    <id>intellij-dependencies</id>
+    <url>https://cache-redirector.jetbrains.com/intellij-dependencies</url>
   </repository>
 </repositories>
 ```
@@ -60,7 +60,7 @@ Add the external repository url:
 ```
 repositories {
   maven {
-    url "https://jetbrains.bintray.com/intellij-third-party-dependencies"
+    url "https://cache-redirector.jetbrains.com/intellij-dependencies"
   }
 }
 ```
@@ -76,7 +76,7 @@ Add the external repository url:
 ```
 repositories {
   maven {
-    url = uri("https://jetbrains.bintray.com/intellij-third-party-dependencies")
+    url = uri("https://cache-redirector.jetbrains.com/intellij-dependencies")
   }
 }
 ```
