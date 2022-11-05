@@ -33,7 +33,7 @@ for (TestClass instance : agent.getAllReachableObjects(null, TestClass.class)) {
 ```
 
 # Using the agent in your projects
-The library is hosted at a separate [intellij-dependencies repository](https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/org/jetbrains/intellij/deps/debugger-memory-agent).
+The library is hosted at a separate [intellij-dependencies repository](https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/org/jetbrains/intellij/deps/debugger-memory-agent/).
 
 ## Maven
 Add the external repository url:
