@@ -10,12 +10,12 @@ Shallow size: 24, Retained size: 24
 Held objects:
 [common.TestTreeNode$Impl2: node 1]
 Shallow sizes:
-	[common.TestTreeNode$Impl2: node 1] -> 24
 	[common.TestTreeNode$Impl1: node 2] -> 24
+	[common.TestTreeNode$Impl2: node 1] -> 24
 	[common.TestTreeNode$Impl3: node 6] -> 24
 Retained sizes:
-	[common.TestTreeNode$Impl2: node 1] -> 24
 	[common.TestTreeNode$Impl1: node 2] -> 72
+	[common.TestTreeNode$Impl2: node 1] -> 24
 	[common.TestTreeNode$Impl3: node 6] -> 24
 Class common.TestTreeNode$Impl1
 Shallow sizes:

@@ -162,9 +162,12 @@ public abstract class TestBase {
 
   private static <T> void printSize(T[] objects, long[] sizes, Function<T, String> toString) {
     assertEquals(objects.length, sizes.length);
+    List<NameAndSize> result = new ArrayList<NameAndSize>();
     for (int i = 0; i < sizes.length; i++) {
-      System.out.println("\t" + toString.apply(objects[i]) + " -> " + sizes[i]);
+      result.add(new NameAndSize(toString.apply(objects[i]), sizes[i]));
     }
+    result.sort(NameAndSize::compareTo);
+    result.forEach(r -> System.out.println("\t" + r.name + " -> " + r.size));
   }
 
   protected static void printShallowAndRetainedSizeByClasses(Class<?>... classes) {
@@ -337,5 +340,20 @@ public abstract class TestBase {
       return Arrays.stream((Object[]) obj).map(x -> asStringImpl(x, visited)).collect(Collectors.joining(", ", "[", "]"));
     }
     return obj.toString().replaceFirst("@.*", "");
+  }
+
+  private static class NameAndSize implements Comparable<NameAndSize> {
+    public String name;
+    public long size;
+
+    public NameAndSize(String name, long size) {
+      this.name = name;
+      this.size = size;
+    }
+
+    @Override
+    public int compareTo(NameAndSize other){
+        return size == other.size ? name.compareTo(other.name) : -Long.compare(size, other.size);
+    }
   }
 }
