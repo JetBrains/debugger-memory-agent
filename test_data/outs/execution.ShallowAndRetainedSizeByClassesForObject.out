@@ -1,0 +1,11 @@
+Agent loaded
+{
+	"minValue": 0,
+	"maxValue": 100,
+	"currentValue": 100,
+	"message": "Finished!"
+}
+TIMEOUT
+TIMEOUT
+OK
+CANCELLED

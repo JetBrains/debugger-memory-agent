@@ -246,6 +246,25 @@ jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classO
             err = jvmti->GetTag(classes[i], &oldTag);
             if (err != JVMTI_ERROR_NONE) return err;
 
+            char* sig;
+            if (jvmti->GetClassSignature(classes[i], &sig, nullptr) != JVMTI_ERROR_NONE) {
+                continue;
+            }
+
+            // jdk/internal/vm/FillerArray objects are used to mark dead heap areas
+            // see https://bugs.openjdk.org/browse/JDK-8284435
+            // These objects must not be accessible, so they are facultative for analysis.
+            //
+            // However, these objects are invisible for consecutive jvmti->IterateThroughHeap calls.
+            //
+            // Simple test: tag all objects with IterateThroughHeap, then remove tags with another IterateThroughHeap
+            // call. There will be 3 tags left.
+            //
+            // see https://youtrack.jetbrains.com/issue/IDEA-330128
+            if (strcmp(sig, "Ljdk/internal/vm/FillerArray;") == 0) {
+                continue;
+            }
+
             jlong newTag = createTag(oldTag);
             if (newTag != 0)  {
                 err = jvmti->SetTag(classes[i], newTag);
