@@ -22,6 +22,12 @@ Retained sizes:
 	[common.TestTreeNode$Impl1: node 9] -> 72
 	[common.TestTreeNode$Impl1: node 11] -> 24
 	[common.TestTreeNode$Impl1: node 4] -> 24
+Estimated retained sizes:
+	[common.TestTreeNode$Impl1: node 5] -> 72
+	[common.TestTreeNode$Impl1: node 11] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 9] -> 24
+	[common.TestTreeNode$Impl2: node 3] -> 24
 Shallow sizes:
 	[common.TestTreeNode$Impl2: node 3] -> 24
 	[common.TestTreeNode$Impl3: node 1] -> 24
@@ -86,6 +92,12 @@ Retained sizes:
 	[common.TestTreeNode$Impl1: node 11] -> 24
 	[common.TestTreeNode$Impl1: node 4] -> 24
 	[common.TestTreeNode$Impl1: node 9] -> 24
+Estimated retained sizes:
+	[common.TestTreeNode$Impl1: node 5] -> 72
+	[common.TestTreeNode$Impl1: node 11] -> 24
+	[common.TestTreeNode$Impl1: node 4] -> 24
+	[common.TestTreeNode$Impl1: node 9] -> 24
+	[common.TestTreeNode$Impl2: node 3] -> 24
 Shallow sizes:
 	[common.TestTreeNode$Impl2: node 3] -> 24
 	[common.TestTreeNode$Impl3: node 1] -> 24

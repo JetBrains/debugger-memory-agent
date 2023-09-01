@@ -44,6 +44,8 @@ public class IdeaNativeAgentProxy {
 
   public native Object[] size(Object object);
 
+  public native Object[] estimateRetainedSize(Object[] objects);
+
   public native Object[] getFirstReachableObject(Object startObject, Object suspectClass);
 
   public native Object[] getAllReachableObjects(Object startObject, Object suspectClass);

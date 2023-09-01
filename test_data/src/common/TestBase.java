@@ -143,6 +143,11 @@ public abstract class TestBase {
     Object result = proxy.getShallowAndRetainedSizesByObjects(objects);
     Object[] arrayResult = (Object[]) ((Object[]) result)[1];
     printSizesOfObjects(objects, (long[])arrayResult[0], (long[])arrayResult[1]);
+    long[] estimatedRetainedSizes = (long[]) ((Object[]) proxy.estimateRetainedSize(objects))[1];
+    if (!Arrays.equals(estimatedRetainedSizes, (long[])arrayResult[1])) {
+        System.out.println("Estimated retained sizes:");
+        printSizeByObjects(objects, estimatedRetainedSizes);
+    }
   }
 
   private static void printSizesOfObjects(Object[] objects, long[] shallowSizes, long[] retainedSizes) {

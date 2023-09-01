@@ -14,6 +14,10 @@ Retained sizes:
 	[common.TestTreeNode$Impl2: node 1] -> 120
 	[common.TestTreeNode$Impl1: node 5] -> 24
 	[common.TestTreeNode$Impl3: node 6] -> 24
+Estimated retained sizes:
+	[common.TestTreeNode$Impl1: node 5] -> 24
+	[common.TestTreeNode$Impl2: node 1] -> 24
+	[common.TestTreeNode$Impl3: node 6] -> 24
 Class common.TestTreeNode$Impl1
 Shallow sizes:
 	[common.TestTreeNode$Impl1: node 2] -> 24
@@ -49,6 +53,10 @@ Shallow sizes:
 Retained sizes:
 	[common.TestTreeNode$Impl2: node 1] -> 48
 	[common.TestTreeNode$Impl1: node 5] -> 24
+	[common.TestTreeNode$Impl3: node 6] -> 24
+Estimated retained sizes:
+	[common.TestTreeNode$Impl1: node 5] -> 24
+	[common.TestTreeNode$Impl2: node 1] -> 24
 	[common.TestTreeNode$Impl3: node 6] -> 24
 Class common.TestTreeNode$Impl1
 Shallow sizes:
