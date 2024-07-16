@@ -261,7 +261,9 @@ jvmtiError tagClassAndItsInheritors(JNIEnv *env, jvmtiEnv *jvmti, jobject classO
             // call. There will be 3 tags left.
             //
             // see https://youtrack.jetbrains.com/issue/IDEA-330128
-            if (strcmp(sig, "Ljdk/internal/vm/FillerArray;") == 0) {
+            if (strcmp(sig, "Ljdk/internal/vm/FillerArray;") == 0
+                || strcmp(sig, "Ljdk/internal/vm/FillerObject;") == 0
+                || strcmp(sig, "[Ljdk/internal/vm/FillerElement;") == 0) {
                 continue;
             }
 
