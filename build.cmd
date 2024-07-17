@@ -7,7 +7,7 @@ SET CMAKE=%CMAKE_PATH%\bin\cmake
 IF EXIST "%BUILD_DIR%" RMDIR /S /Q "%BUILD_DIR%"
 MKDIR "%BUILD_DIR%" & CD "%BUILD_DIR%"
 
-"%CMAKE%" -G "Visual Studio 16 2019" -T v142 -A "%PLATFORM%" ..
+"%CMAKE%" -G "Visual Studio 16 2019" -T v142 -A "%PLATFORM%" -DCMAKE_SYSTEM_VERSION="10.0.14393.0" ..
 IF ERRORLEVEL 1 EXIT 1
 
 "%CMAKE%" --build . --config Release
