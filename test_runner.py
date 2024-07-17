@@ -1,6 +1,6 @@
-import distutils.dir_util
 import os
 import platform
+import shutil
 import sys
 import time
 import unittest
@@ -239,7 +239,7 @@ class NativeAgentTests(unittest.TestCase):
         JavaCompiler(get_java_compiler(), build_directory) \
             .compile_java(test_repo.get_all_files_for_compilation(), PROXY_COMPILED_PATH)
         if PROXY_COMPILED_PATH is not None:
-            distutils.dir_util.copy_tree(PROXY_COMPILED_PATH, build_directory)
+            shutil.copytree(PROXY_COMPILED_PATH, build_directory)
 
 
 def to_test_name(value: str) -> str:
