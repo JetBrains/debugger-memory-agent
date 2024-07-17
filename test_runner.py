@@ -239,7 +239,7 @@ class NativeAgentTests(unittest.TestCase):
         JavaCompiler(get_java_compiler(), build_directory) \
             .compile_java(test_repo.get_all_files_for_compilation(), PROXY_COMPILED_PATH)
         if PROXY_COMPILED_PATH is not None:
-            shutil.copytree(PROXY_COMPILED_PATH, build_directory)
+            shutil.copytree(PROXY_COMPILED_PATH, build_directory, dirs_exist_ok=True)
 
 
 def to_test_name(value: str) -> str:
