@@ -32,17 +32,17 @@ task includeBinaries {
     doFirst {
         checkBinaries(binariesPath)
     }
-    outputs.files files(binariesPath)
+    outputs.dir binariesPath
 }
 
 task includeClasses {
     doFirst {
         if (!new File(libraryClassesPath).exists()) {
-            throw new GradleScriptException("Agent library classes not found")
+            throw new GradleException("Agent library classes not found")
         }
     }
 
-    outputs.files files(libraryClassesPath)
+    outputs.dir libraryClassesPath
 }
 
 jar {
