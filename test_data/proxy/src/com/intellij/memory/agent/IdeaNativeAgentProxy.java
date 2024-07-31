@@ -8,7 +8,11 @@ public class IdeaNativeAgentProxy {
   static {
     String agentPath = System.getProperty("intellij.memory.agent.path");
     if (agentPath != null) {
-      System.load(agentPath);
+      try {
+        System.load(agentPath);
+      } catch (Throwable e) {
+        throw new RuntimeException("Cannot load memory agent from " + agentPath, e);
+      }
     }
   }
 
