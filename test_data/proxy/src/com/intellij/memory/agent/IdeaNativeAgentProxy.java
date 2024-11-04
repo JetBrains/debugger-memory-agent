@@ -11,6 +11,7 @@ public class IdeaNativeAgentProxy {
       try {
         System.load(agentPath);
       } catch (Throwable e) {
+        System.err.println("Cannot load memory agent from " + agentPath + " : " + e.getMessage() + " (" + e.getClass().getName() + ")");
         throw new RuntimeException("Cannot load memory agent from " + agentPath, e);
       }
     }
