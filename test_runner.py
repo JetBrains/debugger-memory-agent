@@ -55,6 +55,8 @@ def dynamic_library_name(lib_name) -> str:
         if os_type == "Windows":
             if get_java_bitness() == 32:
                 return '{}32.dll'
+            elif os_arch == 'aarch64':
+                return '{}64a.dll'
             else:
                 return '{}.dll'
         if os_type == "Darwin":
